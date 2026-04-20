@@ -289,7 +289,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.CAPTION, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🦀 Rak bot started!")
+    print("🦀 Rak bot v2 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
