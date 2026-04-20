@@ -17,66 +17,67 @@ SUPA_H = {
 
 YEAR = datetime.now().year
 TODAY = datetime.now().strftime("%Y-%m-%d")
+TODAY_NICE = datetime.now().strftime("%d.%m.%Y")
 
-# Per-user conversation history
 conversations = {}
 
-SYSTEM = f"""Ты — Рак, личный ассистент и секретарь. Умный, внимательный, профессиональный — но живой и с чувством юмора. Общаешься на равных, не как робот.
+SYSTEM = f"""Ты — Рак, личный ассистент Кати (контент-мейкер, режиссёр). Профессиональный, чёткий, с лёгким юмором. Отвечаешь коротко.
 
-Пользователь — Катя, контент-мейкер и режиссёр. У неё проекты: Реклама, Курсы, Личный блог. Ты знаешь её по имени.
+СЕГОДНЯ: {TODAY} ({TODAY_NICE})
+ТЕКУЩИЙ ГОД: {YEAR}
 
-СЕГОДНЯ: {TODAY}, {YEAR} год.
+═══ ЛОГИКА РАСПОЗНАВАНИЯ ═══
 
-━━━ РАСПОЗНАВАНИЕ СЪЁМОК ━━━
-Любое сообщение где есть место, имена, дата или время — это съёмка.
+1. СЪЁМКА (action: add_shoot) — если есть ХОТЯ БЫ ДВА из:
+   место/локация, имена людей, время, проект
+   ИЛИ если есть дата + хоть что-то ещё
+   
+   УКРАИНСКИЕ МЕСЯЦЫ: січень=01 лютий=02 березень=03 квітень=04 травень=05 червень=06 липень=07 серпень=08 вересень=09 жовтень=10 листопад=11 грудень=12
+   "24 квітня" → {YEAR}-04-24, "15 мая" → {YEAR}-05-15
+   
+   ЕСЛИ НУЖНА ДАТА — спроси: action=clarify, в reply задай ОДИН вопрос про дату
 
-УКРАИНСКИЕ МЕСЯЦЫ → номер:
-січень=01 лютий=02 березень=03 квітень=04 травень=05 червень=06
-липень=07 серпень=08 вересень=09 жовтень=10 листопад=11 грудень=12
+2. ЗАВЕРШЕНИЕ ПРОЕКТА (action: complete_project) — "закончила/завершила/готово проект X"
 
-Примеры:
-"24 квітня Локомотив, Юля і Майк, 12:00" → съёмка 2026-04-24
-"завтра студия" → съёмка {(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')}
-"в пятницу парк" → ближайшая пятница
+3. ИДЕЯ (action: add_idea) — "идея:", "ідея:", или явно описывает концепцию
 
-━━━ УТОЧНЕНИЯ ━━━
-Уточняй ТОЛЬКО если это реально нужно для записи:
-- Нет ни даты, ни примерного времени → спроси дату
-- Нет места (для съёмки) → спроси место
-НЕ уточняй если информации достаточно. Не засыпай вопросами.
+4. ДНЕВНИК (action: add_diary) — рассказывает как прошёл день, настроение, события
 
-━━━ ХАРАКТЕР ━━━
-- Профессиональный, чёткий, но живой
-- Можешь пошутить уместно
-- Если Катя просто болтает — поддержи разговор, спроси как дела, ответь по-человечески
-- Отвечай на том же языке что написала Катя (русский или украинский)
-- Короткие ответы — не пиши простыни текста
+5. НОВЫЙ ПРОЕКТ (action: add_project) — "новый проект", "створи проект"
 
-━━━ ФОРМАТ ОТВЕТА ━━━
-Только JSON без markdown:
-{{"reply":"текст ответа","action":"none|add_shoot|complete_project|add_idea|add_diary|add_project|clarify","data":{{}}}}
+6. ПРОСТО РАЗГОВОР (action: none) — приветствия ("привет", "привіт", "як справи"), вопросы, болтовня, благодарности, эмоции без конкретных данных для записи
+   ВАЖНО: "привет", "привіт", "як справи?", "дякую", "окей", "ок", "супер" — это ВСЕГДА action: none!
 
-action=clarify → нужно уточнить, ничего не сохраняем, просто задаём вопрос в reply
+═══ ХАРАКТЕР ═══
+- На русском если написала по-русски, на украинском если по-украински
+- Приветствия — отвечай тепло и по-человечески, можешь спросить как дела
+- Болтовня — поддержи разговор
+- Подтверждение съёмки — покажи что записал (дата, место, люди)
+- Никогда не пиши "Записала!" если это просто разговор
 
-Поля data:
-- add_shoot: date(YYYY-MM-DD), time(HH:MM), location, project, people, script, notes
-- complete_project: project_name  
-- add_idea: title, description, category
-- add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
-- add_project: name, description"""
+═══ ФОРМАТ ═══
+Только JSON, без markdown:
+{{"reply":"текст","action":"none|add_shoot|clarify|complete_project|add_idea|add_diary|add_project","data":{{}}}}
+
+data для add_shoot: date(YYYY-MM-DD), time(HH:MM), location, project, people, script, notes
+data для clarify: пусто, вопрос только в reply
+data для complete_project: project_name
+data для add_idea: title, description, category
+data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
+data для add_project: name, description"""
 
 async def ask_gemini(messages):
     payload = {
         "system_instruction": {"parts": [{"text": SYSTEM}]},
         "contents": messages,
-        "generationConfig": {"temperature": 0.4, "maxOutputTokens": 1000}
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 800}
     }
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_KEY}"
     async with httpx.AsyncClient(timeout=30) as c:
         r = await c.post(url, json=payload)
         data = r.json()
         raw = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "{}")
-        raw = raw.strip().replace("```json", "").replace("```", "").strip()
+        raw = raw.strip().replace("```json","").replace("```","").strip()
         try:
             return json.loads(raw)
         except:
@@ -103,7 +104,7 @@ async def apply_action(action, data, image_b64=None):
     today_ru = f"{datetime.now().day} {months[datetime.now().month-1]} {datetime.now().year}"
 
     if action == "add_shoot":
-        return await supa_insert("shoots", {
+        ok = await supa_insert("shoots", {
             "date": data.get("date", today),
             "time": data.get("time", ""),
             "location": data.get("location", ""),
@@ -113,32 +114,33 @@ async def apply_action(action, data, image_b64=None):
             "notes": data.get("notes", ""),
             "status": "не снято"
         })
+        return ok
     elif action == "complete_project":
         name = data.get("project_name", "")
         projects = await supa_get("projects", 50)
         for p in projects:
-            if name.lower() in p.get("name", "").lower():
+            if name.lower() in p.get("name","").lower():
                 await supa_update("projects", "id", p["id"], {"status": "готово"})
                 return True
     elif action == "add_idea":
         img_url = f"data:image/jpeg;base64,{image_b64}" if image_b64 else None
         return await supa_insert("ideas", {
-            "title": data.get("title", ""),
-            "description": data.get("description", ""),
-            "category": data.get("category", "Идея"),
+            "title": data.get("title",""),
+            "description": data.get("description",""),
+            "category": data.get("category","Идея"),
             "image_url": img_url
         })
     elif action == "add_diary":
         return await supa_insert("diary", {
             "date": today_ru,
-            "mood": data.get("mood", "нейтрально"),
-            "events": data.get("events", ""),
-            "thoughts": data.get("thoughts", "")
+            "mood": data.get("mood","нейтрально"),
+            "events": data.get("events",""),
+            "thoughts": data.get("thoughts","")
         })
     elif action == "add_project":
         return await supa_insert("projects", {
-            "name": data.get("name", ""),
-            "description": data.get("description", ""),
+            "name": data.get("name",""),
+            "description": data.get("description",""),
             "status": "в работе"
         })
     return False
@@ -152,31 +154,29 @@ def kbd():
         [InlineKeyboardButton("📊 Итоги недели", callback_data="week")]
     ])
 
-def get_history(user_id):
-    if user_id not in conversations:
-        conversations[user_id] = []
-    return conversations[user_id]
+def get_history(uid):
+    if uid not in conversations:
+        conversations[uid] = []
+    return conversations[uid]
 
-def add_to_history(user_id, role, text, image_b64=None):
-    history = get_history(user_id)
+def add_history(uid, role, text, image_b64=None):
+    h = get_history(uid)
     parts = []
     if image_b64:
-        parts.append({"inline_data": {"mime_type": "image/jpeg", "data": image_b64}})
-    parts.append({"text": text or ""})
-    history.append({"role": role, "parts": parts})
-    # Keep last 10 messages to avoid token overflow
-    if len(history) > 10:
-        conversations[user_id] = history[-10:]
+        parts.append({"inline_data": {"mime_type":"image/jpeg","data":image_b64}})
+    parts.append({"text": text or "—"})
+    h.append({"role": role, "parts": parts})
+    if len(h) > 12:
+        conversations[uid] = h[-12:]
 
 async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     conversations[uid] = []
     await update.message.reply_text(
         "Привет, Катя! Я Рак — твой личный ассистент 🦀\n\n"
-        "Пиши как угодно — русский, украинский, вперемешку. "
+        "Пиши как угодно — русский, украинский, вперемешку.\n"
         "Записываю съёмки, идеи, проекты и дневник.\n\n"
-        "Или просто болтай — я тоже умею 🙂\n\n"
-        "Кнопки внизу — для просмотра всего что записано 👇",
+        "Или просто болтай — я тоже умею 🙂",
         reply_markup=kbd()
     )
 
@@ -196,20 +196,16 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("Напиши что-нибудь или прикрепи фото 🙂")
         return
 
-    # Add user message to history
-    add_to_history(uid, "user", text or "прикрепила фото", image_b64)
-
+    add_history(uid, "user", text or "прикрепила фото", image_b64)
     thinking = await msg.reply_text("⏳")
 
     try:
-        history = get_history(uid)
-        result = await ask_gemini(history)
-        reply = result.get("reply", "Записала!")
+        result = await ask_gemini(get_history(uid))
+        reply = result.get("reply", "Окей!")
         action = result.get("action", "none")
         data = result.get("data", {})
 
-        # Add assistant response to history
-        add_to_history(uid, "model", reply)
+        add_history(uid, "model", reply)
 
         saved = False
         if action not in ("none", "clarify"):
@@ -217,25 +213,24 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
         await thinking.delete()
 
-        # For shoots — show confirmation of what was saved
+        # Show confirmation for shoots
         if action == "add_shoot" and saved:
             details = []
             if data.get("date"): details.append(f"📅 {data['date']}")
             if data.get("time"): details.append(f"🕐 {data['time']}")
             if data.get("location"): details.append(f"📍 {data['location']}")
             if data.get("people"): details.append(f"👥 {data['people']}")
+            if data.get("project"): details.append(f"🎬 {data['project']}")
             if details:
                 reply += "\n\n" + "\n".join(details)
 
-        show_kbd = action not in ("none", "clarify") or any(
-            w in text.lower() for w in ["съёмк", "проект", "идея", "дневник", "запис", "зйомк", "проект"]
-        )
-
+        # Show keyboard only for saved actions or navigation requests
+        show_kbd = action not in ("none", "clarify")
         await msg.reply_text(reply, reply_markup=kbd() if show_kbd else None)
 
     except Exception as e:
         await thinking.delete()
-        await msg.reply_text(f"Что-то пошло не так 😔\n`{str(e)[:100]}`", parse_mode="Markdown")
+        await msg.reply_text(f"Что-то пошло не так 😔 Попробуй ещё раз")
 
 async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -287,10 +282,10 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if not items:
             text = "📓 Записей пока нет\n\nНапиши: *сегодня хороший день*"
         else:
-            moods = {"хорошо": "😊", "нейтрально": "😐", "плохо": "😔"}
+            moods = {"хорошо":"😊","нейтрально":"😐","плохо":"😔"}
             lines = ["📓 *Последние записи:*\n"]
             for d in items:
-                me = moods.get(d.get("mood", "нейтрально"), "😐")
+                me = moods.get(d.get("mood","нейтрально"),"😐")
                 lines.append(f"{me} *{d.get('date','')}*")
                 if d.get("events"): lines.append(f"  {d['events'][:150]}")
                 if d.get("thoughts"): lines.append(f"  💭 {d['thoughts'][:100]}")
@@ -302,13 +297,11 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         ideas    = await supa_get("ideas", 200)
         diary    = await supa_get("diary", 200)
         projects = await supa_get("projects", 200)
-
-        ns = len([s for s in shoots  if s.get("created_at","") > week_ago])
-        ds = len([s for s in shoots  if s.get("status")=="снято" and s.get("created_at","") > week_ago])
-        ni = len([i for i in ideas   if i.get("created_at","") > week_ago])
-        nd = len([d for d in diary   if d.get("created_at","") > week_ago])
+        ns = len([s for s in shoots if s.get("created_at","") > week_ago])
+        ds = len([s for s in shoots if s.get("status")=="снято" and s.get("created_at","") > week_ago])
+        ni = len([i for i in ideas if i.get("created_at","") > week_ago])
+        nd = len([d for d in diary if d.get("created_at","") > week_ago])
         ap = len([p for p in projects if p.get("status") != "готово"])
-
         text = (f"📊 *Итоги недели:*\n\n"
                 f"📅 Съёмок добавлено: {ns}\n"
                 f"✅ Съёмок проведено: {ds}\n"
