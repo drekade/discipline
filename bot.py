@@ -16,59 +16,60 @@ SUPA_H = {
 }
 
 YEAR = datetime.now().year
+TODAY = datetime.now().strftime("%Y-%m-%d")
 
-SYSTEM = f"""Ты — личный ассистент. Пользователь пишет на русском или украинском языке.
+# Per-user conversation history
+conversations = {}
 
-ТЕКУЩИЙ ГОД: {YEAR}
+SYSTEM = f"""Ты — Рак, личный ассистент и секретарь. Умный, внимательный, профессиональный — но живой и с чувством юмора. Общаешься на равных, не как робот.
 
-ГЛАВНОЕ ПРАВИЛО — РАСПОЗНАВАНИЕ СЪЁМКИ:
-Любое сообщение где есть ХОТЯ БЫ ОДНО из: дата, место, имена людей, время — это съёмка (action: add_shoot).
+Пользователь — Катя, контент-мейкер и режиссёр. У неё проекты: Реклама, Курсы, Личный блог. Ты знаешь её по имени.
 
-ПРИМЕРЫ СЪЁМОК которые ты ОБЯЗАН распознать:
-- "24 квітня (п'ятниця) Локомотив, Юля і Майк +380..., 12:00, Зйомка практичної частини з Олегом Романовичем" → съёмка 24 апреля, место Локомотив, люди Юля, Майк, Олег Романович, время 12:00
-- "съёмки 15 мая в парке Горького, сценарий https://..., взять диплом, котенко и таня" → съёмка 15 мая, место парк Горького
-- "завтра в 10 утра студия" → съёмка завтра 10:00, место студия
-- "пятница Киев, Маша и Петя" → съёмка в пятницу, место Киев, люди Маша, Петя
+СЕГОДНЯ: {TODAY}, {YEAR} год.
 
-ПЕРЕВОД МЕСЯЦЕВ (украинский → дата):
-січня/січень=01, лютого/лютий=02, березня/березень=03, квітня/квітень=04,
-травня/травень=05, червня/червень=06, липня/липень=07, серпня/серпень=08,
-вересня/вересень=09, жовтня/жовтень=10, листопада/листопад=11, грудня/грудень=12
+━━━ РАСПОЗНАВАНИЕ СЪЁМОК ━━━
+Любое сообщение где есть место, имена, дата или время — это съёмка.
 
-"24 квітня" → {YEAR}-04-24
-"15 мая" → {YEAR}-05-15
+УКРАИНСКИЕ МЕСЯЦЫ → номер:
+січень=01 лютий=02 березень=03 квітень=04 травень=05 червень=06
+липень=07 серпень=08 вересень=09 жовтень=10 листопад=11 грудень=12
 
-ДЕНЬ НЕДЕЛИ → ближайшая дата от сегодня ({datetime.now().strftime('%Y-%m-%d')}):
-понеділок/monday=пн, вівторок=вт, середа=ср, четвер=чт, п'ятниця/пятница=пт, субота=сб, неділя=вс
+Примеры:
+"24 квітня Локомотив, Юля і Майк, 12:00" → съёмка 2026-04-24
+"завтра студия" → съёмка {(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')}
+"в пятницу парк" → ближайшая пятница
 
-ДРУГИЕ ДЕЙСТВИЯ:
-- "закончила/завершила проект X" → action: complete_project, data.project_name
-- "идея: ..." или "ідея: ..." → action: add_idea
-- "сегодня .../сьогодні ..." с эмоциями/настроением → action: add_diary
-- "новый проект ..." → action: add_project
-- всё остальное → action: none
+━━━ УТОЧНЕНИЯ ━━━
+Уточняй ТОЛЬКО если это реально нужно для записи:
+- Нет ни даты, ни примерного времени → спроси дату
+- Нет места (для съёмки) → спроси место
+НЕ уточняй если информации достаточно. Не засыпай вопросами.
 
-ВАЖНО: Если в сообщении есть имена людей, телефоны, место, дата, время — это СЪЁМКА. Не пиши action:none для таких сообщений.
+━━━ ХАРАКТЕР ━━━
+- Профессиональный, чёткий, но живой
+- Можешь пошутить уместно
+- Если Катя просто болтает — поддержи разговор, спроси как дела, ответь по-человечески
+- Отвечай на том же языке что написала Катя (русский или украинский)
+- Короткие ответы — не пиши простыни текста
 
-Отвечай ТОЛЬКО валидным JSON без markdown:
-{{"reply":"короткий дружелюбный ответ на том же языке что написал пользователь","action":"none|add_shoot|complete_project|add_idea|add_diary|add_project","data":{{}}}}
+━━━ ФОРМАТ ОТВЕТА ━━━
+Только JSON без markdown:
+{{"reply":"текст ответа","action":"none|add_shoot|complete_project|add_idea|add_diary|add_project|clarify","data":{{}}}}
 
-Поля data для add_shoot: date(YYYY-MM-DD), time(HH:MM), location, project, people, script, notes
-Поля data для complete_project: project_name
-Поля data для add_idea: title, description, category
-Поля data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
-Поля data для add_project: name, description"""
+action=clarify → нужно уточнить, ничего не сохраняем, просто задаём вопрос в reply
 
-async def ask_gemini(text, image_b64=None):
-    parts = []
-    if image_b64:
-        parts.append({"inline_data": {"mime_type": "image/jpeg", "data": image_b64}})
-    parts.append({"text": text or "Опиши что на фото и предложи куда сохранить"})
+Поля data:
+- add_shoot: date(YYYY-MM-DD), time(HH:MM), location, project, people, script, notes
+- complete_project: project_name  
+- add_idea: title, description, category
+- add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
+- add_project: name, description"""
 
+async def ask_gemini(messages):
     payload = {
         "system_instruction": {"parts": [{"text": SYSTEM}]},
-        "contents": [{"role": "user", "parts": parts}],
-        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1000}
+        "contents": messages,
+        "generationConfig": {"temperature": 0.4, "maxOutputTokens": 1000}
     }
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_KEY}"
     async with httpx.AsyncClient(timeout=30) as c:
@@ -102,7 +103,7 @@ async def apply_action(action, data, image_b64=None):
     today_ru = f"{datetime.now().day} {months[datetime.now().month-1]} {datetime.now().year}"
 
     if action == "add_shoot":
-        await supa_insert("shoots", {
+        return await supa_insert("shoots", {
             "date": data.get("date", today),
             "time": data.get("time", ""),
             "location": data.get("location", ""),
@@ -118,28 +119,29 @@ async def apply_action(action, data, image_b64=None):
         for p in projects:
             if name.lower() in p.get("name", "").lower():
                 await supa_update("projects", "id", p["id"], {"status": "готово"})
-                break
+                return True
     elif action == "add_idea":
         img_url = f"data:image/jpeg;base64,{image_b64}" if image_b64 else None
-        await supa_insert("ideas", {
+        return await supa_insert("ideas", {
             "title": data.get("title", ""),
             "description": data.get("description", ""),
             "category": data.get("category", "Идея"),
             "image_url": img_url
         })
     elif action == "add_diary":
-        await supa_insert("diary", {
+        return await supa_insert("diary", {
             "date": today_ru,
             "mood": data.get("mood", "нейтрально"),
             "events": data.get("events", ""),
             "thoughts": data.get("thoughts", "")
         })
     elif action == "add_project":
-        await supa_insert("projects", {
+        return await supa_insert("projects", {
             "name": data.get("name", ""),
             "description": data.get("description", ""),
             "status": "в работе"
         })
+    return False
 
 def kbd():
     return InlineKeyboardMarkup([
@@ -150,23 +152,37 @@ def kbd():
         [InlineKeyboardButton("📊 Итоги недели", callback_data="week")]
     ])
 
+def get_history(user_id):
+    if user_id not in conversations:
+        conversations[user_id] = []
+    return conversations[user_id]
+
+def add_to_history(user_id, role, text, image_b64=None):
+    history = get_history(user_id)
+    parts = []
+    if image_b64:
+        parts.append({"inline_data": {"mime_type": "image/jpeg", "data": image_b64}})
+    parts.append({"text": text or ""})
+    history.append({"role": role, "parts": parts})
+    # Keep last 10 messages to avoid token overflow
+    if len(history) > 10:
+        conversations[user_id] = history[-10:]
+
 async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    conversations[uid] = []
     await update.message.reply_text(
-        "Привет! Я твой личный дневник-ассистент 🙂\n\n"
-        "Пиши мне как угодно — понимаю русский и украинский.\n\n"
-        "Например:\n"
-        "• *24 квітня Локомотив, Юля і Майк, 12:00*\n"
-        "• *съёмки 15 мая парк Горького, Котенко и Таня*\n"
-        "• *закончила проект Реклама*\n"
-        "• *идея: серия видео про утро*\n"
-        "• *сегодня хороший день*\n\n"
-        "Используй кнопки для просмотра 👇",
-        parse_mode="Markdown",
+        "Привет, Катя! Я Рак — твой личный ассистент 🦀\n\n"
+        "Пиши как угодно — русский, украинский, вперемешку. "
+        "Записываю съёмки, идеи, проекты и дневник.\n\n"
+        "Или просто болтай — я тоже умею 🙂\n\n"
+        "Кнопки внизу — для просмотра всего что записано 👇",
         reply_markup=kbd()
     )
 
 async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
+    uid = update.effective_user.id
     text = msg.text or msg.caption or ""
     image_b64 = None
 
@@ -180,21 +196,29 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("Напиши что-нибудь или прикрепи фото 🙂")
         return
 
+    # Add user message to history
+    add_to_history(uid, "user", text or "прикрепила фото", image_b64)
+
     thinking = await msg.reply_text("⏳")
 
     try:
-        result = await ask_gemini(text, image_b64)
+        history = get_history(uid)
+        result = await ask_gemini(history)
         reply = result.get("reply", "Записала!")
         action = result.get("action", "none")
         data = result.get("data", {})
 
-        if action != "none":
-            await apply_action(action, data, image_b64 if action == "add_idea" else None)
+        # Add assistant response to history
+        add_to_history(uid, "model", reply)
+
+        saved = False
+        if action not in ("none", "clarify"):
+            saved = await apply_action(action, data, image_b64 if action == "add_idea" else None)
 
         await thinking.delete()
 
-        # Add confirmation details for shoots
-        if action == "add_shoot":
+        # For shoots — show confirmation of what was saved
+        if action == "add_shoot" and saved:
             details = []
             if data.get("date"): details.append(f"📅 {data['date']}")
             if data.get("time"): details.append(f"🕐 {data['time']}")
@@ -203,10 +227,15 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             if details:
                 reply += "\n\n" + "\n".join(details)
 
-        await msg.reply_text(reply, reply_markup=kbd())
+        show_kbd = action not in ("none", "clarify") or any(
+            w in text.lower() for w in ["съёмк", "проект", "идея", "дневник", "запис", "зйомк", "проект"]
+        )
+
+        await msg.reply_text(reply, reply_markup=kbd() if show_kbd else None)
+
     except Exception as e:
         await thinking.delete()
-        await msg.reply_text(f"Що-то пішло не так 😔 Спробуй ще раз\n`{str(e)[:100]}`", parse_mode="Markdown")
+        await msg.reply_text(f"Что-то пошло не так 😔\n`{str(e)[:100]}`", parse_mode="Markdown")
 
 async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -226,7 +255,7 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 line += f" — {s.get('location','?')}"
                 if s.get("project"): line += f"\n   🎬 {s['project']}"
                 if s.get("people"): line += f"\n   👥 {s['people']}"
-                if s.get("script"): line += f"\n   📄 {s['script']}"
+                if s.get("notes"): line += f"\n   📝 {s['notes'][:80]}"
                 lines.append(line)
             text = "\n\n".join(lines)
 
@@ -283,7 +312,7 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         text = (f"📊 *Итоги недели:*\n\n"
                 f"📅 Съёмок добавлено: {ns}\n"
                 f"✅ Съёмок проведено: {ds}\n"
-                f"💡 Идей добавлено: {ni}\n"
+                f"💡 Идей: {ni}\n"
                 f"📓 Записей в дневнике: {nd}\n"
                 f"🔸 Активных проектов: {ap}")
     else:
@@ -299,7 +328,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.CAPTION, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🤖 Bot started!")
+    print("🦀 Rak bot started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
