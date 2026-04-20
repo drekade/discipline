@@ -1,4 +1,4 @@
-import os, json, base64, httpx
+import os, json, base64, httpx, asyncio
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
@@ -18,7 +18,6 @@ SUPA_H = {
 YEAR = datetime.now().year
 TODAY = datetime.now().strftime("%Y-%m-%d")
 TODAY_NICE = datetime.now().strftime("%d.%m.%Y")
-
 conversations = {}
 
 SYSTEM = f"""Ты — Рак, личный ассистент Кати (контент-мейкер, режиссёр). Профессиональный, чёткий, с лёгким юмором. Отвечаешь коротко.
@@ -26,41 +25,26 @@ SYSTEM = f"""Ты — Рак, личный ассистент Кати (конт
 СЕГОДНЯ: {TODAY} ({TODAY_NICE})
 ТЕКУЩИЙ ГОД: {YEAR}
 
-═══ ЛОГИКА РАСПОЗНАВАНИЯ ═══
+ЛОГИКА РАСПОЗНАВАНИЯ:
 
-1. СЪЁМКА (action: add_shoot) — если есть ХОТЯ БЫ ДВА из:
-   место/локация, имена людей, время, проект
+1. СЪЁМКА (action: add_shoot) — если есть ХОТЯ БЫ ДВА из: место, имена людей, время, проект
    ИЛИ если есть дата + хоть что-то ещё
-   
    УКРАИНСКИЕ МЕСЯЦЫ: січень=01 лютий=02 березень=03 квітень=04 травень=05 червень=06 липень=07 серпень=08 вересень=09 жовтень=10 листопад=11 грудень=12
-   "24 квітня" → {YEAR}-04-24, "15 мая" → {YEAR}-05-15
-   
-   ЕСЛИ НУЖНА ДАТА — спроси: action=clarify, в reply задай ОДИН вопрос про дату
+   "24 квітня" = {YEAR}-04-24
+   Если нет даты — action=clarify, спроси только про дату.
 
-2. ЗАВЕРШЕНИЕ ПРОЕКТА (action: complete_project) — "закончила/завершила/готово проект X"
+2. ЗАВЕРШЕНИЕ ПРОЕКТА (action: complete_project) — "закончила/завершила проект X"
+3. ИДЕЯ (action: add_idea) — "идея:", "ідея:"
+4. ДНЕВНИК (action: add_diary) — рассказывает про день, настроение
+5. НОВЫЙ ПРОЕКТ (action: add_project) — "новый проект"
+6. РАЗГОВОР (action: none) — приветствия ("привет","привіт","як справи","дякую","окей","супер","ок") и любая болтовня БЕЗ данных для записи. НИКОГДА не используй другой action для простого разговора!
 
-3. ИДЕЯ (action: add_idea) — "идея:", "ідея:", или явно описывает концепцию
+ХАРАКТЕР: отвечай на том же языке что Катя. Приветствия — тепло, по-человечески. Подтверждай съёмки списком деталей.
 
-4. ДНЕВНИК (action: add_diary) — рассказывает как прошёл день, настроение, события
-
-5. НОВЫЙ ПРОЕКТ (action: add_project) — "новый проект", "створи проект"
-
-6. ПРОСТО РАЗГОВОР (action: none) — приветствия ("привет", "привіт", "як справи"), вопросы, болтовня, благодарности, эмоции без конкретных данных для записи
-   ВАЖНО: "привет", "привіт", "як справи?", "дякую", "окей", "ок", "супер" — это ВСЕГДА action: none!
-
-═══ ХАРАКТЕР ═══
-- На русском если написала по-русски, на украинском если по-украински
-- Приветствия — отвечай тепло и по-человечески, можешь спросить как дела
-- Болтовня — поддержи разговор
-- Подтверждение съёмки — покажи что записал (дата, место, люди)
-- Никогда не пиши "Записала!" если это просто разговор
-
-═══ ФОРМАТ ═══
-Только JSON, без markdown:
+ФОРМАТ — только JSON без markdown:
 {{"reply":"текст","action":"none|add_shoot|clarify|complete_project|add_idea|add_diary|add_project","data":{{}}}}
 
 data для add_shoot: date(YYYY-MM-DD), time(HH:MM), location, project, people, script, notes
-data для clarify: пусто, вопрос только в reply
 data для complete_project: project_name
 data для add_idea: title, description, category
 data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
@@ -102,46 +86,33 @@ async def apply_action(action, data, image_b64=None):
     today = datetime.now().strftime("%Y-%m-%d")
     months = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"]
     today_ru = f"{datetime.now().day} {months[datetime.now().month-1]} {datetime.now().year}"
-
     if action == "add_shoot":
-        ok = await supa_insert("shoots", {
-            "date": data.get("date", today),
-            "time": data.get("time", ""),
-            "location": data.get("location", ""),
-            "project": data.get("project", ""),
-            "people": data.get("people", ""),
-            "script": data.get("script", ""),
-            "notes": data.get("notes", ""),
-            "status": "не снято"
+        return await supa_insert("shoots", {
+            "date": data.get("date", today), "time": data.get("time",""),
+            "location": data.get("location",""), "project": data.get("project",""),
+            "people": data.get("people",""), "script": data.get("script",""),
+            "notes": data.get("notes",""), "status": "не снято"
         })
-        return ok
     elif action == "complete_project":
-        name = data.get("project_name", "")
         projects = await supa_get("projects", 50)
         for p in projects:
-            if name.lower() in p.get("name","").lower():
-                await supa_update("projects", "id", p["id"], {"status": "готово"})
+            if data.get("project_name","").lower() in p.get("name","").lower():
+                await supa_update("projects","id",p["id"],{"status":"готово"})
                 return True
     elif action == "add_idea":
         img_url = f"data:image/jpeg;base64,{image_b64}" if image_b64 else None
-        return await supa_insert("ideas", {
-            "title": data.get("title",""),
-            "description": data.get("description",""),
-            "category": data.get("category","Идея"),
-            "image_url": img_url
+        return await supa_insert("ideas",{
+            "title":data.get("title",""),"description":data.get("description",""),
+            "category":data.get("category","Идея"),"image_url":img_url
         })
     elif action == "add_diary":
-        return await supa_insert("diary", {
-            "date": today_ru,
-            "mood": data.get("mood","нейтрально"),
-            "events": data.get("events",""),
-            "thoughts": data.get("thoughts","")
+        return await supa_insert("diary",{
+            "date":today_ru,"mood":data.get("mood","нейтрально"),
+            "events":data.get("events",""),"thoughts":data.get("thoughts","")
         })
     elif action == "add_project":
-        return await supa_insert("projects", {
-            "name": data.get("name",""),
-            "description": data.get("description",""),
-            "status": "в работе"
+        return await supa_insert("projects",{
+            "name":data.get("name",""),"description":data.get("description",""),"status":"в работе"
         })
     return False
 
@@ -204,7 +175,6 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         reply = result.get("reply", "Окей!")
         action = result.get("action", "none")
         data = result.get("data", {})
-
         add_history(uid, "model", reply)
 
         saved = False
@@ -213,7 +183,6 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
         await thinking.delete()
 
-        # Show confirmation for shoots
         if action == "add_shoot" and saved:
             details = []
             if data.get("date"): details.append(f"📅 {data['date']}")
@@ -224,13 +193,12 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             if details:
                 reply += "\n\n" + "\n".join(details)
 
-        # Show keyboard only for saved actions or navigation requests
         show_kbd = action not in ("none", "clarify")
         await msg.reply_text(reply, reply_markup=kbd() if show_kbd else None)
 
     except Exception as e:
         await thinking.delete()
-        await msg.reply_text(f"Что-то пошло не так 😔 Попробуй ещё раз")
+        await msg.reply_text("Что-то пошло не так 😔 Попробуй ещё раз")
 
 async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
