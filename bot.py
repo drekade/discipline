@@ -15,27 +15,49 @@ SUPA_H = {
     "Prefer": "return=representation"
 }
 
-SYSTEM = """Ты — личный AI-ассистент. Пользователь пишет свободным текстом на русском или украинском.
+YEAR = datetime.now().year
 
-Пойми сообщение и верни JSON с действием.
+SYSTEM = f"""Ты — личный ассистент. Пользователь пишет на русском или украинском языке.
 
-ПРАВИЛА:
-- Съёмка (дата, место, люди, сценарий) → action: add_shoot. Дату в YYYY-MM-DD. "24 квітня"/"24 апреля" → текущий год.
-- Завершение/окончание проекта → action: complete_project
-- Новая идея → action: add_idea
-- Дневник / настроение / как прошёл день → action: add_diary
-- Новый проект → action: add_project
-- Вопрос или разговор → action: none
+ТЕКУЩИЙ ГОД: {YEAR}
 
-Отвечай ТОЛЬКО валидным JSON без markdown и без пояснений:
-{"reply":"дружелюбный ответ на русском","action":"none|add_shoot|complete_project|add_idea|add_diary|add_project","data":{}}
+ГЛАВНОЕ ПРАВИЛО — РАСПОЗНАВАНИЕ СЪЁМКИ:
+Любое сообщение где есть ХОТЯ БЫ ОДНО из: дата, место, имена людей, время — это съёмка (action: add_shoot).
 
-Поля data:
-- add_shoot: date, time, location, project, people, script, notes
-- complete_project: project_name
-- add_idea: title, description, category
-- add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
-- add_project: name, description"""
+ПРИМЕРЫ СЪЁМОК которые ты ОБЯЗАН распознать:
+- "24 квітня (п'ятниця) Локомотив, Юля і Майк +380..., 12:00, Зйомка практичної частини з Олегом Романовичем" → съёмка 24 апреля, место Локомотив, люди Юля, Майк, Олег Романович, время 12:00
+- "съёмки 15 мая в парке Горького, сценарий https://..., взять диплом, котенко и таня" → съёмка 15 мая, место парк Горького
+- "завтра в 10 утра студия" → съёмка завтра 10:00, место студия
+- "пятница Киев, Маша и Петя" → съёмка в пятницу, место Киев, люди Маша, Петя
+
+ПЕРЕВОД МЕСЯЦЕВ (украинский → дата):
+січня/січень=01, лютого/лютий=02, березня/березень=03, квітня/квітень=04,
+травня/травень=05, червня/червень=06, липня/липень=07, серпня/серпень=08,
+вересня/вересень=09, жовтня/жовтень=10, листопада/листопад=11, грудня/грудень=12
+
+"24 квітня" → {YEAR}-04-24
+"15 мая" → {YEAR}-05-15
+
+ДЕНЬ НЕДЕЛИ → ближайшая дата от сегодня ({datetime.now().strftime('%Y-%m-%d')}):
+понеділок/monday=пн, вівторок=вт, середа=ср, четвер=чт, п'ятниця/пятница=пт, субота=сб, неділя=вс
+
+ДРУГИЕ ДЕЙСТВИЯ:
+- "закончила/завершила проект X" → action: complete_project, data.project_name
+- "идея: ..." или "ідея: ..." → action: add_idea
+- "сегодня .../сьогодні ..." с эмоциями/настроением → action: add_diary
+- "новый проект ..." → action: add_project
+- всё остальное → action: none
+
+ВАЖНО: Если в сообщении есть имена людей, телефоны, место, дата, время — это СЪЁМКА. Не пиши action:none для таких сообщений.
+
+Отвечай ТОЛЬКО валидным JSON без markdown:
+{{"reply":"короткий дружелюбный ответ на том же языке что написал пользователь","action":"none|add_shoot|complete_project|add_idea|add_diary|add_project","data":{{}}}}
+
+Поля data для add_shoot: date(YYYY-MM-DD), time(HH:MM), location, project, people, script, notes
+Поля data для complete_project: project_name
+Поля data для add_idea: title, description, category
+Поля data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
+Поля data для add_project: name, description"""
 
 async def ask_gemini(text, image_b64=None):
     parts = []
@@ -46,7 +68,7 @@ async def ask_gemini(text, image_b64=None):
     payload = {
         "system_instruction": {"parts": [{"text": SYSTEM}]},
         "contents": [{"role": "user", "parts": parts}],
-        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1000}
+        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1000}
     }
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_KEY}"
     async with httpx.AsyncClient(timeout=30) as c:
@@ -59,7 +81,7 @@ async def ask_gemini(text, image_b64=None):
         except:
             return {"reply": raw, "action": "none", "data": {}}
 
-async def supa_get(table, limit=10):
+async def supa_get(table, limit=100):
     async with httpx.AsyncClient() as c:
         r = await c.get(f"{SUPA_URL}/rest/v1/{table}?order=created_at.desc&limit={limit}", headers=SUPA_H)
         return r.json() if r.status_code == 200 else []
@@ -131,13 +153,14 @@ def kbd():
 async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Привет! Я твой личный дневник-ассистент 🙂\n\n"
-        "Пиши мне как другу — я сам разберу и сохраню куда надо.\n\n"
+        "Пиши мне как угодно — понимаю русский и украинский.\n\n"
         "Например:\n"
-        "• *съёмки 15 мая в парке Горького, Котенко и Таня, 12:00*\n"
+        "• *24 квітня Локомотив, Юля і Майк, 12:00*\n"
+        "• *съёмки 15 мая парк Горького, Котенко и Таня*\n"
         "• *закончила проект Реклама*\n"
         "• *идея: серия видео про утро*\n"
-        "• *сегодня хороший день, сняла урок 4*\n\n"
-        "Или прикрепи фото 📎\n\nИспользуй кнопки для просмотра 👇",
+        "• *сегодня хороший день*\n\n"
+        "Используй кнопки для просмотра 👇",
         parse_mode="Markdown",
         reply_markup=kbd()
     )
@@ -169,10 +192,21 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             await apply_action(action, data, image_b64 if action == "add_idea" else None)
 
         await thinking.delete()
+
+        # Add confirmation details for shoots
+        if action == "add_shoot":
+            details = []
+            if data.get("date"): details.append(f"📅 {data['date']}")
+            if data.get("time"): details.append(f"🕐 {data['time']}")
+            if data.get("location"): details.append(f"📍 {data['location']}")
+            if data.get("people"): details.append(f"👥 {data['people']}")
+            if details:
+                reply += "\n\n" + "\n".join(details)
+
         await msg.reply_text(reply, reply_markup=kbd())
     except Exception as e:
         await thinking.delete()
-        await msg.reply_text(f"Что-то пошло не так 😔 Попробуй ещё раз\n{str(e)[:100]}")
+        await msg.reply_text(f"Що-то пішло не так 😔 Спробуй ще раз\n`{str(e)[:100]}`", parse_mode="Markdown")
 
 async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -180,14 +214,16 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     cb = q.data
 
     if cb == "shoots":
-        items = await supa_get("shoots", 5)
+        items = await supa_get("shoots", 10)
         if not items:
-            text = "📅 Съёмок пока нет\n\nНапиши например: *съёмки 15 мая в парке Горького*"
+            text = "📅 Съёмок пока нет\n\nНапиши например:\n*24 квітня Локомотив, Юля і Майк, 12:00*"
         else:
-            lines = ["📅 *Ближайшие съёмки:*\n"]
+            lines = ["📅 *Съёмки:*\n"]
             for s in items:
                 icon = "✅" if s.get("status") == "снято" else "🔸"
-                line = f"{icon} {s.get('date','')} {s.get('time','')} — {s.get('location','?')}"
+                line = f"{icon} *{s.get('date','')}*"
+                if s.get("time"): line += f" {s['time']}"
+                line += f" — {s.get('location','?')}"
                 if s.get("project"): line += f"\n   🎬 {s['project']}"
                 if s.get("people"): line += f"\n   👥 {s['people']}"
                 if s.get("script"): line += f"\n   📄 {s['script']}"
@@ -195,9 +231,9 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             text = "\n\n".join(lines)
 
     elif cb == "projects":
-        items = await supa_get("projects", 10)
+        items = await supa_get("projects", 20)
         if not items:
-            text = "🎬 Проектов пока нет\n\nНапиши: *новый проект Реклама*"
+            text = "🎬 Проектов пока нет"
         else:
             lines = ["🎬 *Проекты:*\n"]
             for p in items:
@@ -220,7 +256,7 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     elif cb == "diary":
         items = await supa_get("diary", 3)
         if not items:
-            text = "📓 Записей пока нет\n\nНапиши: *сегодня хороший день, закончила съёмку*"
+            text = "📓 Записей пока нет\n\nНапиши: *сегодня хороший день*"
         else:
             moods = {"хорошо": "😊", "нейтрально": "😐", "плохо": "😔"}
             lines = ["📓 *Последние записи:*\n"]
@@ -233,10 +269,10 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     elif cb == "week":
         week_ago = (datetime.now() - timedelta(days=7)).isoformat()
-        shoots   = await supa_get("shoots", 100)
-        ideas    = await supa_get("ideas", 100)
-        diary    = await supa_get("diary", 100)
-        projects = await supa_get("projects", 100)
+        shoots   = await supa_get("shoots", 200)
+        ideas    = await supa_get("ideas", 200)
+        diary    = await supa_get("diary", 200)
+        projects = await supa_get("projects", 200)
 
         ns = len([s for s in shoots  if s.get("created_at","") > week_ago])
         ds = len([s for s in shoots  if s.get("status")=="снято" and s.get("created_at","") > week_ago])
