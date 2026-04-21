@@ -290,6 +290,8 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.CAPTION, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
     print("🦀 Rak bot v2 started!")
+    import time
+    time.sleep(15)
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
