@@ -334,9 +334,9 @@ def main():
     time.sleep(15)
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION, handle_message))
+    app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION | filters.FORWARDED, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🦀 Rak bot v4 started!")
+    print("🦀 Rak bot v5 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
