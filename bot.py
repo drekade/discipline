@@ -85,9 +85,22 @@ async def ask_groq(messages):
         raw = raw.strip().replace("```json","").replace("```","").strip()
         print(f"GROQ: {raw[:200]}")
         try:
-            return json.loads(raw)
+            parsed = json.loads(raw)
+            # Make sure reply doesn't contain raw JSON
+            if isinstance(parsed.get("reply"), str) and '{"reply"' in parsed.get("reply",""):
+                # Extract just the text before the JSON
+                reply_text = parsed["reply"].split('{"reply"')[0].strip()
+                parsed["reply"] = reply_text if reply_text else "Записала!"
+            return parsed
         except:
-            return {"reply": raw, "action": "none", "data": {}}
+            # If raw itself looks like it has JSON embedded, try to extract
+            if '{"reply"' in raw:
+                try:
+                    start = raw.index('{"reply"')
+                    return json.loads(raw[start:])
+                except:
+                    pass
+            return {"reply": raw.split('{')[0].strip() or "Окей!", "action": "none", "data": {}}
 
 async def supa_get(table, limit=100, order="created_at.desc"):
     async with httpx.AsyncClient() as c:
@@ -197,7 +210,7 @@ def proj_detail_kbd(proj_id, status):
     ])
 
 def render_shoot(s):
-    lines = [f"📅 *{s.get('date','')}* {s.get('time','')}",
+    lines = [f"📅 {s.get('date','')} {s.get('time','')}",
              f"📍 {s.get('location','')}"]
     if s.get("project"): lines.append(f"🎬 {s['project']}")
     if s.get("people"): lines.append(f"👥 {s['people']}")
@@ -355,7 +368,7 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if not s:
             await q.edit_message_text("Не найдено")
             return
-        await q.edit_message_text(render_shoot(s),parse_mode="Markdown",reply_markup=shoot_detail_kbd(shoot_id,s.get("status","")))
+        await q.edit_message_text(render_shoot(s),reply_markup=shoot_detail_kbd(shoot_id,s.get("status","")))
         return
 
     if cb.startswith("addlink_shoot_"):
@@ -381,7 +394,7 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         items = await supa_get("shoots",100)
         s = next((x for x in items if x.get("id")==shoot_id),None)
         if s:
-            await q.edit_message_text(render_shoot(s),parse_mode="Markdown",reply_markup=shoot_detail_kbd(shoot_id,s.get("status","")))
+            await q.edit_message_text(render_shoot(s),reply_markup=shoot_detail_kbd(shoot_id,s.get("status","")))
         return
 
     if cb.startswith("del_shoot_"):
@@ -530,7 +543,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION | filters.FORWARDED, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🦀 Rak bot v9 started!")
+    print("🦀 Rak bot v10 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
