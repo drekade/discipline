@@ -28,9 +28,9 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 .sync{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:5px}
 .sdot{width:7px;height:7px;border-radius:50%;background:var(--a)}
 .sdot.ok{background:#3B9E6B}
-.nav{display:flex;gap:3px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none;border-bottom:1px solid var(--b)}
+.nav{display:flex;gap:3px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none;border-bottom:1px solid var(--b);-webkit-overflow-scrolling:touch}
 .nav::-webkit-scrollbar{display:none}
-.nb{flex-shrink:0;padding:6px 12px;border-radius:var(--rp);border:1px solid var(--b);background:transparent;color:var(--t2);font-size:12px;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:var(--ff)}
+.nb{flex-shrink:0;padding:5px 10px;border-radius:var(--rp);border:1px solid var(--b);background:transparent;color:var(--t2);font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:var(--ff)}
 .nb.active{background:var(--a);color:#fff;border-color:var(--a)}
 .nb:hover:not(.active){background:var(--s2)}
 .content{flex:1}
@@ -162,13 +162,13 @@ textarea.f{resize:none;line-height:1.5}
       <div class="sync"><span class="sdot" id="sdot"></span><span id="stext">...</span></div>
     </div>
     <nav class="nav">
-      <button class="nb active" onclick="showTab('shoots-cal')">📅 Съёмки</button>
-      <button class="nb" onclick="showTab('life-cal')">🗓 Жизнь</button>
-      <button class="nb" onclick="showTab('projects')">🎬 Проекты</button>
-      <button class="nb" onclick="showTab('ideas')">💡 Идеи</button>
-      <button class="nb" onclick="showTab('diary')">📓 Дневник</button>
-      <button class="nb" onclick="showTab('family')">👨‍👩‍👧 Семья</button>
-      <button class="nb" onclick="showTab('week')">📊 Итоги</button>
+      <button class="nb active" onclick="showTab('shoots-cal',this)">📅 Съёмки</button>
+      <button class="nb" onclick="showTab('life-cal',this)">🗓 Жизнь</button>
+      <button class="nb" onclick="showTab('projects',this)">🎬 Проекты</button>
+      <button class="nb" onclick="showTab('ideas',this)">💡 Идеи</button>
+      <button class="nb" onclick="showTab('diary',this)">📓 Дневник</button>
+      <button class="nb" onclick="showTab('family',this)">👨‍👩‍👧 Семья</button>
+      <button class="nb" onclick="showTab('week',this)">📊 Итоги</button>
     </nav>
   </div>
 
