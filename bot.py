@@ -4,7 +4,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8590477703:AAEVFUa4DBUiuvob2iI2Y1sOXetIjauk-n4")
-GEMINI_KEY     = os.environ.get("GEMINI_KEY", "AIzaSyARQFS_fEKkDapYiUlbp4oRLBP0dR56U5Y")
+GROQ_KEY       = os.environ.get("GROQ_KEY", "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")
 SUPA_URL       = os.environ.get("SUPA_URL", "https://btgtgcwbrrnfbctchata.supabase.co")
 SUPA_KEY       = os.environ.get("SUPA_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Z3RnY3dicnJuZmJjdGNoYXRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTQ2OTgsImV4cCI6MjA5MjI5MDY5OH0.lyEWFcmsL3GIm0FrEZdGkK2uRSx26cNiBGFvCVsjdsY")
 
@@ -30,14 +30,14 @@ SYSTEM = f"""Ты — Рак, личный ассистент Кати (конт
 1. СЪЁМКА (action: add_shoot) — если есть ХОТЯ БЫ ДВА из: место, имена людей, время, проект
    ИЛИ если есть дата + хоть что-то ещё
    УКРАИНСКИЕ МЕСЯЦЫ: січень=01 лютий=02 березень=03 квітень=04 травень=05 червень=06 липень=07 серпень=08 вересень=09 жовтень=10 листопад=11 грудень=12
-   "24 квітня" = {YEAR}-04-24
+   "24 квітня" = {YEAR}-04-24, "15 мая" = {YEAR}-05-15
    Если нет даты — action=clarify, спроси только про дату.
 
 2. ЗАВЕРШЕНИЕ ПРОЕКТА (action: complete_project) — "закончила/завершила проект X"
 3. ИДЕЯ (action: add_idea) — "идея:", "ідея:"
 4. ДНЕВНИК (action: add_diary) — рассказывает про день, настроение
 5. НОВЫЙ ПРОЕКТ (action: add_project) — "новый проект"
-6. РАЗГОВОР (action: none) — приветствия ("привет","привіт","як справи","дякую","окей","супер","ок") и любая болтовня БЕЗ данных для записи. НИКОГДА не используй другой action для простого разговора!
+6. РАЗГОВОР (action: none) — приветствия ("привет","привіт","як справи","дякую","окей","супер","ок","нет","да") и любая болтовня БЕЗ данных для записи.
 
 ХАРАКТЕР: отвечай на том же языке что Катя. Приветствия — тепло, по-человечески. Подтверждай съёмки списком деталей.
 
@@ -50,21 +50,29 @@ data для add_idea: title, description, category
 data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
 data для add_project: name, description"""
 
-async def ask_gemini(messages):
-    payload = {
-        "system_instruction": {"parts": [{"text": SYSTEM}]},
-        "contents": messages,
-        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 800}
-    }
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_KEY}"
+async def ask_groq(messages):
+    # Convert history to OpenAI format for Groq
+    groq_messages = [{"role": "system", "content": SYSTEM}]
+    for m in messages:
+        role = "assistant" if m["role"] == "model" else "user"
+        text = ""
+        for part in m.get("parts", []):
+            if "text" in part:
+                text += part["text"]
+        groq_messages.append({"role": role, "content": text})
+
     async with httpx.AsyncClient(timeout=30) as c:
-        r = await c.post(url, json=payload)
+        r = await c.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"},
+            json={"model": "llama-3.3-70b-versatile", "messages": groq_messages, "temperature": 0.2, "max_tokens": 800}
+        )
         data = r.json()
-        raw = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "{}")
+        print(f"GROQ STATUS: {r.status_code}")
+        raw = data.get("choices", [{}])[0].get("message", {}).get("content", "{}")
         raw = raw.strip().replace("```json","").replace("```","").strip()
+        print(f"GROQ RAW: {raw[:200]}")
         try:
-            print(f"GEMINI FULL: {r.status_code} {r.text[:500]}")
-            print(f"GEMINI RAW: {raw}")
             return json.loads(raw)
         except:
             return {"reply": raw, "action": "none", "data": {}}
@@ -102,10 +110,9 @@ async def apply_action(action, data, image_b64=None):
                 await supa_update("projects","id",p["id"],{"status":"готово"})
                 return True
     elif action == "add_idea":
-        img_url = f"data:image/jpeg;base64,{image_b64}" if image_b64 else None
         return await supa_insert("ideas",{
             "title":data.get("title",""),"description":data.get("description",""),
-            "category":data.get("category","Идея"),"image_url":img_url
+            "category":data.get("category","Идея"),"image_url":None
         })
     elif action == "add_diary":
         return await supa_insert("diary",{
@@ -132,13 +139,9 @@ def get_history(uid):
         conversations[uid] = []
     return conversations[uid]
 
-def add_history(uid, role, text, image_b64=None):
+def add_history(uid, role, text):
     h = get_history(uid)
-    parts = []
-    if image_b64:
-        parts.append({"inline_data": {"mime_type":"image/jpeg","data":image_b64}})
-    parts.append({"text": text or "—"})
-    h.append({"role": role, "parts": parts})
+    h.append({"role": role, "parts": [{"text": text or "—"}]})
     if len(h) > 12:
         conversations[uid] = h[-12:]
 
@@ -157,23 +160,16 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     uid = update.effective_user.id
     text = msg.text or msg.caption or ""
-    image_b64 = None
 
-    if msg.photo:
-        photo = msg.photo[-1]
-        file = await ctx.bot.get_file(photo.file_id)
-        img_bytes = await file.download_as_bytearray()
-        image_b64 = base64.b64encode(bytes(img_bytes)).decode()
-
-    if not text and not image_b64:
-        await msg.reply_text("Напиши что-нибудь или прикрепи фото 🙂")
+    if not text:
+        await msg.reply_text("Напиши что-нибудь 🙂")
         return
 
-    add_history(uid, "user", text or "прикрепила фото", image_b64)
+    add_history(uid, "user", text)
     thinking = await msg.reply_text("⏳")
 
     try:
-        result = await ask_gemini(get_history(uid))
+        result = await ask_groq(get_history(uid))
         reply = result.get("reply", "Окей!")
         action = result.get("action", "none")
         data = result.get("data", {})
@@ -181,7 +177,7 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
         saved = False
         if action not in ("none", "clarify"):
-            saved = await apply_action(action, data, image_b64 if action == "add_idea" else None)
+            saved = await apply_action(action, data)
 
         await thinking.delete()
 
@@ -200,6 +196,7 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await thinking.delete()
+        print(f"ERROR: {e}")
         await msg.reply_text("Что-то пошло не так 😔 Попробуй ещё раз")
 
 async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -287,13 +284,13 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await q.message.reply_text(text, parse_mode="Markdown", reply_markup=kbd())
 
 def main():
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.CAPTION, handle_message))
-    app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🦀 Rak bot v2 started!")
     import time
     time.sleep(15)
+    app = Application.builder().token(TELEGRAM_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION, handle_message))
+    app.add_handler(CallbackQueryHandler(handle_callback))
+    print("🦀 Rak bot v3 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
