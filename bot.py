@@ -63,6 +63,7 @@ async def ask_gemini(messages):
         raw = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "{}")
         raw = raw.strip().replace("```json","").replace("```","").strip()
         try:
+            print(f"GEMINI RAW: {raw}")
             return json.loads(raw)
         except:
             return {"reply": raw, "action": "none", "data": {}}
