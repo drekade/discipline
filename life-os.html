@@ -509,7 +509,10 @@ function renderShootDayDetail(){
       <div style="font-size:11px;color:var(--t3)">${s.time||''}${s.project?' · '+s.project:''}${s.people?' · '+s.people:''}</div>
       ${s.script?`<div style="font-size:11px;color:var(--blue);margin-top:3px">📄 ${s.script}</div>`:''}
       ${s.notes?`<div style="font-size:11px;color:var(--t3);margin-top:2px">📝 ${s.notes}</div>`:''}
-      <div style="margin-top:6px"><span class="tag ${s.status==='снято'?'t-done':'t-pend'}" onclick="toggleShoot(${s.id},'${s.status||'не снято'}')" style="cursor:pointer">${s.status||'не снято'}</span></div>
+      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+        <span class="tag ${s.status==='снято'?'t-done':'t-pend'}" onclick="toggleShoot(${s.id},'${s.status||'не снято'}')" style="cursor:pointer">${s.status||'не снято'}</span>
+        <span class="tag ${s.edited?'t-prog':'t-pend'}" onclick="toggleEdited(${s.id},${!!s.edited})" style="cursor:pointer;opacity:${s.edited?1:0.5}">${s.edited?'✂️ смонтировано':'✂️ не смонтировано'}</span>
+      </div>
     </div>`;
   }).join('');
   el.innerHTML=`<div class="day-detail"><div class="day-detail-title">${scSelDay} — ${dayShoots.length} съёмок</div>${items}</div>`;
@@ -591,8 +594,9 @@ function renderShoots(){
       <div class="item-meta">${s.time?s.time+' · ':''}${s.project||''}${s.people?' · '+s.people:''}</div>
       ${s.notes?`<div style="font-size:12px;color:var(--t3);margin-top:4px">${s.notes}</div>`:''}
       ${s.script?`<div class="link-row" onclick="window.open('${s.script}','_blank')">📄 Сценарий</div>`:''}
-      <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span class="tag ${s.status==='снято'?'t-done':'t-pend'}" style="cursor:pointer" onclick="toggleShoot(${s.id},'${s.status||'не снято'}')">${s.status||'не снято'}</span>
+        <span class="tag ${s.edited?'t-prog':'t-pend'}" style="cursor:pointer;opacity:${s.edited?1:0.5}" onclick="toggleEdited(${s.id},${!!s.edited})">${s.edited?'✂️ смонтировано':'✂️ не смонтировано'}</span>
       </div>
     </div>`;
   }).join('');
@@ -601,6 +605,11 @@ function renderShoots(){
 async function toggleShoot(id,cur){
   const ns=cur==='снято'?'не снято':'снято';
   await dbPatch('shoots',id,{status:ns});
+  await load();
+}
+
+async function toggleEdited(id,cur){
+  await dbPatch('shoots',id,{edited:!cur});
   await load();
 }
 
