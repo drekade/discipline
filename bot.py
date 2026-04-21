@@ -85,6 +85,7 @@ async def supa_get(table, limit=100):
 async def supa_insert(table, data):
     async with httpx.AsyncClient() as c:
         r = await c.post(f"{SUPA_URL}/rest/v1/{table}", headers=SUPA_H, json=data)
+        print(f"SUPA {table}: {r.status_code} {r.text[:200]}")
         return r.status_code in (200, 201)
 
 async def supa_update(table, field, value, data):
