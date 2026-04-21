@@ -20,7 +20,7 @@ TODAY = datetime.now().strftime("%Y-%m-%d")
 TODAY_NICE = datetime.now().strftime("%d.%m.%Y")
 conversations = {}
 
-SYSTEM = f"""Ты — Рак, личный ассистент Катерины (контент-мейкер, режиссёр). Профессиональный, чёткий, с лёгким юмором. Отвечаешь коротко. Обращайся к пользователю "Катерина".
+SYSTEM = f"""Ты — Рак, личный ассистент Катерины (контент-мейкер, режиссёр). Профессиональный, чёткий, с лёгким юмором. Отвечаешь коротко. Обращайся "Катерина".
 
 СЕГОДНЯ: {TODAY} ({TODAY_NICE})
 ТЕКУЩИЙ ГОД: {YEAR}
@@ -29,35 +29,41 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 
 ЛОГИКА РАСПОЗНАВАНИЯ:
 
-1. НЕСКОЛЬКО СЪЁМОК (action: add_multiple_shoots) — если в сообщении несколько блоков с датами/местами.
-   Каждый блок — отдельная съёмка. Возвращай массив shoots[].
-   Игнорируй @ники, это просто теги людей.
-   
+1. НЕСКОЛЬКО СЪЁМОК (action: add_multiple_shoots) — несколько блоков с датами/местами в одном сообщении.
+   Каждый блок — отдельная съёмка. Возвращай массив shoots[]. Игнорируй @ники.
+
 2. ОДНА СЪЁМКА (action: add_shoot) — одна дата/место/люди.
    Если нет даты — action=clarify, спроси только дату.
 
 3. ЗАМЕТКА К СЪЁМКЕ (action: add_note) — "к съёмке X заметка/сценарий/ссылка"
    data: {{shoot_date, shoot_location, note, script}}
 
-4. ЗАВЕРШЕНИЕ ПРОЕКТА (action: complete_project) — "закончила/завершила проект X"
-5. ИДЕЯ (action: add_idea) — "идея:", "ідея:"
-6. ДНЕВНИК (action: add_diary) — настроение, как прошёл день
-7. НОВЫЙ ПРОЕКТ (action: add_project) — "новый проект"
-8. РАЗГОВОР (action: none) — приветствия, болтовня, эмоции без данных для записи.
+4. УДАЛЕНИЕ СЪЁМКИ (action: delete_shoot) — "удали съёмку X", "это не моя съёмка", "удали парк марка твена 11:00"
+   data: {{shoot_date(YYYY-MM-DD), shoot_location, shoot_time}}
+
+5. ЗАВЕРШЕНИЕ ПРОЕКТА (action: complete_project) — "закончила/завершила проект X"
+   data: {{project_name}}
+
+6. ИДЕЯ (action: add_idea) — "идея:", "ідея:"
+   data: {{title, description, category}}
+
+7. ДНЕВНИК (action: add_diary) — настроение, как прошёл день
+   data: {{mood(хорошо/нейтрально/плохо), events, thoughts}}
+
+8. НОВЫЙ ПРОЕКТ (action: add_project) — "новый проект"
+   data: {{name, description}}
+
+9. РАЗГОВОР (action: none) — приветствия, болтовня, эмоции без данных для записи.
    "привет","привіт","як справи","дякую","окей","ок","нет","да" — ВСЕГДА action: none!
 
 ХАРАКТЕР: отвечай на том же языке что Катерина. Приветствия — тепло. Подтверждай съёмки кратким списком.
 
 ФОРМАТ — только JSON без markdown:
-{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|add_note|clarify|complete_project|add_idea|add_diary|add_project","data":{{}}}}
+{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|add_note|delete_shoot|clarify|complete_project|add_idea|add_diary|add_project","data":{{}}}}
 
-data для add_shoot: date(YYYY-MM-DD), time(HH:MM), location, project, people, script, notes
 data для add_multiple_shoots: {{"shoots":[{{"date":"YYYY-MM-DD","time":"HH:MM","location":"","project":"","people":"","script":"","notes":""}}]}}
 data для add_note: shoot_date(YYYY-MM-DD), shoot_location, note, script
-data для complete_project: project_name
-data для add_idea: title, description, category
-data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
-data для add_project: name, description"""
+data для delete_shoot: shoot_date(YYYY-MM-DD), shoot_location, shoot_time"""
 
 async def ask_groq(messages):
     groq_messages = [{"role": "system", "content": SYSTEM}]
@@ -65,7 +71,6 @@ async def ask_groq(messages):
         role = "assistant" if m["role"] == "model" else "user"
         text = "".join(p.get("text","") for p in m.get("parts",[]))
         groq_messages.append({"role": role, "content": text})
-
     async with httpx.AsyncClient(timeout=30) as c:
         r = await c.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -73,29 +78,34 @@ async def ask_groq(messages):
             json={"model": "llama-3.3-70b-versatile", "messages": groq_messages, "temperature": 0.2, "max_tokens": 1000}
         )
         data = r.json()
-        print(f"GROQ STATUS: {r.status_code}")
-        raw = data.get("choices", [{}])[0].get("message", {}).get("content", "{}")
+        raw = data.get("choices",[{}])[0].get("message",{}).get("content","{}")
         raw = raw.strip().replace("```json","").replace("```","").strip()
-        print(f"GROQ RAW: {raw[:300]}")
+        print(f"GROQ: {raw[:200]}")
         try:
             return json.loads(raw)
         except:
             return {"reply": raw, "action": "none", "data": {}}
 
-async def supa_get(table, limit=100):
+async def supa_get(table, limit=100, order="created_at.desc"):
     async with httpx.AsyncClient() as c:
-        r = await c.get(f"{SUPA_URL}/rest/v1/{table}?order=created_at.desc&limit={limit}", headers=SUPA_H)
+        r = await c.get(f"{SUPA_URL}/rest/v1/{table}?order={order}&limit={limit}", headers=SUPA_H)
         return r.json() if r.status_code == 200 else []
 
 async def supa_insert(table, data):
     async with httpx.AsyncClient() as c:
         r = await c.post(f"{SUPA_URL}/rest/v1/{table}", headers=SUPA_H, json=data)
-        print(f"SUPA {table}: {r.status_code} {r.text[:100]}")
+        print(f"INSERT {table}: {r.status_code}")
         return r.status_code in (200, 201)
 
 async def supa_update(table, field, value, data):
     async with httpx.AsyncClient() as c:
         r = await c.patch(f"{SUPA_URL}/rest/v1/{table}?{field}=eq.{value}", headers=SUPA_H, json=data)
+        return r.status_code in (200, 204)
+
+async def supa_delete(table, field, value):
+    async with httpx.AsyncClient() as c:
+        r = await c.delete(f"{SUPA_URL}/rest/v1/{table}?{field}=eq.{value}", headers=SUPA_H)
+        print(f"DELETE {table} {field}={value}: {r.status_code}")
         return r.status_code in (200, 204)
 
 async def apply_action(action, data):
@@ -110,7 +120,6 @@ async def apply_action(action, data):
             "people": data.get("people",""), "script": data.get("script",""),
             "notes": data.get("notes",""), "status": "не снято"
         })
-
     elif action == "add_multiple_shoots":
         shoots = data.get("shoots", [])
         saved = 0
@@ -123,49 +132,51 @@ async def apply_action(action, data):
             })
             if ok: saved += 1
         return saved
-
     elif action == "add_note":
-        # Find shoot and update it
         shoots = await supa_get("shoots", 100)
         for s in shoots:
-            date_match = s.get("date","") == data.get("shoot_date","")
+            date_match = not data.get("shoot_date") or s.get("date","") == data.get("shoot_date","")
             loc = data.get("shoot_location","").lower()
-            loc_match = loc in s.get("location","").lower() if loc else True
-            if date_match or loc_match:
-                update_data = {}
-                if data.get("note"): update_data["notes"] = data["note"]
-                if data.get("script"): update_data["script"] = data["script"]
-                if update_data:
-                    await supa_update("shoots", "id", s["id"], update_data)
-                    return True
+            loc_match = not loc or loc in s.get("location","").lower()
+            if date_match and loc_match:
+                upd = {}
+                if data.get("note"): upd["notes"] = data["note"]
+                if data.get("script"): upd["script"] = data["script"]
+                if upd: await supa_update("shoots","id",s["id"],upd)
+                return True
         return False
-
+    elif action == "delete_shoot":
+        shoots = await supa_get("shoots", 100)
+        for s in shoots:
+            date_match = not data.get("shoot_date") or s.get("date","") == data.get("shoot_date","")
+            loc = data.get("shoot_location","").lower()
+            loc_match = not loc or loc in s.get("location","").lower()
+            time_val = data.get("shoot_time","")
+            time_match = not time_val or time_val in s.get("time","")
+            if date_match and loc_match and time_match:
+                return await supa_delete("shoots","id",s["id"])
+        return False
     elif action == "complete_project":
         projects = await supa_get("projects", 50)
         for p in projects:
             if data.get("project_name","").lower() in p.get("name","").lower():
                 await supa_update("projects","id",p["id"],{"status":"готово"})
                 return True
-
     elif action == "add_idea":
-        return await supa_insert("ideas",{
-            "title":data.get("title",""),"description":data.get("description",""),
-            "category":data.get("category","Идея"),"image_url":None
-        })
-
+        return await supa_insert("ideas",{"title":data.get("title",""),"description":data.get("description",""),"category":data.get("category","Идея"),"image_url":None})
     elif action == "add_diary":
-        return await supa_insert("diary",{
-            "date":today_ru,"mood":data.get("mood","нейтрально"),
-            "events":data.get("events",""),"thoughts":data.get("thoughts","")
-        })
-
+        return await supa_insert("diary",{"date":today_ru,"mood":data.get("mood","нейтрально"),"events":data.get("events",""),"thoughts":data.get("thoughts","")})
     elif action == "add_project":
-        return await supa_insert("projects",{
-            "name":data.get("name",""),"description":data.get("description",""),"status":"в работе"
-        })
+        return await supa_insert("projects",{"name":data.get("name",""),"description":data.get("description",""),"status":"в работе"})
     return False
 
-def kbd():
+def fmt_date(date_str):
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%d.%m")
+    except:
+        return date_str
+
+def main_kbd():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📅 Съёмки", callback_data="shoots"),
          InlineKeyboardButton("🎬 Проекты", callback_data="projects")],
@@ -174,16 +185,17 @@ def kbd():
         [InlineKeyboardButton("📊 Итоги недели", callback_data="week")]
     ])
 
+def back_kbd():
+    return InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="main")]])
+
 def get_history(uid):
-    if uid not in conversations:
-        conversations[uid] = []
+    if uid not in conversations: conversations[uid] = []
     return conversations[uid]
 
 def add_history(uid, role, text):
     h = get_history(uid)
     h.append({"role": role, "parts": [{"text": text or "—"}]})
-    if len(h) > 12:
-        conversations[uid] = h[-12:]
+    if len(h) > 12: conversations[uid] = h[-12:]
 
 async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
@@ -193,35 +205,28 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "Пиши как угодно — русский, украинский, вперемешку.\n"
         "Можешь пересылать сообщения от координатора — разберу все съёмки сразу.\n\n"
         "Записываю съёмки, идеи, проекты и дневник 🙂",
-        reply_markup=kbd()
+        reply_markup=main_kbd()
     )
 
 async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     uid = update.effective_user.id
     text = msg.text or msg.caption or ""
-
     if not text:
         await msg.reply_text("Напиши что-нибудь 🙂")
         return
-
     add_history(uid, "user", text)
     thinking = await msg.reply_text("⏳")
-
     try:
         result = await ask_groq(get_history(uid))
-        reply = result.get("reply", "Окей!")
-        action = result.get("action", "none")
-        data = result.get("data", {})
+        reply = result.get("reply","Окей!")
+        action = result.get("action","none")
+        data = result.get("data",{})
         add_history(uid, "model", reply)
-
         saved = False
-        if action not in ("none", "clarify"):
+        if action not in ("none","clarify"):
             saved = await apply_action(action, data)
-
         await thinking.delete()
-
-        # Build confirmation
         if action == "add_shoot" and saved:
             details = []
             if data.get("date"): details.append(f"📅 {data['date']}")
@@ -229,16 +234,10 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             if data.get("location"): details.append(f"📍 {data['location']}")
             if data.get("people"): details.append(f"👥 {data['people']}")
             if details: reply += "\n\n" + "\n".join(details)
-
         elif action == "add_multiple_shoots" and saved:
             reply += f"\n\nЗаписала {saved} съёмок ✓"
-
-        elif action == "add_note" and saved:
-            reply += " ✓"
-
-        show_kbd = action not in ("none", "clarify")
-        await msg.reply_text(reply, reply_markup=kbd() if show_kbd else None)
-
+        show_kbd = action not in ("none","clarify")
+        await msg.reply_text(reply, reply_markup=main_kbd() if show_kbd else None)
     except Exception as e:
         await thinking.delete()
         print(f"ERROR: {e}")
@@ -249,62 +248,202 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await q.answer()
     cb = q.data
 
-    if cb == "shoots":
-        items = await supa_get("shoots", 15)
-        if not items:
-            text = "📅 Съёмок пока нет"
-        else:
-            lines = ["📅 *Съёмки:*\n"]
-            for s in sorted(items, key=lambda x: x.get("date","") or ""):
-                icon = "✅" if s.get("status") == "снято" else "🔸"
-                line = f"{icon} *{s.get('date','')}*"
-                if s.get("time"): line += f" {s['time']}"
-                line += f" — {s.get('location','?')}"
-                if s.get("project"): line += f"\n   🎬 {s['project']}"
-                if s.get("people"): line += f"\n   👥 {s['people']}"
-                if s.get("script"): line += f"\n   📄 {s['script']}"
-                if s.get("notes"): line += f"\n   📝 {s['notes'][:80]}"
-                lines.append(line)
-            text = "\n\n".join(lines)
+    if cb == "main":
+        await q.edit_message_text("Выбери раздел:", reply_markup=main_kbd())
+        return
 
-    elif cb == "projects":
+    # SHOOTS LIST — show buttons
+    if cb == "shoots":
+        items = await supa_get("shoots", 20, order="date.asc")
+        if not items:
+            await q.edit_message_text("📅 Съёмок пока нет", reply_markup=main_kbd())
+            return
+        buttons = []
+        for s in items:
+            icon = "✅" if s.get("status") == "снято" else "🔸"
+            label = f"{icon} {fmt_date(s.get('date',''))} {s.get('time','')} — {s.get('location','?')[:20]}"
+            buttons.append([InlineKeyboardButton(label, callback_data=f"shoot_{s['id']}")])
+        buttons.append([InlineKeyboardButton("◀️ Назад", callback_data="main")])
+        await q.edit_message_text("📅 Выбери съёмку:", reply_markup=InlineKeyboardMarkup(buttons))
+        return
+
+    # SHOOT DETAIL
+    if cb.startswith("shoot_"):
+        shoot_id = int(cb.split("_")[1])
+        items = await supa_get("shoots", 100)
+        s = next((x for x in items if x.get("id") == shoot_id), None)
+        if not s:
+            await q.edit_message_text("Съёмка не найдена", reply_markup=back_kbd())
+            return
+        lines = [f"📅 *{s.get('date','')}* {s.get('time','')}"]
+        lines.append(f"📍 {s.get('location','')}")
+        if s.get("project"): lines.append(f"🎬 {s['project']}")
+        if s.get("people"): lines.append(f"👥 {s['people']}")
+        if s.get("notes"): lines.append(f"📝 {s['notes']}")
+        if s.get("script"): lines.append(f"📄 {s['script']}")
+        status = "✅ снято" if s.get("status") == "снято" else "🔸 не снято"
+        lines.append(f"\nСтатус: {status}")
+        text = "\n".join(lines)
+        toggle_label = "Отметить снято ✅" if s.get("status") != "снято" else "Отметить не снято 🔸"
+        kbd = InlineKeyboardMarkup([
+            [InlineKeyboardButton(toggle_label, callback_data=f"toggle_{shoot_id}")],
+            [InlineKeyboardButton("🗑 Удалить", callback_data=f"del_shoot_{shoot_id}")],
+            [InlineKeyboardButton("◀️ К съёмкам", callback_data="shoots")]
+        ])
+        await q.edit_message_text(text, parse_mode="Markdown", reply_markup=kbd)
+        return
+
+    # TOGGLE SHOOT STATUS
+    if cb.startswith("toggle_"):
+        shoot_id = int(cb.split("_")[1])
+        items = await supa_get("shoots", 100)
+        s = next((x for x in items if x.get("id") == shoot_id), None)
+        if s:
+            new_status = "снято" if s.get("status") != "снято" else "не снято"
+            await supa_update("shoots","id",shoot_id,{"status": new_status})
+        await q.answer("Статус обновлён ✓")
+        # Refresh shoot detail
+        items = await supa_get("shoots", 100)
+        s = next((x for x in items if x.get("id") == shoot_id), None)
+        if s:
+            lines = [f"📅 *{s.get('date','')}* {s.get('time','')}"]
+            lines.append(f"📍 {s.get('location','')}")
+            if s.get("project"): lines.append(f"🎬 {s['project']}")
+            if s.get("people"): lines.append(f"👥 {s['people']}")
+            if s.get("notes"): lines.append(f"📝 {s['notes']}")
+            if s.get("script"): lines.append(f"📄 {s['script']}")
+            status = "✅ снято" if s.get("status") == "снято" else "🔸 не снято"
+            lines.append(f"\nСтатус: {status}")
+            toggle_label = "Отметить снято ✅" if s.get("status") != "снято" else "Отметить не снято 🔸"
+            kbd = InlineKeyboardMarkup([
+                [InlineKeyboardButton(toggle_label, callback_data=f"toggle_{shoot_id}")],
+                [InlineKeyboardButton("🗑 Удалить", callback_data=f"del_shoot_{shoot_id}")],
+                [InlineKeyboardButton("◀️ К съёмкам", callback_data="shoots")]
+            ])
+            await q.edit_message_text("\n".join(lines), parse_mode="Markdown", reply_markup=kbd)
+        return
+
+    # DELETE SHOOT
+    if cb.startswith("del_shoot_"):
+        shoot_id = int(cb.split("_")[2])
+        await supa_delete("shoots","id",shoot_id)
+        await q.edit_message_text("🗑 Съёмка удалена", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ К съёмкам", callback_data="shoots")]]))
+        return
+
+    # PROJECTS LIST
+    if cb == "projects":
         items = await supa_get("projects", 20)
         if not items:
-            text = "🎬 Проектов пока нет"
-        else:
-            lines = ["🎬 *Проекты:*\n"]
-            for p in items:
-                icon = "✅" if p.get("status") == "готово" else "🔸"
-                lines.append(f"{icon} *{p.get('name','')}* — {p.get('status','в работе')}")
-                if p.get("description"): lines.append(f"   {p['description']}")
-            text = "\n".join(lines)
+            await q.edit_message_text("🎬 Проектов пока нет", reply_markup=main_kbd())
+            return
+        buttons = []
+        for p in items:
+            icon = "✅" if p.get("status") == "готово" else "🔸"
+            label = f"{icon} {p.get('name','')[:30]}"
+            buttons.append([InlineKeyboardButton(label, callback_data=f"proj_{p['id']}")])
+        buttons.append([InlineKeyboardButton("◀️ Назад", callback_data="main")])
+        await q.edit_message_text("🎬 Выбери проект:", reply_markup=InlineKeyboardMarkup(buttons))
+        return
 
-    elif cb == "ideas":
-        items = await supa_get("ideas", 5)
+    # PROJECT DETAIL
+    if cb.startswith("proj_"):
+        proj_id = int(cb.split("_")[1])
+        projects = await supa_get("projects", 50)
+        p = next((x for x in projects if x.get("id") == proj_id), None)
+        if not p:
+            await q.edit_message_text("Проект не найден", reply_markup=back_kbd())
+            return
+        shoots = await supa_get("shoots", 100)
+        proj_shoots = [s for s in shoots if s.get("project","").lower() == p.get("name","").lower()]
+        lines = [f"🎬 *{p.get('name','')}*"]
+        lines.append(f"Статус: {'✅ готово' if p.get('status')=='готово' else '🔸 в работе'}")
+        if p.get("description"): lines.append(f"\n{p['description']}")
+        if p.get("link"): lines.append(f"\n📄 {p['link']}")
+        if proj_shoots:
+            lines.append(f"\n📅 Съёмок: {len(proj_shoots)}")
+            for s in proj_shoots[:5]:
+                icon = "✅" if s.get("status") == "снято" else "🔸"
+                lines.append(f"  {icon} {fmt_date(s.get('date',''))} — {s.get('location','')[:20]}")
+        toggle_label = "Вернуть в работу" if p.get("status") == "готово" else "✅ Завершить проект"
+        kbd = InlineKeyboardMarkup([
+            [InlineKeyboardButton(toggle_label, callback_data=f"toggle_proj_{proj_id}")],
+            [InlineKeyboardButton("◀️ К проектам", callback_data="projects")]
+        ])
+        await q.edit_message_text("\n".join(lines), parse_mode="Markdown", reply_markup=kbd)
+        return
+
+    # TOGGLE PROJECT
+    if cb.startswith("toggle_proj_"):
+        proj_id = int(cb.split("_")[2])
+        projects = await supa_get("projects", 50)
+        p = next((x for x in projects if x.get("id") == proj_id), None)
+        if p:
+            new_status = "готово" if p.get("status") != "готово" else "в работе"
+            await supa_update("projects","id",proj_id,{"status": new_status})
+        await q.answer("Статус обновлён ✓")
+        # Refresh
+        projects = await supa_get("projects", 50)
+        p = next((x for x in projects if x.get("id") == proj_id), None)
+        if p:
+            lines = [f"🎬 *{p.get('name','')}*"]
+            lines.append(f"Статус: {'✅ готово' if p.get('status')=='готово' else '🔸 в работе'}")
+            if p.get("description"): lines.append(f"\n{p['description']}")
+            toggle_label = "Вернуть в работу" if p.get("status") == "готово" else "✅ Завершить проект"
+            kbd = InlineKeyboardMarkup([
+                [InlineKeyboardButton(toggle_label, callback_data=f"toggle_proj_{proj_id}")],
+                [InlineKeyboardButton("◀️ К проектам", callback_data="projects")]
+            ])
+            await q.edit_message_text("\n".join(lines), parse_mode="Markdown", reply_markup=kbd)
+        return
+
+    # IDEAS
+    if cb == "ideas":
+        items = await supa_get("ideas", 10)
         if not items:
-            text = "💡 Идей пока нет"
-        else:
-            lines = ["💡 *Идеи:*\n"]
-            for i in items:
-                lines.append(f"• *{i.get('title','')}*")
-                if i.get("description"): lines.append(f"  {i['description'][:150]}")
-            text = "\n".join(lines)
+            await q.edit_message_text("💡 Идей пока нет", reply_markup=main_kbd())
+            return
+        lines = ["💡 *Идеи:*\n"]
+        for i in items:
+            lines.append(f"• *{i.get('title','')}*")
+            if i.get("description"): lines.append(f"  {i['description'][:150]}")
+        await q.edit_message_text("\n".join(lines), parse_mode="Markdown", reply_markup=back_kbd())
+        return
 
-    elif cb == "diary":
-        items = await supa_get("diary", 3)
+    # DIARY LIST
+    if cb == "diary":
+        items = await supa_get("diary", 10)
         if not items:
-            text = "📓 Записей пока нет"
-        else:
-            moods = {"хорошо":"😊","нейтрально":"😐","плохо":"😔"}
-            lines = ["📓 *Последние записи:*\n"]
-            for d in items:
-                me = moods.get(d.get("mood","нейтрально"),"😐")
-                lines.append(f"{me} *{d.get('date','')}*")
-                if d.get("events"): lines.append(f"  {d['events'][:150]}")
-                if d.get("thoughts"): lines.append(f"  💭 {d['thoughts'][:100]}")
-            text = "\n\n".join(lines)
+            await q.edit_message_text("📓 Записей пока нет", reply_markup=main_kbd())
+            return
+        buttons = []
+        moods = {"хорошо":"😊","нейтрально":"😐","плохо":"😔"}
+        for d in items:
+            me = moods.get(d.get("mood","нейтрально"),"😐")
+            label = f"{me} {d.get('date','')[:10]}"
+            buttons.append([InlineKeyboardButton(label, callback_data=f"diary_{d['id']}")])
+        buttons.append([InlineKeyboardButton("◀️ Назад", callback_data="main")])
+        await q.edit_message_text("📓 Выбери запись:", reply_markup=InlineKeyboardMarkup(buttons))
+        return
 
-    elif cb == "week":
+    # DIARY DETAIL
+    if cb.startswith("diary_"):
+        diary_id = int(cb.split("_")[1])
+        items = await supa_get("diary", 50)
+        d = next((x for x in items if x.get("id") == diary_id), None)
+        if not d:
+            await q.edit_message_text("Запись не найдена", reply_markup=back_kbd())
+            return
+        moods = {"хорошо":"😊","нейтрально":"😐","плохо":"😔"}
+        me = moods.get(d.get("mood","нейтрально"),"😐")
+        lines = [f"{me} *{d.get('date','')}*"]
+        if d.get("events"): lines.append(f"\n📌 {d['events']}")
+        if d.get("thoughts"): lines.append(f"\n💭 {d['thoughts']}")
+        await q.edit_message_text("\n".join(lines), parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ К дневнику", callback_data="diary")]]))
+        return
+
+    # WEEK
+    if cb == "week":
         week_ago = (datetime.now() - timedelta(days=7)).isoformat()
         shoots   = await supa_get("shoots", 200)
         ideas    = await supa_get("ideas", 200)
@@ -321,13 +460,10 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 f"💡 Идей: {ni}\n"
                 f"📓 Записей в дневнике: {nd}\n"
                 f"🔸 Активных проектов: {ap}")
-    else:
-        text = "Неизвестная команда"
+        await q.edit_message_text(text, parse_mode="Markdown", reply_markup=back_kbd())
+        return
 
-    try:
-        await q.edit_message_text(text, parse_mode="Markdown", reply_markup=kbd())
-    except:
-        await q.message.reply_text(text, parse_mode="Markdown", reply_markup=kbd())
+    await q.edit_message_text("Неизвестная команда", reply_markup=main_kbd())
 
 def main():
     import time
@@ -336,7 +472,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION | filters.FORWARDED, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🦀 Rak bot v5 started!")
+    print("🦀 Rak bot v7 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
