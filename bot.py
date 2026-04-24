@@ -300,13 +300,19 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "Записываю съёмки, идеи, проекты, события и дневник 🙂",
         reply_markup=main_kbd()
     )
-    # Schedule check-ins
-    ctx.job_queue.run_repeating(
-        lambda ctx: asyncio.create_task(send_checkin(ctx.bot, uid)),
-        interval=172800,  # every 2 days
-        first=86400,  # first after 1 day
-        name=f"checkin_{uid}"
-    )
+    # Schedule check-ins (если доступен job_queue)
+    if ctx.job_queue is not None:
+        try:
+            ctx.job_queue.run_repeating(
+                lambda ctx: asyncio.create_task(send_checkin(ctx.bot, uid)),
+                interval=172800,  # every 2 days
+                first=86400,  # first after 1 day
+                name=f"checkin_{uid}"
+            )
+        except Exception as e:
+            print(f"JobQueue error: {e}")
+    else:
+        print("JobQueue unavailable, check-ins disabled")
 
 async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
@@ -642,7 +648,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION | filters.FORWARDED, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🦀 Rak bot v12 started!")
+    print("🦀 Rak bot v13 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
