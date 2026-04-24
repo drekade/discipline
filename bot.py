@@ -29,13 +29,21 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 
 УКРАИНСКИЕ МЕСЯЦЫ: січень=01 лютий=02 березень=03 квітень=04 травень=05 червень=06 липень=07 серпень=08 вересень=09 жовтень=10 листопад=11 грудень=12
 
+ЖЁСТКИЕ ПРАВИЛА (НАРУШЕНИЕ = ОШИБКА):
+• НЕ СОЗДАВАЙ съёмку без явной локации в тексте. Нет локации — не съёмка.
+• НЕ ПРИДУМЫВАЙ поля. Если Катерина не назвала время/людей/проект — эти поля должны быть пустыми строками, не выдуманными.
+• Если пришёл ОТВЕТ НА УТОЧНЕНИЕ (см. контекст диалога выше — твой прошлый reply был вопросом про дату/время/место) — action=clarify_reply, не создавай новую съёмку.
+• Если Катерина говорит "отмени заметку", "очисти заметку", "убери заметку" → action=clear_field.
+
 ЛОГИКА РАСПОЗНАВАНИЯ:
 
-1. НЕСКОЛЬКО СЪЁМОК (action: add_multiple_shoots) — несколько блоков с датами/местами.
+1. НЕСКОЛЬКО СЪЁМОК (action: add_multiple_shoots) — несколько блоков с ДАТАМИ и ЛОКАЦИЯМИ.
    Каждый блок — отдельная съёмка. Массив shoots[]. Игнорируй @ники.
+   Блок без локации НЕ включай в массив.
 
-2. ОДНА СЪЁМКА (action: add_shoot) — одна дата/место/люди.
-   Если нет даты — action=clarify.
+2. ОДНА СЪЁМКА (action: add_shoot) — ОДНА явная локация + дата/время.
+   Если нет даты но локация есть — action=clarify, сохрани что знаешь в data.partial.
+   Если нет локации — НЕ съёмка. Переспроси или action=none.
 
 3. УДАЛЕНИЕ СЪЁМКИ (action: delete_shoot) — "удали съёмку X"
    data: {{shoot_date, shoot_location, shoot_time}}
@@ -44,29 +52,39 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 
 5. ИДЕЯ (action: add_idea) — "идея:", "ідея:"
 
-6. ДНЕВНИК (action: add_diary) — рассказывает про день, эмоции, что произошло важного.
-   ВАЖНО: если человек рассказывает про тяжёлый/хороший/насыщенный день — записывай в дневник автоматически, не жди просьбы.
-   После записи скажи что записала и спроси одним коротким вопросом как она.
+6. ДНЕВНИК (action: add_diary) — рассказывает про ПРОЖИТЫЙ день/эмоции/события.
+   ВАЖНО: только если это реально рассказ про день. Короткие ответы типа "устала", "норм", "ок" — это action=none.
+   Не путай с заметками о работе. "Нужны подсъёмы такие-то" — это заметка к проекту/съёмке, НЕ дневник.
 
 7. ЛИЧНОЕ СОБЫТИЕ (action: add_event) — врач, ветеринар, школа, мероприятие, встреча
    data: {{title, date(YYYY-MM-DD), time, category, notes}}
 
 8. НОВЫЙ ПРОЕКТ (action: add_project)
 
-9. РАЗГОВОР (action: none) — болтовня, вопросы, эмоции без данных.
-   "привет","привіт","як справи","дякую","окей","ок","нет","да" — ВСЕГДА action: none!
-   Если Катерина просто разговаривает — отвечай тепло и по-человечески.
-   НЕ задавай вопрос "что нового" если она только что всё рассказала.
+9. ОЧИСТКА ПОЛЯ (action: clear_field) — "отмени/убери/очисти заметку"
+   data: {{field: "notes"|"script"|"link", entity: "shoot"|"project"}}
+
+10. ОТВЕТ НА УТОЧНЕНИЕ (action: clarify_reply) — твой прошлый reply был вопросом о дате/времени/месте,
+    а Катерина даёт недостающие данные. Не создавай новую запись.
+    data: {{field_given: "date"|"time"|"location"|..., value: "..."}}
+
+11. РАЗГОВОР (action: none) — болтовня, вопросы, эмоции без данных.
+    "привет","привіт","як справи","дякую","окей","ок","нет","да","устала","блин","ясно" — ВСЕГДА action: none.
+    Если Катерина просто разговаривает — отвечай тепло и по-человечески.
+    НЕ задавай вопрос "что нового" если она только что всё рассказала.
 
 ХАРАКТЕР: отвечай на том же языке что Катерина. Поддержи если тяжело. Не навязывайся с вопросами если человек не хочет говорить.
 
 ФОРМАТ — только JSON без markdown:
-{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|clarify|complete_project|add_idea|add_diary|add_event|add_project","data":{{}}}}
+{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|clarify|clarify_reply|clear_field|complete_project|add_idea|add_diary|add_event|add_project","data":{{}}}}
 
 data для add_multiple_shoots: {{"shoots":[{{"date":"YYYY-MM-DD","time":"HH:MM","location":"","project":"","people":"","script":"","notes":""}}]}}
 data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
 data для add_event: title, date(YYYY-MM-DD), time, category, notes
-data для delete_shoot: shoot_date, shoot_location, shoot_time"""
+data для delete_shoot: shoot_date, shoot_location, shoot_time
+data для clear_field: field, entity
+data для clarify: partial — словарь уже известных полей
+data для clarify_reply: field_given, value"""
 
 async def ask_groq(messages):
     groq_messages = [{"role": "system", "content": SYSTEM}]
@@ -129,9 +147,14 @@ async def apply_action(action, data):
     today_ru = f"{datetime.now().day} {months[datetime.now().month-1]} {datetime.now().year}"
 
     if action == "add_shoot":
+        # пост-валидация: съёмка без локации не сохраняется
+        loc = (data.get("location") or "").strip()
+        if not loc or loc.lower() in ("не указано","none","null","—","-"):
+            print(f"SKIP add_shoot: empty location ({data})")
+            return False
         return await supa_insert("shoots", {
             "date": data.get("date", today), "time": data.get("time",""),
-            "location": data.get("location",""), "project": data.get("project",""),
+            "location": loc, "project": data.get("project",""),
             "people": data.get("people",""), "script": data.get("script",""),
             "notes": data.get("notes",""), "status": "не снято"
         })
@@ -139,14 +162,32 @@ async def apply_action(action, data):
         shoots = data.get("shoots", [])
         saved = 0
         for s in shoots:
+            # пост-валидация: каждая съёмка обязана иметь локацию
+            loc = (s.get("location") or "").strip()
+            if not loc or loc.lower() in ("не указано","none","null","—","-"):
+                print(f"SKIP multiple_shoot: empty location ({s})")
+                continue
             ok = await supa_insert("shoots", {
                 "date": s.get("date", today), "time": s.get("time",""),
-                "location": s.get("location",""), "project": s.get("project",""),
+                "location": loc, "project": s.get("project",""),
                 "people": s.get("people",""), "script": s.get("script",""),
                 "notes": s.get("notes",""), "status": "не снято"
             })
             if ok: saved += 1
         return saved
+    elif action == "clear_field":
+        # очистка поля у последней съёмки или проекта
+        field = data.get("field","notes")
+        entity = data.get("entity","shoot")
+        if entity == "shoot":
+            shoots = await supa_get("shoots", 1, order="created_at.desc")
+            if shoots:
+                return await supa_update("shoots","id",shoots[0]["id"],{field:""})
+        elif entity == "project":
+            projects = await supa_get("projects", 1, order="created_at.desc")
+            if projects:
+                return await supa_update("projects","id",projects[0]["id"],{field:""})
+        return False
     elif action == "delete_shoot":
         shoots = await supa_get("shoots", 100)
         for s in shoots:
@@ -284,28 +325,49 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     # Check if waiting for link/note
     if uid in pending:
-        p = pending.pop(uid)
-        field = p["field"]
-        entity_type = p["type"]
-        entity_id = p["id"]
-        if entity_type == "shoot":
-            await supa_update("shoots","id",entity_id,{field:text.strip()})
-            shoots = await supa_get("shoots",100)
-            s = next((x for x in shoots if x.get("id")==entity_id),None)
-            if s:
-                await msg.reply_text(f"{'🔗 Ссылка' if field=='script' else '📝 Заметка'} добавлена ✓\n\n"+render_shoot(s),
-                    parse_mode="Markdown",reply_markup=shoot_detail_kbd(entity_id,s.get("status","")))
-            return
-        elif entity_type == "project":
-            await supa_update("projects","id",entity_id,{field:text.strip()})
-            projects = await supa_get("projects",50)
-            shoots = await supa_get("shoots",100)
-            tasks = await supa_get("tasks",200)
-            p_obj = next((x for x in projects if x.get("id")==entity_id),None)
-            if p_obj:
-                await msg.reply_text(f"{'🔗 Ссылка' if field=='link' else '📝 Заметка'} добавлена ✓\n\n"+render_project(p_obj,shoots,tasks),
-                    parse_mode="Markdown",reply_markup=proj_detail_kbd(entity_id,p_obj.get("status","")))
-            return
+        p = pending[uid]
+        # pending от clarify обрабатываем ниже в общей ветке Groq, не здесь
+        if p.get("type") == "clarify_shoot":
+            pass
+        else:
+            # стоп-слова: отмена или очистка вместо ввода заметки/ссылки
+            stop_words = ("отмен","отміни","не надо","забей","стоп","cancel","скасуй")
+            low = text.strip().lower()
+            if any(low.startswith(w) for w in stop_words) or low in ("нет","ні","no"):
+                pending.pop(uid, None)
+                # если хотели "отмени заметку" и это было pending notes — очистим поле
+                if "очисти" in low or "удали" in low or "сотри" in low:
+                    entity_type = p["type"]
+                    entity_id = p["id"]
+                    field = p["field"]
+                    table = "shoots" if entity_type == "shoot" else "projects"
+                    await supa_update(table,"id",entity_id,{field:""})
+                    await msg.reply_text(f"🗑 {field} очищено", reply_markup=main_kbd())
+                else:
+                    await msg.reply_text("Окей, отменила ✓", reply_markup=main_kbd())
+                return
+            p = pending.pop(uid)
+            field = p["field"]
+            entity_type = p["type"]
+            entity_id = p["id"]
+            if entity_type == "shoot":
+                await supa_update("shoots","id",entity_id,{field:text.strip()})
+                shoots = await supa_get("shoots",100)
+                s = next((x for x in shoots if x.get("id")==entity_id),None)
+                if s:
+                    await msg.reply_text(f"{'🔗 Ссылка' if field=='script' else '📝 Заметка'} добавлена ✓\n\n"+render_shoot(s),
+                        parse_mode="Markdown",reply_markup=shoot_detail_kbd(entity_id,s.get("status","")))
+                return
+            elif entity_type == "project":
+                await supa_update("projects","id",entity_id,{field:text.strip()})
+                projects = await supa_get("projects",50)
+                shoots = await supa_get("shoots",100)
+                tasks = await supa_get("tasks",200)
+                p_obj = next((x for x in projects if x.get("id")==entity_id),None)
+                if p_obj:
+                    await msg.reply_text(f"{'🔗 Ссылка' if field=='link' else '📝 Заметка'} добавлена ✓\n\n"+render_project(p_obj,shoots,tasks),
+                        parse_mode="Markdown",reply_markup=proj_detail_kbd(entity_id,p_obj.get("status","")))
+                return
 
     add_history(uid, "user", text)
     thinking = await msg.reply_text("⏳")
@@ -315,9 +377,53 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         action = result.get("action","none")
         data = result.get("data",{})
         add_history(uid, "model", reply)
+
+        # === Обработка clarify: сохраняем частичные данные и ждём ответа ===
+        if action == "clarify":
+            pending[uid] = {"type":"clarify_shoot","partial":data.get("partial",{})}
+            await thinking.delete()
+            await msg.reply_text(reply)
+            return
+
+        # === Обработка ответа на уточнение ===
+        if action == "clarify_reply":
+            prev = pending.pop(uid, None)
+            if prev and prev.get("type") == "clarify_shoot":
+                merged = dict(prev.get("partial",{}))
+                field = data.get("field_given","")
+                value = data.get("value","")
+                if field and value:
+                    merged[field] = value
+                # если теперь есть локация — пробуем сохранить
+                if (merged.get("location") or "").strip():
+                    saved = await apply_action("add_shoot", merged)
+                    await thinking.delete()
+                    if saved:
+                        details = []
+                        if merged.get("date"): details.append(f"📅 {merged['date']}")
+                        if merged.get("time"): details.append(f"🕐 {merged['time']}")
+                        if merged.get("location"): details.append(f"📍 {merged['location']}")
+                        reply_text = reply + "\n\n" + "\n".join(details) if details else reply
+                        await msg.reply_text(reply_text, reply_markup=main_kbd())
+                    else:
+                        await msg.reply_text(reply)
+                    return
+                else:
+                    # ещё чего-то не хватает — продолжаем держать pending
+                    pending[uid] = {"type":"clarify_shoot","partial":merged}
+                    await thinking.delete()
+                    await msg.reply_text(reply)
+                    return
+            # если pending не было — обработаем как обычное сообщение
+            await thinking.delete()
+            await msg.reply_text(reply)
+            return
+
         saved = False
-        if action not in ("none","clarify"):
+        if action not in ("none","clarify","clarify_reply"):
             saved = await apply_action(action, data)
+        # если было pending от clarify а пришло что-то другое — сбрасываем
+        pending.pop(uid, None) if uid in pending and pending[uid].get("type") == "clarify_shoot" else None
         await thinking.delete()
         if action == "add_shoot" and saved:
             details = []
@@ -543,7 +649,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION | filters.FORWARDED, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🦀 Rak bot v10 started!")
+    print("🦀 Rak bot v11 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
