@@ -222,9 +222,9 @@ textarea.f{resize:none;line-height:1.6}
 .home-phrase{font-size:13px;color:var(--t2);margin-top:6px;font-style:italic;line-height:1.4;max-width:560px}
 .home-row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 .home-card{background:var(--s);border:1.5px solid var(--bd);border-radius:18px;padding:18px;box-shadow:3px 3px 0 var(--bd)}
-.home-card-projects{background:var(--bbg);cursor:pointer;transition:all .15s}
+.home-card-projects{background:var(--pbg);cursor:pointer;transition:all .15s}
 .home-card-projects:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--bd)}
-.home-card-mood{background:var(--gbg)}
+.home-card-mood{background:var(--s)}
 .home-card-today{background:var(--s);margin-bottom:14px}
 .home-card-title{font-family:var(--fi);font-size:13px;font-weight:500;letter-spacing:-.3px;margin-bottom:14px;color:var(--t)}
 .home-proj-list{display:flex;flex-direction:column;gap:1px}
@@ -1068,9 +1068,9 @@ function homePhraseOfDay(){
   return HOME_PHRASES[seed%HOME_PHRASES.length];
 }
 function moodColor(m){
-  if(m==='хорошо')return'#5DCAA5';
-  if(m==='плохо')return'#E68872';
-  return'#F4B73C';
+  if(m==='хорошо')return'#3A6E4A';
+  if(m==='плохо')return'#A85638';
+  return'#7E5BAA';
 }
 function moodHeight(m){
   if(m==='хорошо')return 100;
@@ -1115,18 +1115,27 @@ function renderHome(){
   const weekStart=new Date(today);
   const dayOfWeek=(today.getDay()+6)%7;
   weekStart.setDate(today.getDate()-dayOfWeek);
+  console.log('=== MOOD DEBUG ===');
+  console.log('today:', localDateStr(today),'dayOfWeek (0=Mon):',dayOfWeek);
+  console.log('weekStart:', localDateStr(weekStart));
+  console.log('DB.diary:',(DB.diary||[]).length,'entries');
+  if(DB.diary&&DB.diary[0])console.log('first entry sample:',DB.diary[0]);
   const weekData=[];
   for(let i=0;i<7;i++){
     const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);
     const ds=localDateStr(d);
-    const entry=(DB.diary||[]).find(e=>e.date===ds);
+    // нечёткое сравнение - берём первые 10 символов (YYYY-MM-DD)
+    const entry=(DB.diary||[]).find(e=>{
+      const edate=(e.date||'').slice(0,10);
+      return edate===ds;
+    });
     weekData.push(entry);
   }
-  const filledCount=weekData.filter(x=>x).length;
-  console.log('mood week:', weekData.map((x,i)=>{
+  console.log('weekData:',weekData.map((x,i)=>{
     const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);
     return {date:localDateStr(d),hasEntry:!!x,mood:x?x.mood:null};
   }));
+  const filledCount=weekData.filter(x=>x).length;
   const moodEl=document.getElementById('home-mood-content');
   if(filledCount===0){
     moodEl.innerHTML=`<div class="home-mood-empty">дневник пока пуст. начни записывать как день прошёл</div>`;
