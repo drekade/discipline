@@ -9,17 +9,18 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --a:#C4552A;--ad:#8B3A1A;--al:#FDF0EB;--am:#E8855A;
-  --bg:#F7F3EE;--s:#FFFFFF;--s2:#F0EAE1;--s3:#E8E0D4;
-  --b:#DDD5C8;--b2:#C8BFB0;--bd:#3A2A1E;
-  --t:#1A1410;--t2:#6B5E52;--t3:#A8978A;
-  --blue:#1A5FA5;--bbg:#EBF3FC;
-  --green:#2E6E1A;--gbg:#EBF5E8;
-  --amber:#7A4A0A;--ambg:#FDF0D8;
-  --purple:#4A42B5;--pbg:#EEEDFB;
+  --a:#5D3A8E;--ad:#3D2560;--al:#EEE8F8;--am:#7E5BAA;
+  --bg:#D4C5F2;--s:#F2EBDB;--s2:#E8DFC8;--s3:#DDD2B8;
+  --b:#C8B8E5;--b2:#A893D0;--bd:#1A1410;
+  --t:#1A1410;--t2:#5F4F70;--t3:#9080A8;
+  --blue:#3A5F8E;--bbg:#BFD9EE;
+  --green:#3A6E4A;--gbg:#B8D9C3;
+  --amber:#7A5A1A;--ambg:#F4D778;
+  --purple:#5D3A8E;--pbg:#C7B7EE;
+  --peach:#A85638;--peachbg:#F4C3B5;
   --fi:'DM Mono',ui-monospace,monospace;
   --ff:'Inter',-apple-system,sans-serif;
-  --pc0:#C4552A;--pc1:#1A5FA5;--pc2:#4A42B5;--pc3:#2E6E1A;--pc4:#C47A0A;
+  --pc0:#5D3A8E;--pc1:#3A5F8E;--pc2:#A85638;--pc3:#3A6E4A;--pc4:#7A5A1A;
 }
 body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 
@@ -220,10 +221,11 @@ textarea.f{resize:none;line-height:1.6}
 .home-hello{font-family:var(--fi);font-size:28px;font-weight:500;color:var(--t);letter-spacing:-.5px;line-height:1.1}
 .home-phrase{font-size:13px;color:var(--t2);margin-top:6px;font-style:italic;line-height:1.4;max-width:560px}
 .home-row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-.home-card{background:#FFF;border:1.5px solid var(--bd);border-radius:18px;padding:18px;box-shadow:3px 3px 0 var(--bd)}
-.home-card-projects{background:#F4B89C}
-.home-card-mood{background:#A4D7C0}
-.home-card-today{background:#FFF;margin-bottom:14px}
+.home-card{background:var(--s);border:1.5px solid var(--bd);border-radius:18px;padding:18px;box-shadow:3px 3px 0 var(--bd)}
+.home-card-projects{background:var(--bbg);cursor:pointer;transition:all .15s}
+.home-card-projects:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--bd)}
+.home-card-mood{background:var(--gbg)}
+.home-card-today{background:var(--s);margin-bottom:14px}
 .home-card-title{font-family:var(--fi);font-size:13px;font-weight:500;letter-spacing:-.3px;margin-bottom:14px;color:var(--t)}
 .home-proj-list{display:flex;flex-direction:column;gap:1px}
 .home-proj-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px dashed rgba(26,20,16,.25);font-size:13px;color:var(--t)}
@@ -233,19 +235,24 @@ textarea.f{resize:none;line-height:1.6}
 .home-mood-bar{flex:1;border-radius:4px 4px 0 0;background:var(--t);min-height:4px;transition:all .2s}
 .home-mood-bar.empty{background:var(--t);opacity:.15}
 .home-mood-days{display:flex;justify-content:space-between;font-family:var(--fi);font-size:9px;color:var(--t);opacity:.6}
+.home-mood-empty{font-size:13px;color:var(--t2);font-style:italic;line-height:1.5;padding:8px 0}
 .home-today-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:13px}
 .home-today-date{font-family:var(--fi);font-size:11px;color:var(--t2)}
-.home-today-item{border-radius:12px;padding:11px 13px;margin-bottom:8px;border:1.5px solid var(--bd);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.home-today-item{border-radius:12px;padding:11px 13px;margin-bottom:8px;border:1.5px solid var(--bd);display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;transition:all .12s}
+.home-today-item:hover{transform:translate(-1px,-1px);box-shadow:2px 2px 0 var(--bd)}
 .home-today-item:last-child{margin-bottom:0}
-.home-today-item-shoot{background:#F4B89C}
-.home-today-item-event{background:#C9C0E8}
+.home-today-item-shoot{background:var(--peachbg)}
+.home-today-item-event{background:var(--pbg)}
+.home-today-item.done{background:var(--gbg);opacity:.78}
+.home-today-item.done .home-today-title{text-decoration:line-through;text-decoration-thickness:1px;text-decoration-color:rgba(26,20,16,.4)}
 .home-today-info{flex:1;min-width:0}
 .home-today-title{font-size:13px;font-weight:600;color:var(--t)}
 .home-today-sub{font-size:11px;color:var(--t);opacity:.65;margin-top:2px}
-.home-today-time{font-family:var(--fi);font-size:13px;font-weight:500;background:var(--t);color:#FAF1DC;padding:4px 9px;border-radius:7px;flex-shrink:0}
+.home-today-time{font-family:var(--fi);font-size:13px;font-weight:500;background:var(--t);color:var(--s);padding:4px 9px;border-radius:7px;flex-shrink:0}
+.home-today-done{font-family:var(--fi);font-size:13px;font-weight:500;background:var(--green);color:var(--s);padding:4px 9px;border-radius:7px;flex-shrink:0}
 .home-today-empty{font-size:13px;color:var(--t2);padding:8px 0;font-style:italic}
 .home-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.home-stat{background:#FFF;border:1.5px solid var(--bd);border-radius:14px;padding:13px 14px;box-shadow:2px 2px 0 var(--bd);transition:all .15s}
+.home-stat{background:var(--s);border:1.5px solid var(--bd);border-radius:14px;padding:13px 14px;box-shadow:2px 2px 0 var(--bd);transition:all .15s;cursor:pointer;text-align:left}
 .home-stat:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--bd)}
 .home-stat-label{font-family:var(--fi);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:1.5px}
 .home-stat-num{font-family:var(--fi);font-size:26px;font-weight:500;color:var(--t);line-height:1;margin-top:5px;letter-spacing:-1px}
@@ -314,21 +321,6 @@ textarea.f{resize:none;line-height:1.6}
         <div class="home-phrase" id="home-phrase"></div>
       </div>
 
-      <div class="home-row-2">
-        <div class="home-card home-card-projects">
-          <div class="home-card-title">сейчас в работе</div>
-          <div id="home-projects-list" class="home-proj-list"></div>
-        </div>
-
-        <div class="home-card home-card-mood">
-          <div class="home-card-title">настроение недели</div>
-          <div class="home-mood-bars" id="home-mood-bars"></div>
-          <div class="home-mood-days">
-            <span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span>
-          </div>
-        </div>
-      </div>
-
       <div class="home-card home-card-today">
         <div class="home-today-row">
           <div class="home-card-title">сегодня</div>
@@ -337,23 +329,35 @@ textarea.f{resize:none;line-height:1.6}
         <div id="home-today-list"></div>
       </div>
 
+      <div class="home-row-2">
+        <div class="home-card home-card-projects" onclick="goToPage('projects')">
+          <div class="home-card-title">сейчас в работе</div>
+          <div id="home-projects-list" class="home-proj-list"></div>
+        </div>
+
+        <div class="home-card home-card-mood">
+          <div class="home-card-title">настроение недели</div>
+          <div id="home-mood-content"></div>
+        </div>
+      </div>
+
       <div class="home-stats">
-        <div class="home-stat">
+        <button class="home-stat" onclick="goToPage('shoots-cal')">
           <div class="home-stat-label">съёмок</div>
           <div class="home-stat-num" id="home-stat-shoots">0</div>
-        </div>
-        <div class="home-stat">
+        </button>
+        <button class="home-stat" onclick="goToPage('projects')">
           <div class="home-stat-label">проектов</div>
           <div class="home-stat-num" id="home-stat-projects">0</div>
-        </div>
-        <div class="home-stat">
+        </button>
+        <button class="home-stat" onclick="goToPage('ideas')">
           <div class="home-stat-label">идей</div>
           <div class="home-stat-num" id="home-stat-ideas">0</div>
-        </div>
-        <div class="home-stat">
+        </button>
+        <button class="home-stat" onclick="goToPage('diary')">
           <div class="home-stat-label">записей</div>
           <div class="home-stat-num" id="home-stat-diary">0</div>
-        </div>
+        </button>
       </div>
     </div>
 
@@ -1073,13 +1077,31 @@ function moodHeight(m){
   if(m==='плохо')return 35;
   return 65;
 }
+function goToPage(id){
+  // ищем кнопку nav и mob-nav для нужной страницы
+  const btns=document.querySelectorAll('.nb,.mob-nb');
+  for(const b of btns){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes(`'${id}'`)){
+      const isMob=b.classList.contains('mob-nb');
+      showPage(id,b,isMob);
+      return;
+    }
+  }
+  showPage(id);
+}
+
 function renderHome(){
   document.getElementById('home-hello').textContent=homeGreeting()+', Катерина';
   document.getElementById('home-phrase').textContent=homePhraseOfDay();
-  // проекты в работе
+  // проекты в работе с нечётким сравнением
   const projItems=(DB.projects||[]).filter(p=>(p.status||'в работе')!=='готово').slice(0,5);
   const projHtml=projItems.length?projItems.map(p=>{
-    const cnt=(DB.shoots||[]).filter(s=>s.project===p.name).length;
+    const pname=(p.name||'').toLowerCase().trim();
+    const cnt=(DB.shoots||[]).filter(s=>{
+      const sp=(s.project||'').toLowerCase().trim();
+      if(!sp||!pname)return false;
+      return sp===pname||sp.includes(pname)||pname.includes(sp);
+    }).length;
     const word=cnt===1?'съёмка':cnt<5?'съёмки':'съёмок';
     return `<div class="home-proj-item"><span>${p.name||'без названия'}</span><span class="home-proj-cnt">${cnt} ${word}</span></div>`;
   }).join(''):'<div style="font-size:13px;color:var(--t);opacity:.6;font-style:italic">пока пусто</div>';
@@ -1089,18 +1111,29 @@ function renderHome(){
   const weekStart=new Date(today);
   const dayOfWeek=(today.getDay()+6)%7;
   weekStart.setDate(today.getDate()-dayOfWeek);
-  const moodBars=[];
+  const weekData=[];
   for(let i=0;i<7;i++){
     const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);
     const ds=d.toISOString().slice(0,10);
     const entry=(DB.diary||[]).find(e=>e.date===ds);
-    if(entry){
-      moodBars.push(`<div class="home-mood-bar" style="height:${moodHeight(entry.mood)}%;background:${moodColor(entry.mood)}"></div>`);
-    } else {
-      moodBars.push(`<div class="home-mood-bar empty" style="height:20%"></div>`);
-    }
+    weekData.push(entry);
   }
-  document.getElementById('home-mood-bars').innerHTML=moodBars.join('');
+  const filledCount=weekData.filter(x=>x).length;
+  const moodEl=document.getElementById('home-mood-content');
+  if(filledCount<2){
+    moodEl.innerHTML=`<div class="home-mood-empty">${filledCount===0?'дневник пока пуст. начни записывать как день прошёл':'пока только одна запись за неделю. ведя дневник чаще, увидишь ритм настроения'}</div>`;
+  } else {
+    let bars='';
+    weekData.forEach(entry=>{
+      if(entry){
+        bars+=`<div class="home-mood-bar" style="height:${moodHeight(entry.mood)}%;background:${moodColor(entry.mood)}"></div>`;
+      } else {
+        bars+=`<div class="home-mood-bar empty" style="height:20%"></div>`;
+      }
+    });
+    moodEl.innerHTML=`<div class="home-mood-bars">${bars}</div>
+      <div class="home-mood-days"><span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span></div>`;
+  }
   // сегодня
   const todayStr=today.toISOString().slice(0,10);
   const months=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
@@ -1111,13 +1144,15 @@ function renderHome(){
   todayShoots.forEach(s=>{
     const what=(s.project||'').trim()||s.location||'съёмка';
     const sub=s.location&&s.project?s.location:(s.people||'');
-    todayHtml+=`<div class="home-today-item home-today-item-shoot">
+    const isDone=s.status==='снято';
+    const timeOrDone=isDone?`<div class="home-today-done">✓ снято</div>`:(s.time?`<div class="home-today-time">${s.time}</div>`:'');
+    todayHtml+=`<div class="home-today-item ${isDone?'done':'home-today-item-shoot'}" onclick="goToPage('shoots-cal')">
       <div class="home-today-info"><div class="home-today-title">${what}</div>${sub?`<div class="home-today-sub">${sub}</div>`:''}</div>
-      ${s.time?`<div class="home-today-time">${s.time}</div>`:''}
+      ${timeOrDone}
     </div>`;
   });
   todayEvents.forEach(e=>{
-    todayHtml+=`<div class="home-today-item home-today-item-event">
+    todayHtml+=`<div class="home-today-item home-today-item-event" onclick="goToPage('life-cal')">
       <div class="home-today-info"><div class="home-today-title">${e.title||'событие'}</div>${e.category?`<div class="home-today-sub">${e.category}</div>`:''}</div>
       ${e.time?`<div class="home-today-time">${e.time}</div>`:''}
     </div>`;
