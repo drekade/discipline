@@ -1115,30 +1115,29 @@ function renderHome(){
   const weekStart=new Date(today);
   const dayOfWeek=(today.getDay()+6)%7;
   weekStart.setDate(today.getDate()-dayOfWeek);
-  console.log('=== MOOD DEBUG ===');
-  console.log('today:', localDateStr(today),'dayOfWeek (0=Mon):',dayOfWeek);
-  console.log('weekStart:', localDateStr(weekStart));
-  console.log('DB.diary:',(DB.diary||[]).length,'entries');
-  if(DB.diary&&DB.diary[0])console.log('first entry sample:',DB.diary[0]);
+  let dbg=`<div style="background:#FFF;border:1.5px solid #1A1410;border-radius:8px;padding:8px 10px;margin-top:8px;font-family:monospace;font-size:10px;line-height:1.5;color:#333">
+    today: ${localDateStr(today)} (день недели=${dayOfWeek})<br>
+    weekStart: ${localDateStr(weekStart)}<br>
+    DB.diary: ${(DB.diary||[]).length} записей<br>`;
+  if(DB.diary&&DB.diary[0]){
+    dbg+=`first: date="${DB.diary[0].date}" mood="${DB.diary[0].mood}"<br>`;
+  }
   const weekData=[];
   for(let i=0;i<7;i++){
     const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);
     const ds=localDateStr(d);
-    // нечёткое сравнение - берём первые 10 символов (YYYY-MM-DD)
     const entry=(DB.diary||[]).find(e=>{
       const edate=(e.date||'').slice(0,10);
       return edate===ds;
     });
     weekData.push(entry);
+    dbg+=`${ds}: ${entry?'✓ '+(entry.mood||'?'):'—'}<br>`;
   }
-  console.log('weekData:',weekData.map((x,i)=>{
-    const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);
-    return {date:localDateStr(d),hasEntry:!!x,mood:x?x.mood:null};
-  }));
+  dbg+=`</div>`;
   const filledCount=weekData.filter(x=>x).length;
   const moodEl=document.getElementById('home-mood-content');
   if(filledCount===0){
-    moodEl.innerHTML=`<div class="home-mood-empty">дневник пока пуст. начни записывать как день прошёл</div>`;
+    moodEl.innerHTML=`<div class="home-mood-empty">дневник пока пуст. начни записывать как день прошёл</div>${dbg}`;
   } else {
     let bars='';
     weekData.forEach(entry=>{
@@ -1149,7 +1148,7 @@ function renderHome(){
       }
     });
     moodEl.innerHTML=`<div class="home-mood-bars">${bars}</div>
-      <div class="home-mood-days"><span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span></div>`;
+      <div class="home-mood-days"><span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span></div>${dbg}`;
   }
   // сегодня
   const todayStr=localDateStr(today);
