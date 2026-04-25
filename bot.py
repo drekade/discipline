@@ -495,7 +495,9 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         buttons = []
         for s in items:
             icon = "✅" if s.get("status")=="снято" else "🔸"
-            label = f"{icon} {fmt_date(s.get('date',''))} {s.get('time','')} — {s.get('location','?')[:18]}"
+            # показываем что снимали (project) вместо локации; если проекта нет — локация как fallback
+            what = s.get("project","").strip() or s.get("location","?")
+            label = f"{icon} {fmt_date(s.get('date',''))} {s.get('time','')} — {what[:22]}"
             buttons.append([InlineKeyboardButton(label, callback_data=f"shoot_{s['id']}")])
         buttons.append([InlineKeyboardButton("◀️ Назад", callback_data="main")])
         await q.edit_message_text("📅 Выбери съёмку:", reply_markup=InlineKeyboardMarkup(buttons))
@@ -683,7 +685,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION | filters.FORWARDED, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🦀 Rak bot v17 started!")
+    print("🦀 Rak bot v18 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
