@@ -28,7 +28,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 .app{display:flex;min-height:100vh}
 
 /* SIDEBAR */
-.sidebar{width:220px;flex-shrink:0;background:var(--s);border-right:1.5px solid var(--b);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:50;overflow:hidden}
+.sidebar{width:220px;flex-shrink:0;background:var(--s);border-right:2px solid var(--bd);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:50;overflow:hidden;box-shadow:3px 0 0 var(--bd)}
 .sidebar-logo{padding:28px 24px 20px;border-bottom:1.5px solid var(--b)}
 .logo-text{font-family:var(--fi);font-size:22px;font-weight:500;color:var(--t);letter-spacing:-.5px}
 .logo-sub{font-size:11px;color:var(--t3);margin-top:2px;letter-spacing:.5px;text-transform:uppercase}
@@ -46,7 +46,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 .fab-sidebar:hover{background:var(--ad)}
 
 /* MAIN CONTENT */
-.main{margin-left:220px;flex:1;min-height:100vh}
+.main{margin-left:223px;flex:1;min-height:100vh}
 .page{display:none;padding:32px 36px 60px;max-width:960px}
 .page.active{display:block}
 .page-title{font-family:var(--fi);font-size:26px;font-weight:500;color:var(--t);margin-bottom:6px;letter-spacing:-.5px}
@@ -230,14 +230,14 @@ textarea.f{resize:none;line-height:1.6}
 .home-proj-list{display:flex;flex-direction:column;gap:1px}
 .home-proj-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px dashed rgba(26,20,16,.25);font-size:13px;color:var(--t)}
 .home-proj-item:last-child{border-bottom:none}
-.home-proj-cnt{font-family:var(--fi);font-size:12px;color:var(--t);opacity:.6}
+.home-proj-cnt{font-family:var(--fi);font-size:12px;color:var(--a);font-weight:500}
 .home-mood-bars{display:flex;align-items:flex-end;gap:5px;height:60px;margin-bottom:8px}
 .home-mood-bar{flex:1;border-radius:4px 4px 0 0;background:var(--t);min-height:4px;transition:all .2s}
 .home-mood-bar.empty{background:var(--t);opacity:.15}
 .home-mood-days{display:flex;justify-content:space-between;font-family:var(--fi);font-size:9px;color:var(--t);opacity:.6}
 .home-mood-empty{font-size:13px;color:var(--t2);font-style:italic;line-height:1.5;padding:8px 0}
 .home-today-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:13px}
-.home-today-date{font-family:var(--fi);font-size:11px;color:var(--t2)}
+.home-today-date{font-family:var(--fi);font-size:11px;color:var(--a);font-weight:500}
 .home-today-item{border-radius:12px;padding:11px 13px;margin-bottom:8px;border:1.5px solid var(--bd);display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;transition:all .12s}
 .home-today-item:hover{transform:translate(-1px,-1px);box-shadow:2px 2px 0 var(--bd)}
 .home-today-item:last-child{margin-bottom:0}
@@ -255,7 +255,7 @@ textarea.f{resize:none;line-height:1.6}
 .home-stat{background:var(--s);border:1.5px solid var(--bd);border-radius:14px;padding:13px 14px;box-shadow:2px 2px 0 var(--bd);transition:all .15s;cursor:pointer;text-align:left}
 .home-stat:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--bd)}
 .home-stat-label{font-family:var(--fi);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:1.5px}
-.home-stat-num{font-family:var(--fi);font-size:26px;font-weight:500;color:var(--t);line-height:1;margin-top:5px;letter-spacing:-1px}
+.home-stat-num{font-family:var(--fi);font-size:26px;font-weight:500;color:var(--a);line-height:1;margin-top:5px;letter-spacing:-1px}
 @media(max-width:768px){
   .home-hello{font-size:22px}
   .home-row-2{grid-template-columns:1fr;gap:12px}
@@ -1090,6 +1090,10 @@ function goToPage(id){
   showPage(id);
 }
 
+function localDateStr(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function renderHome(){
   document.getElementById('home-hello').textContent=homeGreeting()+', Катерина';
   document.getElementById('home-phrase').textContent=homePhraseOfDay();
@@ -1114,7 +1118,7 @@ function renderHome(){
   const weekData=[];
   for(let i=0;i<7;i++){
     const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);
-    const ds=d.toISOString().slice(0,10);
+    const ds=localDateStr(d);
     const entry=(DB.diary||[]).find(e=>e.date===ds);
     weekData.push(entry);
   }
@@ -1135,7 +1139,7 @@ function renderHome(){
       <div class="home-mood-days"><span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span></div>`;
   }
   // сегодня
-  const todayStr=today.toISOString().slice(0,10);
+  const todayStr=localDateStr(today);
   const months=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
   document.getElementById('home-today-date').textContent=`${today.getDate()} ${months[today.getMonth()]}`;
   const todayShoots=(DB.shoots||[]).filter(s=>s.date===todayStr);
