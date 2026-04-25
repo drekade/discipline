@@ -86,7 +86,11 @@ data для add_event: title, date(YYYY-MM-DD), time, category, notes
 data для delete_shoot: shoot_date, shoot_location, shoot_time
 data для clear_field: field, entity
 data для clarify: partial
-data для clarify_reply: field_given, value"""
+data для clarify_reply: field_given, value
+
+⚠️ ОБЯЗАТЕЛЬНО: твой ответ — это ВАЛИДНЫЙ JSON в одну строку с тремя ключами reply, action, data. Не пустой {{}}. Не markdown. Не ```. Просто JSON.
+ПРИМЕР минимального ответа: {{"reply":"Окей","action":"none","data":{{}}}}
+ПРИМЕР для дневника: {{"reply":"Записала. Как настроение?","action":"add_diary","data":{{"mood":"нейтрально","events":"работала с 12 до 16, отвела Лилу в школу","thoughts":""}}}}"""
 
 async def ask_groq(messages):
     groq_messages = [{"role": "system", "content": SYSTEM}]
@@ -98,9 +102,17 @@ async def ask_groq(messages):
         r = await c.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"},
-            json={"model": "llama-3.3-70b-versatile", "messages": groq_messages, "temperature": 0.1, "max_tokens": 1500, "response_format": {"type": "json_object"}}
+            json={"model": "llama-3.3-70b-versatile", "messages": groq_messages, "temperature": 0.1, "max_tokens": 1500}
         )
+        print(f"GROQ status: {r.status_code}")
         data = r.json()
+        # Полный лог если есть проблемы
+        if "error" in data:
+            print(f"GROQ ERROR: {data}")
+        if "usage" in data:
+            print(f"GROQ usage: {data['usage']}")
+        finish_reason = data.get("choices",[{}])[0].get("finish_reason","?")
+        print(f"GROQ finish_reason: {finish_reason}")
         raw = data.get("choices",[{}])[0].get("message",{}).get("content","{}")
         raw = raw.strip().replace("```json","").replace("```","").strip()
         print(f"GROQ raw ({len(raw)} chars): {raw}")
@@ -666,7 +678,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION | filters.FORWARDED, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🦀 Rak bot v15 started!")
+    print("🦀 Rak bot v16 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
