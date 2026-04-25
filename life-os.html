@@ -28,7 +28,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 .app{display:flex;min-height:100vh}
 
 /* SIDEBAR */
-.sidebar{width:220px;flex-shrink:0;background:var(--s);border-right:2px solid var(--bd);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:50;overflow:hidden;box-shadow:3px 0 0 var(--bd)}
+.sidebar{width:204px;flex-shrink:0;background:var(--s);border:1.5px solid var(--bd);border-radius:18px;display:flex;flex-direction:column;position:fixed;top:16px;left:16px;height:calc(100vh - 32px);z-index:50;overflow:hidden;box-shadow:3px 3px 0 var(--bd)}
 .sidebar-logo{padding:28px 24px 20px;border-bottom:1.5px solid var(--b)}
 .logo-text{font-family:var(--fi);font-size:22px;font-weight:500;color:var(--t);letter-spacing:-.5px}
 .logo-sub{font-size:11px;color:var(--t3);margin-top:2px;letter-spacing:.5px;text-transform:uppercase}
@@ -46,7 +46,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 .fab-sidebar:hover{background:var(--ad)}
 
 /* MAIN CONTENT */
-.main{margin-left:223px;flex:1;min-height:100vh}
+.main{margin-left:236px;flex:1;min-height:100vh}
 .page{display:none;padding:32px 36px 60px;max-width:960px}
 .page.active{display:block}
 .page-title{font-family:var(--fi);font-size:26px;font-weight:500;color:var(--t);margin-bottom:6px;letter-spacing:-.5px}
@@ -1123,9 +1123,13 @@ function renderHome(){
     weekData.push(entry);
   }
   const filledCount=weekData.filter(x=>x).length;
+  console.log('mood week:', weekData.map((x,i)=>{
+    const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);
+    return {date:localDateStr(d),hasEntry:!!x,mood:x?x.mood:null};
+  }));
   const moodEl=document.getElementById('home-mood-content');
-  if(filledCount<2){
-    moodEl.innerHTML=`<div class="home-mood-empty">${filledCount===0?'дневник пока пуст. начни записывать как день прошёл':'пока только одна запись за неделю. ведя дневник чаще, увидишь ритм настроения'}</div>`;
+  if(filledCount===0){
+    moodEl.innerHTML=`<div class="home-mood-empty">дневник пока пуст. начни записывать как день прошёл</div>`;
   } else {
     let bars='';
     weekData.forEach(entry=>{
