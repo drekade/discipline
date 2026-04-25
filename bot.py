@@ -22,7 +22,9 @@ conversations = {}
 pending = {}
 last_checkin = {}  # uid -> datetime of last check-in message
 
-SYSTEM = f"""Ты — Рак, личный ассистент Катерины (контент-мейкер, режиссёр, 32 года). Профессиональный, чёткий, с лёгким юмором. Обращайся "Катерина". Отвечаешь коротко.
+SYSTEM = f"""Ты — Рак, личный ассистент Катерины (контент-мейкер, режиссёр, 32 года). Профессиональный, чёткий, с лёгким юмором. Обращайся "Катерина".
+
+ВСЕГДА возвращай JSON с тремя ключами: "reply" (текст ответа), "action" (одно из действий ниже), "data" (объект с полями для action). Никогда не возвращай пустой {{}}. Если ничего не подходит — action="none", reply=осмысленный ответ.
 
 СЕГОДНЯ: {TODAY} ({TODAY_NICE})
 ТЕКУЩИЙ ГОД: {YEAR}
@@ -45,9 +47,16 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 
 5. ИДЕЯ (action: add_idea) — "идея:", "ідея:"
 
-6. ДНЕВНИК (action: add_diary) — Катерина рассказывает про прожитый день: что делала, как встала, когда работала, как себя чувствовала.
-   ВАЖНО: если видишь рассказ про день, работу, детали дня — action=add_diary. Не перестраховывайся.
-   events = что делала (факты). thoughts = мысли/чувства если есть.
+6. ДНЕВНИК (action: add_diary) — Катерина рассказывает про свой день: что делала, как встала, когда работала, как себя чувствовала, что было, как день прошёл.
+   ПРИМЕРЫ когда ВСЕГДА action=add_diary:
+   • "сегодня работала с 12 до 16, в 8 встала" → add_diary
+   • "тяжелый день был" → add_diary
+   • "снимали урок, потом монтировала" → add_diary
+   • "поспала 1.5 часа и вперёд" → add_diary
+   • "общалась с людьми, отвечала на вопросы ребёнка" → add_diary
+   Любой рассказ с временем/действиями про прожитый день = ДНЕВНИК. НЕ отвечай "Окей!" на такое — сохрани!
+   events = что делала (факты, через запятую). thoughts = чувства/мысли если есть.
+   mood: хорошо/нейтрально/плохо — определи по тону.
 
 7. ЛИЧНОЕ СОБЫТИЕ (action: add_event) — врач, ветеринар, школа, мероприятие, встреча
    data: {{title, date(YYYY-MM-DD), time, category, notes}}
@@ -89,22 +98,31 @@ async def ask_groq(messages):
         r = await c.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"},
-            json={"model": "llama-3.3-70b-versatile", "messages": groq_messages, "temperature": 0.3, "max_tokens": 1000}
+            json={"model": "llama-3.3-70b-versatile", "messages": groq_messages, "temperature": 0.1, "max_tokens": 1500, "response_format": {"type": "json_object"}}
         )
         data = r.json()
         raw = data.get("choices",[{}])[0].get("message",{}).get("content","{}")
         raw = raw.strip().replace("```json","").replace("```","").strip()
-        print(f"GROQ: {raw[:200]}")
+        print(f"GROQ raw ({len(raw)} chars): {raw}")
         try:
             parsed = json.loads(raw)
+            # Детектор пустого / битого ответа
+            if not parsed or not isinstance(parsed, dict):
+                print(f"GROQ EMPTY/BROKEN: {raw}")
+                return {"reply": "Чего-то я завис. Повтори?", "action": "none", "data": {}}
+            if "action" not in parsed:
+                parsed["action"] = "none"
+            if "reply" not in parsed:
+                parsed["reply"] = "Окей"
+            if "data" not in parsed:
+                parsed["data"] = {}
             # Make sure reply doesn't contain raw JSON
             if isinstance(parsed.get("reply"), str) and '{"reply"' in parsed.get("reply",""):
-                # Extract just the text before the JSON
                 reply_text = parsed["reply"].split('{"reply"')[0].strip()
                 parsed["reply"] = reply_text if reply_text else "Записала!"
             return parsed
-        except:
-            # If raw itself looks like it has JSON embedded, try to extract
+        except Exception as e:
+            print(f"GROQ PARSE ERROR: {e} | raw: {raw[:300]}")
             if '{"reply"' in raw:
                 try:
                     start = raw.index('{"reply"')
@@ -648,7 +666,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION | filters.FORWARDED, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🦀 Rak bot v13 started!")
+    print("🦀 Rak bot v15 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
