@@ -57,7 +57,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 .cal-nav-btns{display:flex;gap:6px}
 .cal-nav-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--bd);background:var(--s);cursor:pointer;color:var(--t2);font-size:17px;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .cal-nav-btn:hover{border-color:var(--a);color:var(--a)}
-.cal-wrap{background:var(--s);border:1.5px solid var(--bd);border-radius:16px;padding:20px;margin-bottom:24px}
+.cal-wrap{background:var(--s);border:1.5px solid var(--bd);border-radius:16px;padding:20px;margin-bottom:24px;box-shadow:3px 3px 0 var(--bd)}
 .cal-week-header{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px}
 .cal-week-header span{font-size:11px;color:var(--t3);text-align:center;padding:4px 0;text-transform:uppercase;letter-spacing:.8px;font-weight:600}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
@@ -80,8 +80,8 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 
 /* GRID LAYOUT for shoots */
 .shoots-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
-.shoot-card{background:var(--s);border-radius:14px;padding:16px;border:1.5px solid var(--bd);border-left:4px solid var(--a);transition:all .2s}
-.shoot-card:hover{transform:translateY(-2px);box-shadow:3px 3px 0 var(--bd)}
+.shoot-card{background:var(--s);border-radius:14px;padding:16px;border:1.5px solid var(--bd);border-left:4px solid var(--a);box-shadow:3px 3px 0 var(--bd);transition:all .15s}
+.shoot-card:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--bd)}
 .shoot-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
 .shoot-title{font-size:15px;font-weight:600;color:var(--t)}
 .shoot-badge{font-size:11px;font-weight:700;color:#fff;padding:3px 10px;border-radius:20px;flex-shrink:0;margin-left:8px}
@@ -96,8 +96,8 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 
 /* PROJECTS GRID */
 .proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
-.proj-card{background:var(--s);border:1.5px solid var(--bd);border-radius:14px;padding:18px;border-top:4px solid var(--a);transition:all .2s}
-.proj-card:hover{transform:translateY(-2px);box-shadow:3px 3px 0 var(--bd)}
+.proj-card{background:var(--s);border:1.5px solid var(--bd);border-radius:14px;padding:18px;border-top:4px solid var(--a);box-shadow:3px 3px 0 var(--bd);transition:all .15s}
+.proj-card:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--bd)}
 .proj-name{font-size:16px;font-weight:600;color:var(--t);margin-bottom:4px}
 .proj-meta{font-size:12px;color:var(--t3);margin-bottom:12px}
 .task-list{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
@@ -114,8 +114,8 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 
 /* IDEAS GRID */
 .ideas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
-.idea-card{background:var(--s);border:1.5px solid var(--bd);border-radius:14px;overflow:hidden;transition:all .2s}
-.idea-card:hover{transform:translateY(-2px);box-shadow:3px 3px 0 var(--bd)}
+.idea-card{background:var(--s);border:1.5px solid var(--bd);border-radius:14px;overflow:hidden;box-shadow:3px 3px 0 var(--bd);transition:all .15s}
+.idea-card:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--bd)}
 .idea-img{width:100%;height:140px;background:linear-gradient(135deg,var(--al),var(--s2));display:flex;align-items:center;justify-content:center;font-size:44px;overflow:hidden}
 .idea-img img{width:100%;height:100%;object-fit:cover}
 .idea-body{padding:14px}
@@ -130,14 +130,16 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 
 /* FAMILY GRID */
 .family-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
-.family-card{background:var(--s);border:1.5px solid var(--bd);border-radius:14px;padding:18px}
+.family-card{background:var(--s);border:1.5px solid var(--bd);border-radius:14px;padding:18px;box-shadow:3px 3px 0 var(--bd);transition:all .15s}
+.family-card:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--bd)}
 .family-avatar{width:48px;height:48px;border-radius:50%;background:var(--al);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:12px}
 .family-name{font-size:15px;font-weight:600;color:var(--t);margin-bottom:2px}
 .family-role{font-size:12px;color:var(--t3);margin-bottom:10px}
 
 /* STATS GRID */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
-.stat-c{background:var(--s);border:1.5px solid var(--bd);border-radius:14px;padding:18px}
+.stat-c{background:var(--s);border:1.5px solid var(--bd);border-radius:14px;padding:18px;box-shadow:3px 3px 0 var(--bd);transition:all .15s}
+.stat-c:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--bd)}
 .stat-n{font-family:var(--fi);font-size:36px;font-weight:600;color:var(--a);margin-bottom:4px}
 .stat-l{font-size:11px;color:var(--t3);font-weight:500;text-transform:uppercase;letter-spacing:.5px}
 
@@ -149,8 +151,8 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 .btn-primary{padding:9px 18px;border:none;border-radius:10px;background:var(--a);color:#fff;font-size:13px;font-family:var(--ff);cursor:pointer;font-weight:600;transition:all .2s}
 .btn-primary:hover{background:var(--ad)}
 .btn-primary.full{width:100%;padding:11px}
-.btn-ghost{padding:7px 16px;border:1.5px solid var(--bd);border-radius:20px;background:transparent;color:var(--t);font-size:12px;font-family:var(--ff);cursor:pointer;transition:all .15s;font-weight:500}
-.btn-ghost:hover{border-color:var(--a);color:var(--a);background:var(--al)}
+.btn-ghost{padding:7px 16px;border:1.5px solid var(--bd);border-radius:20px;background:var(--s);color:var(--t);font-size:12px;font-family:var(--ff);cursor:pointer;transition:all .15s;font-weight:500;box-shadow:2px 2px 0 var(--bd)}
+.btn-ghost:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--bd);background:var(--al)}
 
 /* FORMS */
 .form-row{margin-bottom:14px}
@@ -176,7 +178,7 @@ textarea.f{resize:none;line-height:1.6}
 .empty-icon{font-size:44px;margin-bottom:12px;opacity:.5}
 
 /* EVENT CARD */
-.event-card{background:var(--s);border:1.5px solid var(--bd);border-radius:12px;padding:14px;border-left:4px solid var(--purple);margin-bottom:10px}
+.event-card{background:var(--s);border:1.5px solid var(--bd);border-radius:12px;padding:14px;border-left:4px solid var(--purple);margin-bottom:10px;box-shadow:2px 2px 0 var(--bd)}
 
 /* LINK ROW */
 .link-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--blue);padding:6px 0;border-bottom:1px solid var(--b);cursor:pointer;font-weight:500}
@@ -226,8 +228,9 @@ textarea.f{resize:none;line-height:1.6}
       </div>
     </div>
     <nav class="nav">
-      <button class="nb active" onclick="showPage('shoots-cal',this)"><span class="icon">📅</span>Съёмки</button>
-      <button class="nb" onclick="showPage('life-cal',this)"><span class="icon">🗓</span>Жизнь</button>
+      <button class="nb active" onclick="showPage('all-cal',this)"><span class="icon">🗓️</span>Общий</button>
+      <button class="nb" onclick="showPage('shoots-cal',this)"><span class="icon">📅</span>Съёмки</button>
+      <button class="nb" onclick="showPage('life-cal',this)"><span class="icon">🏠</span>Жизнь</button>
       <button class="nb" onclick="showPage('projects',this)"><span class="icon">🎬</span>Проекты</button>
       <button class="nb" onclick="showPage('ideas',this)"><span class="icon">💡</span>Идеи</button>
       <button class="nb" onclick="showPage('diary',this)"><span class="icon">📓</span>Дневник</button>
@@ -246,8 +249,9 @@ textarea.f{resize:none;line-height:1.6}
       <span class="sync-row"><span class="sdot" id="sdot2"></span><span style="font-size:11px;color:var(--t3)" id="stext2"></span></span>
     </div>
     <div class="mob-nav">
-      <button class="mob-nb active" onclick="showPage('shoots-cal',this,true)">📅 Съёмки</button>
-      <button class="mob-nb" onclick="showPage('life-cal',this,true)">🗓 Жизнь</button>
+      <button class="mob-nb active" onclick="showPage('all-cal',this,true)">🗓️ Общий</button>
+      <button class="mob-nb" onclick="showPage('shoots-cal',this,true)">📅 Съёмки</button>
+      <button class="mob-nb" onclick="showPage('life-cal',this,true)">🏠 Жизнь</button>
       <button class="mob-nb" onclick="showPage('projects',this,true)">🎬 Проекты</button>
       <button class="mob-nb" onclick="showPage('ideas',this,true)">💡 Идеи</button>
       <button class="mob-nb" onclick="showPage('diary',this,true)">📓 Дневник</button>
@@ -259,8 +263,32 @@ textarea.f{resize:none;line-height:1.6}
   <!-- MAIN -->
   <main class="main">
 
+    <!-- ALL CAL (общий календарь — съёмки + события) -->
+    <div class="page active" id="page-all-cal">
+      <div class="page-title">Общий календарь</div>
+      <div class="page-sub">Съёмки, события, врачи и встречи в одном месте</div>
+      <div class="cal-wrap">
+        <div class="cal-row">
+          <div class="cal-month" id="ac-title"></div>
+          <div class="cal-nav-btns">
+            <button class="cal-nav-btn" onclick="changeAllMonth(-1)">‹</button>
+            <button class="cal-nav-btn" onclick="changeAllMonth(1)">›</button>
+          </div>
+        </div>
+        <div class="cal-week-header">
+          <span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span>
+        </div>
+        <div class="cal-grid" id="ac-grid"></div>
+        <div style="display:flex;gap:14px;margin-top:14px;font-size:11px;color:var(--t2);flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:var(--a);border-radius:2px"></span>съёмка</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:var(--purple);border-radius:2px"></span>событие</span>
+        </div>
+      </div>
+      <div id="ac-day-detail"></div>
+    </div>
+
     <!-- SHOOTS CAL -->
-    <div class="page active" id="page-shoots-cal">
+    <div class="page" id="page-shoots-cal">
       <div class="page-title">Съёмки</div>
       <div class="page-sub">Календарь и список всех съёмок</div>
       <div class="cal-wrap">
@@ -485,7 +513,8 @@ const ROLES_EMOJI={'Дочка':'👧','Муж':'👨','Питомец':'🐾','
 let DB={shoots:[],projects:[],tasks:[],ideas:[],diary:[],events:[],family:[]};
 let scY=new Date().getFullYear(),scM=new Date().getMonth();
 let lcY=new Date().getFullYear(),lcM=new Date().getMonth();
-let scSelDay=null,lcSelDay=null;
+let acY=new Date().getFullYear(),acM=new Date().getMonth();
+let scSelDay=null,lcSelDay=null,acSelDay=null;
 let curMood='хорошо',ideaImgB64=null;
 
 async function dbGet(t,lim=200,ord='created_at.desc'){
@@ -522,7 +551,7 @@ function setSyncOk(ok){
 }
 
 function renderAll(){
-  renderShootsCal();renderLifeCal();renderShoots();renderEvents();
+  renderAllCal();renderShootsCal();renderLifeCal();renderShoots();renderEvents();
   renderProjects();renderIdeas();renderDiary();renderFamily();renderWeek();updateSelects();
 }
 
@@ -634,6 +663,63 @@ function renderLifeDayDetail(){
     </div>
   </div>`).join('');
   el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${lcSelDay} — ${items.length} событий</div>${html}</div>`;
+}
+
+function renderAllCal(){
+  const evMap={};
+  DB.shoots.forEach(s=>{
+    if(!s.date)return;
+    const[sy,sm,sd]=s.date.split('-');
+    if(parseInt(sy)===acY&&parseInt(sm)-1===acM){
+      const k=parseInt(sd);
+      if(!evMap[k])evMap[k]=[];
+      evMap[k].push('#C4552A');
+    }
+  });
+  DB.events.forEach(e=>{
+    if(!e.date)return;
+    const[ey,em,ed]=e.date.split('-');
+    if(parseInt(ey)===acY&&parseInt(em)-1===acM){
+      const k=parseInt(ed);
+      if(!evMap[k])evMap[k]=[];
+      evMap[k].push('#4A42B5');
+    }
+  });
+  renderCalGrid('ac-grid','ac-title',acY,acM,evMap,null,acSelDay,'selectAllDay');
+  renderAllDayDetail();
+}
+
+function selectAllDay(d){acSelDay=acSelDay===d?null:d;renderAllCal();}
+function changeAllMonth(d){acM+=d;if(acM>11){acM=0;acY++;}if(acM<0){acM=11;acY--;}acSelDay=null;renderAllCal();}
+
+function renderAllDayDetail(){
+  const el=document.getElementById('ac-day-detail');
+  if(!acSelDay){el.innerHTML='';return;}
+  const ds=`${acY}-${String(acM+1).padStart(2,'0')}-${String(acSelDay).padStart(2,'0')}`;
+  const shoots=DB.shoots.filter(s=>s.date===ds);
+  const events=DB.events.filter(e=>e.date===ds);
+  const total=shoots.length+events.length;
+  if(!total){el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${acSelDay} — пусто</div></div>`;return;}
+  let html='';
+  shoots.forEach(s=>{
+    html+=`<div class="day-shoot-item" style="border-left-color:#C4552A">
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600">📷 ${s.location||'Съёмка'}</div>
+        <div style="font-size:12px;color:var(--t3)">${s.time||''}${s.project?' · '+s.project:''}${s.people?' · '+s.people:''}</div>
+        ${s.notes?`<div style="font-size:12px;color:var(--t2);margin-top:4px">${s.notes.length>120?s.notes.substring(0,120)+'...':s.notes}</div>`:''}
+      </div>
+    </div>`;
+  });
+  events.forEach(e=>{
+    html+=`<div class="day-shoot-item" style="border-left-color:#4A42B5">
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600">📍 ${e.title||''}</div>
+        <div style="font-size:12px;color:var(--t3)">${e.time||''}${e.category?' · '+e.category:''}</div>
+        ${e.notes?`<div style="font-size:12px;color:var(--t2);margin-top:4px">${e.notes}</div>`:''}
+      </div>
+    </div>`;
+  });
+  el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${acSelDay} — ${total} ${total===1?'запись':'записей'}</div>${html}</div>`;
 }
 
 function renderShoots(){
