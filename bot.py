@@ -3,10 +3,10 @@ from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8590477703:AAEVFUa4DBUiuvob2iI2Y1sOXetIjauk-n4")
-GROQ_KEY       = os.environ.get("GROQ_KEY", "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")
-SUPA_URL       = os.environ.get("SUPA_URL", "https://btgtgcwbrrnfbctchata.supabase.co")
-SUPA_KEY       = os.environ.get("SUPA_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Z3RnY3dicnJuZmJjdGNoYXRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTQ2OTgsImV4cCI6MjA5MjI5MDY5OH0.lyEWFcmsL3GIm0FrEZdGkK2uRSx26cNiBGFvCVsjdsY")
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
+GROQ_KEY       = os.environ.get("GROQ_KEY", "")
+SUPA_URL       = os.environ.get("SUPA_URL", "")
+SUPA_KEY       = os.environ.get("SUPA_KEY", "")
 
 SUPA_H = {
     "apikey": SUPA_KEY,
@@ -98,23 +98,28 @@ async def ask_groq(messages):
         role = "assistant" if m["role"] == "model" else "user"
         text = "".join(p.get("text","") for p in m.get("parts",[]))
         groq_messages.append({"role": role, "content": text})
+    # prefill: заставляем модель продолжить именно с JSON
+    groq_messages.append({"role": "assistant", "content": "{"})
     async with httpx.AsyncClient(timeout=30) as c:
         r = await c.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"},
-            json={"model": "llama-3.3-70b-versatile", "messages": groq_messages, "temperature": 0.1, "max_tokens": 1500}
+            json={"model": "openai/gpt-oss-120b", "messages": groq_messages, "temperature": 0.2, "max_tokens": 1500}
         )
         print(f"GROQ status: {r.status_code}")
         data = r.json()
-        # Полный лог если есть проблемы
         if "error" in data:
             print(f"GROQ ERROR: {data}")
         if "usage" in data:
             print(f"GROQ usage: {data['usage']}")
         finish_reason = data.get("choices",[{}])[0].get("finish_reason","?")
         print(f"GROQ finish_reason: {finish_reason}")
-        raw = data.get("choices",[{}])[0].get("message",{}).get("content","{}")
-        raw = raw.strip().replace("```json","").replace("```","").strip()
+        raw = data.get("choices",[{}])[0].get("message",{}).get("content","")
+        # дописываем { который мы префиллили обратно если модель его не повторила
+        raw = raw.strip()
+        if not raw.startswith("{"):
+            raw = "{" + raw
+        raw = raw.replace("```json","").replace("```","").strip()
         print(f"GROQ raw ({len(raw)} chars): {raw}")
         try:
             parsed = json.loads(raw)
@@ -678,7 +683,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION | filters.FORWARDED, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🦀 Rak bot v16 started!")
+    print("🦀 Rak bot v17 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
