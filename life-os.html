@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ЖИЗНЬ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -17,7 +17,7 @@
   --green:#2E6E1A;--gbg:#EBF5E8;
   --amber:#7A4A0A;--ambg:#FDF0D8;
   --purple:#4A42B5;--pbg:#EEEDFB;
-  --fi:'Fraunces',Georgia,serif;
+  --fi:'DM Mono',ui-monospace,monospace;
   --ff:'Inter',-apple-system,sans-serif;
   --pc0:#C4552A;--pc1:#1A5FA5;--pc2:#4A42B5;--pc3:#2E6E1A;--pc4:#C47A0A;
 }
@@ -29,7 +29,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 /* SIDEBAR */
 .sidebar{width:220px;flex-shrink:0;background:var(--s);border-right:1.5px solid var(--b);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:50;overflow:hidden}
 .sidebar-logo{padding:28px 24px 20px;border-bottom:1.5px solid var(--b)}
-.logo-text{font-family:var(--fi);font-size:28px;font-weight:600;color:var(--t);letter-spacing:-.5px}
+.logo-text{font-family:var(--fi);font-size:22px;font-weight:500;color:var(--t);letter-spacing:-.5px}
 .logo-sub{font-size:11px;color:var(--t3);margin-top:2px;letter-spacing:.5px;text-transform:uppercase}
 .sync-row{display:flex;align-items:center;gap:6px;margin-top:8px}
 .sdot{width:7px;height:7px;border-radius:50%;background:var(--a);flex-shrink:0}
@@ -48,12 +48,12 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 .main{margin-left:220px;flex:1;min-height:100vh}
 .page{display:none;padding:32px 36px 60px;max-width:960px}
 .page.active{display:block}
-.page-title{font-family:var(--fi);font-size:32px;font-weight:600;color:var(--t);margin-bottom:6px}
+.page-title{font-family:var(--fi);font-size:26px;font-weight:500;color:var(--t);margin-bottom:6px;letter-spacing:-.5px}
 .page-sub{font-size:13px;color:var(--t3);margin-bottom:28px}
 
 /* CALENDAR */
 .cal-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.cal-month{font-family:var(--fi);font-size:22px;font-weight:600;color:var(--t)}
+.cal-month{font-family:var(--fi);font-size:18px;font-weight:500;color:var(--t);letter-spacing:-.3px}
 .cal-nav-btns{display:flex;gap:6px}
 .cal-nav-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--bd);background:var(--s);cursor:pointer;color:var(--t2);font-size:17px;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .cal-nav-btn:hover{border-color:var(--a);color:var(--a)}
@@ -63,11 +63,14 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .cday{min-height:64px;border-radius:12px;padding:8px 6px 6px;cursor:pointer;position:relative;transition:all .15s;display:flex;flex-direction:column;align-items:center;background:var(--bg);border:1.5px solid transparent}
 .cday:hover{border-color:var(--am);background:var(--al)}
-.cday.today{background:var(--a);border-color:var(--a)}
-.cday.today .cday-num{color:#fff;font-weight:700}
+.cday.today{background:var(--t);border-color:var(--t)}
+.cday.today .cday-num{color:#FAF1DC;font-weight:700}
 .cday.other-month{background:transparent;border-color:transparent;opacity:.4}
 .cday.other-month:hover{background:var(--s2);opacity:.7}
 .cday.selected{border-color:var(--a);border-width:2px;background:var(--al)}
+.cday.selected .cday-num{color:var(--ad);font-weight:700}
+.cday.today.selected{background:var(--t);border-color:var(--a);border-width:2.5px}
+.cday.today.selected .cday-num{color:#FAF1DC;font-weight:700}
 .cday-num{font-size:14px;font-weight:500;color:var(--t2);margin-bottom:4px}
 .cday-dots{display:flex;flex-wrap:wrap;gap:2px;justify-content:center}
 .cdot{width:16px;height:5px;border-radius:3px}
@@ -140,12 +143,12 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
 .stat-c{background:var(--s);border:1.5px solid var(--bd);border-radius:14px;padding:18px;box-shadow:3px 3px 0 var(--bd);transition:all .15s}
 .stat-c:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--bd)}
-.stat-n{font-family:var(--fi);font-size:36px;font-weight:600;color:var(--a);margin-bottom:4px}
+.stat-n{font-family:var(--fi);font-size:32px;font-weight:500;color:var(--a);margin-bottom:4px;letter-spacing:-1px}
 .stat-l{font-size:11px;color:var(--t3);font-weight:500;text-transform:uppercase;letter-spacing:.5px}
 
 /* SECTION */
 .sec-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.sec-title{font-family:var(--fi);font-size:20px;font-weight:600;color:var(--t)}
+.sec-title{font-family:var(--fi);font-size:17px;font-weight:500;color:var(--t);letter-spacing:-.3px}
 
 /* BUTTONS */
 .btn-primary{padding:9px 18px;border:none;border-radius:10px;background:var(--a);color:#fff;font-size:13px;font-family:var(--ff);cursor:pointer;font-weight:600;transition:all .2s}
@@ -169,7 +172,7 @@ textarea.f{resize:none;line-height:1.6}
 .modal-bg.hidden{display:none}
 .modal{background:var(--s);border-radius:18px;padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(26,20,16,.2)}
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
-.modal-title{font-family:var(--fi);font-size:20px;font-weight:600}
+.modal-title{font-family:var(--fi);font-size:17px;font-weight:500;letter-spacing:-.3px}
 .modal-close{background:var(--s2);border:none;width:32px;height:32px;border-radius:50%;cursor:pointer;color:var(--t2);font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .modal-close:hover{background:var(--s3)}
 
@@ -208,9 +211,48 @@ textarea.f{resize:none;line-height:1.6}
   .shoots-grid,.proj-grid,.ideas-grid,.family-grid{grid-template-columns:1fr;gap:10px}
   .stats-grid{grid-template-columns:1fr 1fr;gap:10px}
   .diary-grid{grid-template-columns:1fr}
-  .page-title{font-size:24px}
-  .cal-month{font-size:18px}
+  .page-title{font-size:21px}
+  .cal-month{font-size:16px}
   .modal{padding:20px;max-width:calc(100vw - 24px)}
+}
+/* ===== HOME ===== */
+.home-greeting{margin-bottom:18px}
+.home-hello{font-family:var(--fi);font-size:28px;font-weight:500;color:var(--t);letter-spacing:-.5px;line-height:1.1}
+.home-phrase{font-size:13px;color:var(--t2);margin-top:6px;font-style:italic;line-height:1.4;max-width:560px}
+.home-row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.home-card{background:#FFF;border:1.5px solid var(--bd);border-radius:18px;padding:18px;box-shadow:3px 3px 0 var(--bd)}
+.home-card-projects{background:#F4B89C}
+.home-card-mood{background:#A4D7C0}
+.home-card-today{background:#FFF;margin-bottom:14px}
+.home-card-title{font-family:var(--fi);font-size:13px;font-weight:500;letter-spacing:-.3px;margin-bottom:14px;color:var(--t)}
+.home-proj-list{display:flex;flex-direction:column;gap:1px}
+.home-proj-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px dashed rgba(26,20,16,.25);font-size:13px;color:var(--t)}
+.home-proj-item:last-child{border-bottom:none}
+.home-proj-cnt{font-family:var(--fi);font-size:12px;color:var(--t);opacity:.6}
+.home-mood-bars{display:flex;align-items:flex-end;gap:5px;height:60px;margin-bottom:8px}
+.home-mood-bar{flex:1;border-radius:4px 4px 0 0;background:var(--t);min-height:4px;transition:all .2s}
+.home-mood-bar.empty{background:var(--t);opacity:.15}
+.home-mood-days{display:flex;justify-content:space-between;font-family:var(--fi);font-size:9px;color:var(--t);opacity:.6}
+.home-today-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:13px}
+.home-today-date{font-family:var(--fi);font-size:11px;color:var(--t2)}
+.home-today-item{border-radius:12px;padding:11px 13px;margin-bottom:8px;border:1.5px solid var(--bd);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.home-today-item:last-child{margin-bottom:0}
+.home-today-item-shoot{background:#F4B89C}
+.home-today-item-event{background:#C9C0E8}
+.home-today-info{flex:1;min-width:0}
+.home-today-title{font-size:13px;font-weight:600;color:var(--t)}
+.home-today-sub{font-size:11px;color:var(--t);opacity:.65;margin-top:2px}
+.home-today-time{font-family:var(--fi);font-size:13px;font-weight:500;background:var(--t);color:#FAF1DC;padding:4px 9px;border-radius:7px;flex-shrink:0}
+.home-today-empty{font-size:13px;color:var(--t2);padding:8px 0;font-style:italic}
+.home-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.home-stat{background:#FFF;border:1.5px solid var(--bd);border-radius:14px;padding:13px 14px;box-shadow:2px 2px 0 var(--bd);transition:all .15s}
+.home-stat:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--bd)}
+.home-stat-label{font-family:var(--fi);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:1.5px}
+.home-stat-num{font-family:var(--fi);font-size:26px;font-weight:500;color:var(--t);line-height:1;margin-top:5px;letter-spacing:-1px}
+@media(max-width:768px){
+  .home-hello{font-size:22px}
+  .home-row-2{grid-template-columns:1fr;gap:12px}
+  .home-stats{grid-template-columns:1fr 1fr;gap:8px}
 }
 </style>
 </head>
@@ -228,9 +270,10 @@ textarea.f{resize:none;line-height:1.6}
       </div>
     </div>
     <nav class="nav">
-      <button class="nb active" onclick="showPage('all-cal',this)"><span class="icon">🗓️</span>Общий</button>
+      <button class="nb active" onclick="showPage('home',this)"><span class="icon">🏠</span>Главная</button>
+      <button class="nb" onclick="showPage('all-cal',this)"><span class="icon">🗓️</span>Общий</button>
       <button class="nb" onclick="showPage('shoots-cal',this)"><span class="icon">📅</span>Съёмки</button>
-      <button class="nb" onclick="showPage('life-cal',this)"><span class="icon">🏠</span>Жизнь</button>
+      <button class="nb" onclick="showPage('life-cal',this)"><span class="icon">🏡</span>Жизнь</button>
       <button class="nb" onclick="showPage('projects',this)"><span class="icon">🎬</span>Проекты</button>
       <button class="nb" onclick="showPage('ideas',this)"><span class="icon">💡</span>Идеи</button>
       <button class="nb" onclick="showPage('diary',this)"><span class="icon">📓</span>Дневник</button>
@@ -249,9 +292,10 @@ textarea.f{resize:none;line-height:1.6}
       <span class="sync-row"><span class="sdot" id="sdot2"></span><span style="font-size:11px;color:var(--t3)" id="stext2"></span></span>
     </div>
     <div class="mob-nav">
-      <button class="mob-nb active" onclick="showPage('all-cal',this,true)">🗓️ Общий</button>
+      <button class="mob-nb active" onclick="showPage('home',this,true)">🏠 Главная</button>
+      <button class="mob-nb" onclick="showPage('all-cal',this,true)">🗓️ Общий</button>
       <button class="mob-nb" onclick="showPage('shoots-cal',this,true)">📅 Съёмки</button>
-      <button class="mob-nb" onclick="showPage('life-cal',this,true)">🏠 Жизнь</button>
+      <button class="mob-nb" onclick="showPage('life-cal',this,true)">🏡 Жизнь</button>
       <button class="mob-nb" onclick="showPage('projects',this,true)">🎬 Проекты</button>
       <button class="mob-nb" onclick="showPage('ideas',this,true)">💡 Идеи</button>
       <button class="mob-nb" onclick="showPage('diary',this,true)">📓 Дневник</button>
@@ -263,8 +307,58 @@ textarea.f{resize:none;line-height:1.6}
   <!-- MAIN -->
   <main class="main">
 
+    <!-- HOME -->
+    <div class="page active" id="page-home">
+      <div class="home-greeting">
+        <div class="home-hello" id="home-hello">Доброе утро</div>
+        <div class="home-phrase" id="home-phrase"></div>
+      </div>
+
+      <div class="home-row-2">
+        <div class="home-card home-card-projects">
+          <div class="home-card-title">сейчас в работе</div>
+          <div id="home-projects-list" class="home-proj-list"></div>
+        </div>
+
+        <div class="home-card home-card-mood">
+          <div class="home-card-title">настроение недели</div>
+          <div class="home-mood-bars" id="home-mood-bars"></div>
+          <div class="home-mood-days">
+            <span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-card home-card-today">
+        <div class="home-today-row">
+          <div class="home-card-title">сегодня</div>
+          <div class="home-today-date" id="home-today-date"></div>
+        </div>
+        <div id="home-today-list"></div>
+      </div>
+
+      <div class="home-stats">
+        <div class="home-stat">
+          <div class="home-stat-label">съёмок</div>
+          <div class="home-stat-num" id="home-stat-shoots">0</div>
+        </div>
+        <div class="home-stat">
+          <div class="home-stat-label">проектов</div>
+          <div class="home-stat-num" id="home-stat-projects">0</div>
+        </div>
+        <div class="home-stat">
+          <div class="home-stat-label">идей</div>
+          <div class="home-stat-num" id="home-stat-ideas">0</div>
+        </div>
+        <div class="home-stat">
+          <div class="home-stat-label">записей</div>
+          <div class="home-stat-num" id="home-stat-diary">0</div>
+        </div>
+      </div>
+    </div>
+
     <!-- ALL CAL (общий календарь — съёмки + события) -->
-    <div class="page active" id="page-all-cal">
+    <div class="page" id="page-all-cal">
       <div class="page-title">Общий календарь</div>
       <div class="page-sub">Съёмки, события, врачи и встречи в одном месте</div>
       <div class="cal-wrap">
@@ -551,7 +645,7 @@ function setSyncOk(ok){
 }
 
 function renderAll(){
-  renderAllCal();renderShootsCal();renderLifeCal();renderShoots();renderEvents();
+  renderHome();renderAllCal();renderShootsCal();renderLifeCal();renderShoots();renderEvents();
   renderProjects();renderIdeas();renderDiary();renderFamily();renderWeek();updateSelects();
 }
 
@@ -924,6 +1018,121 @@ async function saveFamily(){
 }
 
 // UI
+const HOME_PHRASES=[
+  "Пусть день будет лёгким",
+  "Сегодня получится больше чем кажется",
+  "Тишина внутри — лучшая защита",
+  "Один маленький шаг важнее большого плана",
+  "Не торопись, но и не стой",
+  "Сегодня встретишь то, что нужно встретить",
+  "Доверься своему ритму",
+  "Каждый кадр на своём месте",
+  "Делай по чуть-чуть, и день сложится",
+  "Сегодня хороший день для одного важного звонка",
+  "Усталость — тоже работа. Учитывай её",
+  "Будь к себе как к подруге",
+  "Не всё нужно делать сегодня",
+  "Где внимание — там и жизнь",
+  "Сегодня день для коротких списков",
+  "Спокойствие сильнее эффективности",
+  "Иногда лучшее дело — пауза",
+  "Этот день никогда не повторится. И это нормально",
+  "Маленькая радость стоит большого плана",
+  "Сегодня можно меньше, чем вчера, и это окей",
+  "Свет всегда найдёт дорогу",
+  "Дыши. Просто дыши",
+  "Время идёт даже когда ты отдыхаешь",
+  "Не бойся быть медленной",
+  "Сегодня ты сделаешь что-то такое, что вспомнишь через год",
+  "Записывай мысли — они любят тебя за это",
+  "Хороший кофе решает половину дел",
+  "Кто-то о тебе сегодня вспомнит с теплом",
+  "День любит тех, кто ему улыбается утром",
+  "Будь добра к себе сегодняшней"
+];
+function homeGreeting(){
+  const h=new Date().getHours();
+  if(h<5)return"Доброй ночи";
+  if(h<12)return"Доброе утро";
+  if(h<18)return"Добрый день";
+  if(h<23)return"Добрый вечер";
+  return"Доброй ночи";
+}
+function homePhraseOfDay(){
+  const d=new Date();
+  const seed=d.getFullYear()*1000+d.getMonth()*32+d.getDate();
+  return HOME_PHRASES[seed%HOME_PHRASES.length];
+}
+function moodColor(m){
+  if(m==='хорошо')return'#5DCAA5';
+  if(m==='плохо')return'#E68872';
+  return'#F4B73C';
+}
+function moodHeight(m){
+  if(m==='хорошо')return 100;
+  if(m==='плохо')return 35;
+  return 65;
+}
+function renderHome(){
+  document.getElementById('home-hello').textContent=homeGreeting()+', Катерина';
+  document.getElementById('home-phrase').textContent=homePhraseOfDay();
+  // проекты в работе
+  const projItems=(DB.projects||[]).filter(p=>(p.status||'в работе')!=='готово').slice(0,5);
+  const projHtml=projItems.length?projItems.map(p=>{
+    const cnt=(DB.shoots||[]).filter(s=>s.project===p.name).length;
+    const word=cnt===1?'съёмка':cnt<5?'съёмки':'съёмок';
+    return `<div class="home-proj-item"><span>${p.name||'без названия'}</span><span class="home-proj-cnt">${cnt} ${word}</span></div>`;
+  }).join(''):'<div style="font-size:13px;color:var(--t);opacity:.6;font-style:italic">пока пусто</div>';
+  document.getElementById('home-projects-list').innerHTML=projHtml;
+  // настроение за неделю
+  const today=new Date();
+  const weekStart=new Date(today);
+  const dayOfWeek=(today.getDay()+6)%7;
+  weekStart.setDate(today.getDate()-dayOfWeek);
+  const moodBars=[];
+  for(let i=0;i<7;i++){
+    const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);
+    const ds=d.toISOString().slice(0,10);
+    const entry=(DB.diary||[]).find(e=>e.date===ds);
+    if(entry){
+      moodBars.push(`<div class="home-mood-bar" style="height:${moodHeight(entry.mood)}%;background:${moodColor(entry.mood)}"></div>`);
+    } else {
+      moodBars.push(`<div class="home-mood-bar empty" style="height:20%"></div>`);
+    }
+  }
+  document.getElementById('home-mood-bars').innerHTML=moodBars.join('');
+  // сегодня
+  const todayStr=today.toISOString().slice(0,10);
+  const months=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  document.getElementById('home-today-date').textContent=`${today.getDate()} ${months[today.getMonth()]}`;
+  const todayShoots=(DB.shoots||[]).filter(s=>s.date===todayStr);
+  const todayEvents=(DB.events||[]).filter(e=>e.date===todayStr);
+  let todayHtml='';
+  todayShoots.forEach(s=>{
+    const what=(s.project||'').trim()||s.location||'съёмка';
+    const sub=s.location&&s.project?s.location:(s.people||'');
+    todayHtml+=`<div class="home-today-item home-today-item-shoot">
+      <div class="home-today-info"><div class="home-today-title">${what}</div>${sub?`<div class="home-today-sub">${sub}</div>`:''}</div>
+      ${s.time?`<div class="home-today-time">${s.time}</div>`:''}
+    </div>`;
+  });
+  todayEvents.forEach(e=>{
+    todayHtml+=`<div class="home-today-item home-today-item-event">
+      <div class="home-today-info"><div class="home-today-title">${e.title||'событие'}</div>${e.category?`<div class="home-today-sub">${e.category}</div>`:''}</div>
+      ${e.time?`<div class="home-today-time">${e.time}</div>`:''}
+    </div>`;
+  });
+  if(!todayHtml)todayHtml='<div class="home-today-empty">сегодня свободно ✦</div>';
+  document.getElementById('home-today-list').innerHTML=todayHtml;
+  // счётчики
+  const week=7*24*60*60*1000;
+  const now=Date.now();
+  document.getElementById('home-stat-shoots').textContent=(DB.shoots||[]).filter(s=>now-new Date(s.created_at)<week).length;
+  document.getElementById('home-stat-projects').textContent=(DB.projects||[]).filter(p=>(p.status||'в работе')!=='готово').length;
+  document.getElementById('home-stat-ideas').textContent=(DB.ideas||[]).length;
+  document.getElementById('home-stat-diary').textContent=(DB.diary||[]).length;
+}
+
 function showPage(id,btn,isMob){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
