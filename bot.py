@@ -70,7 +70,20 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
     а Катерина даёт эти недостающие данные одним-двумя словами ("завтра", "в 10", "25 апреля").
     data: {{field_given: "date"|"time"|"location", value: "..."}}
 
-11. РАЗГОВОР (action: none) — только короткие междометия и прямые вопросы.
+11. ЗАПРОС ИНФОРМАЦИИ (action: query) — Катерина спрашивает что-то по своим данным.
+    ПРИМЕРЫ:
+    • "какие люди снимались в этом месяце" → intent=list_people, period=month
+    • "кто снимался на этой неделе" → intent=list_people, period=week
+    • "когда последняя съёмка с олегом" → intent=last_shoot_with_person, params={{person:"олег"}}
+    • "сколько съёмок было в апреле" → intent=count_shoots, period=month
+    • "что у меня запланировано" / "что завтра" → intent=upcoming, params={{days:7}} или {{days:1}}
+    • "съёмки с локомотивом" → intent=list_shoots, params={{project:"локомотив"}}
+    • "съёмки в апреле" → intent=list_shoots, period=month
+    • "какие у меня проекты" → intent=project_stats
+    data: {{intent: "list_people"|"count_shoots"|"list_shoots"|"last_shoot_with_person"|"project_stats"|"upcoming", period: "week"|"month"|"all", params: {{...}}}}
+    reply: всегда пиши "Сейчас посмотрю..." — основной текст бот сформирует сам по данным.
+
+12. РАЗГОВОР (action: none) — только короткие междометия и прямые вопросы.
     "привет","дякую","ок","да","нет" — action: none.
 
 ХАРАКТЕР: отвечай на том же языке что Катерина. Поддержи если тяжело. Не навязывайся с вопросами.
@@ -78,7 +91,7 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 ПОСЛЕ СОХРАНЕНИЯ В ДНЕВНИК скажи коротко что записала, можешь мягко спросить как она.
 
 ФОРМАТ — только JSON без markdown:
-{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|clarify|clarify_reply|clear_field|complete_project|add_idea|add_diary|add_event|add_project","data":{{}}}}
+{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|clarify|clarify_reply|clear_field|complete_project|add_idea|add_diary|add_event|add_project|query","data":{{}}}}
 
 data для add_multiple_shoots: {{"shoots":[{{"date":"YYYY-MM-DD","time":"HH:MM","location":"","project":"","people":"","script":"","notes":""}}]}}
 data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
@@ -87,6 +100,7 @@ data для delete_shoot: shoot_date, shoot_location, shoot_time
 data для clear_field: field, entity
 data для clarify: partial
 data для clarify_reply: field_given, value
+data для query: intent, period (опционально), params (опционально)
 
 ⚠️ ОБЯЗАТЕЛЬНО: твой ответ — это ВАЛИДНЫЙ JSON в одну строку с тремя ключами reply, action, data. Не пустой {{}}. Не markdown. Не ```. Просто JSON.
 ПРИМЕР минимального ответа: {{"reply":"Окей","action":"none","data":{{}}}}
@@ -168,6 +182,156 @@ async def supa_delete(table, field, value):
     async with httpx.AsyncClient() as c:
         r = await c.delete(f"{SUPA_URL}/rest/v1/{table}?{field}=eq.{value}", headers=SUPA_H)
         return r.status_code in (200, 204)
+
+def _parse_people(text):
+    """Разбирает поле people в съёмке на отдельные имена."""
+    if not text:
+        return []
+    raw = text.replace(";", ",").replace(" и ", ",").replace(" та ", ",")
+    return [p.strip() for p in raw.split(",") if p.strip()]
+
+def _period_filter(items, period):
+    """Фильтрует записи по полю date в зависимости от периода."""
+    if period == "all" or not period:
+        return items
+    now = datetime.now()
+    if period == "week":
+        cutoff = now - timedelta(days=7)
+    elif period == "month":
+        cutoff = now.replace(day=1)
+    else:
+        return items
+    out = []
+    for it in items:
+        d = it.get("date","")
+        if not d:
+            continue
+        try:
+            dt = datetime.strptime(d, "%Y-%m-%d")
+            if dt >= cutoff:
+                out.append(it)
+        except:
+            pass
+    return out
+
+def _period_label(period):
+    if period == "week":
+        return "за неделю"
+    if period == "month":
+        now = datetime.now()
+        months = ["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"]
+        return f"за {months[now.month-1]}"
+    return "за всё время"
+
+async def run_query(intent, period="month", params=None):
+    """Универсальный обработчик запросов — возвращает текстовый ответ."""
+    params = params or {}
+    shoots = await supa_get("shoots", 500)
+    projects = await supa_get("projects", 100)
+
+    if intent == "list_people":
+        flt = _period_filter(shoots, period)
+        if not flt:
+            return f"Съёмок {_period_label(period)} нет."
+        # агрегируем людей
+        people_stats = {}  # name -> {"count": int, "last": "YYYY-MM-DD"}
+        for s in flt:
+            for p in _parse_people(s.get("people","")):
+                key = p.lower()
+                if key not in people_stats:
+                    people_stats[key] = {"name": p, "count": 0, "last": ""}
+                people_stats[key]["count"] += 1
+                d = s.get("date","")
+                if d > people_stats[key]["last"]:
+                    people_stats[key]["last"] = d
+        if not people_stats:
+            return f"Имён людей не записано в съёмках {_period_label(period)}."
+        # сортировка по убыванию количества
+        sorted_p = sorted(people_stats.values(), key=lambda x: -x["count"])
+        lines = [f"👥 Люди {_period_label(period)}:\n"]
+        for p in sorted_p:
+            last = fmt_date(p["last"]) if p["last"] else "?"
+            times = "съёмка" if p["count"]==1 else "съёмки" if p["count"]<5 else "съёмок"
+            lines.append(f"• {p['name']} — {p['count']} {times}, последняя {last}")
+        return "\n".join(lines)
+
+    if intent == "count_shoots":
+        flt = _period_filter(shoots, period)
+        return f"📊 Съёмок {_period_label(period)}: {len(flt)}"
+
+    if intent == "list_shoots":
+        items = shoots
+        if params.get("project"):
+            q = params["project"].lower()
+            items = [s for s in items if q in (s.get("project","") or "").lower()]
+        if params.get("location"):
+            q = params["location"].lower()
+            items = [s for s in items if q in (s.get("location","") or "").lower()]
+        if period and period != "all":
+            items = _period_filter(items, period)
+        if not items:
+            return "Ничего не нашла по этому запросу."
+        items = sorted(items, key=lambda x: x.get("date",""), reverse=True)[:15]
+        lines = [f"📅 Съёмки ({len(items)}):\n"]
+        for s in items:
+            what = s.get("project","").strip() or s.get("location","?")
+            lines.append(f"• {fmt_date(s.get('date',''))} {s.get('time','')} — {what}")
+        return "\n".join(lines)
+
+    if intent == "last_shoot_with_person":
+        person = (params.get("person") or "").lower()
+        if not person:
+            return "С кем именно?"
+        matched = [s for s in shoots if person in (s.get("people","") or "").lower()]
+        if not matched:
+            return f"Съёмок с «{params.get('person')}» не нашла."
+        matched = sorted(matched, key=lambda x: x.get("date",""), reverse=True)
+        last = matched[0]
+        what = last.get("project","").strip() or last.get("location","?")
+        return f"📅 Последняя съёмка с {params.get('person')} — {fmt_date(last.get('date',''))} {last.get('time','')}, {what}.\nВсего съёмок: {len(matched)}"
+
+    if intent == "project_stats":
+        if not projects:
+            return "Проектов пока нет."
+        lines = ["🎬 Проекты:\n"]
+        for p in projects:
+            cnt = sum(1 for s in shoots if s.get("project","")==p.get("name",""))
+            status = p.get("status","в работе")
+            lines.append(f"• {p.get('name','?')} — {cnt} съёмок, {status}")
+        return "\n".join(lines)
+
+    if intent == "upcoming":
+        days = int(params.get("days", 7))
+        today = datetime.now().date()
+        cutoff = today + timedelta(days=days)
+        items = []
+        for s in shoots:
+            d = s.get("date","")
+            try:
+                dt = datetime.strptime(d, "%Y-%m-%d").date()
+                if today <= dt <= cutoff:
+                    items.append(("📷", s, dt))
+            except:
+                pass
+        events = await supa_get("events", 200)
+        for e in events:
+            d = e.get("date","")
+            try:
+                dt = datetime.strptime(d, "%Y-%m-%d").date()
+                if today <= dt <= cutoff:
+                    items.append(("📍", e, dt))
+            except:
+                pass
+        if not items:
+            return f"На ближайшие {days} {'день' if days==1 else 'дня' if days<5 else 'дней'} ничего не запланировано."
+        items.sort(key=lambda x: x[2])
+        lines = [f"📌 Что впереди:\n"]
+        for icon, it, dt in items:
+            title = it.get("project","") or it.get("location","") or it.get("title","")
+            lines.append(f"• {icon} {fmt_date(it.get('date',''))} {it.get('time','')} — {title}")
+        return "\n".join(lines)
+
+    return "Не поняла запрос. Спроси по-другому?"
 
 async def apply_action(action, data):
     today = datetime.now().strftime("%Y-%m-%d")
@@ -454,7 +618,17 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             return
 
         saved = False
-        if action not in ("none","clarify","clarify_reply"):
+        if action == "query":
+            # выполняем запрос и заменяем reply на результат
+            intent = data.get("intent","")
+            period = data.get("period","month")
+            params = data.get("params", {}) or {}
+            try:
+                reply = await run_query(intent, period, params)
+            except Exception as qe:
+                print(f"QUERY ERROR: {qe}")
+                reply = "Не получилось достать данные 😔"
+        elif action not in ("none","clarify","clarify_reply"):
             saved = await apply_action(action, data)
         # если было pending от clarify а пришло что-то другое — сбрасываем
         pending.pop(uid, None) if uid in pending and pending[uid].get("type") == "clarify_shoot" else None
@@ -685,7 +859,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION | filters.FORWARDED, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🦀 Rak bot v18 started!")
+    print("🦀 Rak bot v19 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
