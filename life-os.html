@@ -10,8 +10,8 @@
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --a:#5D3A8E;--ad:#3D2560;--al:#EEE8F8;--am:#7E5BAA;
-  --bg:#D4C5F2;--s:#F2EBDB;--s2:#E8DFC8;--s3:#DDD2B8;
-  --b:#C8B8E5;--b2:#A893D0;--bd:#1A1410;
+  --bg:#F2EBDB;--s:#FFFFFF;--s2:#F7F1E0;--s3:#EDE5D2;
+  --b:#E0D6C0;--b2:#C8BEA8;--bd:#1A1410;
   --t:#1A1410;--t2:#5F4F70;--t3:#9080A8;
   --blue:#3A5F8E;--bbg:#BFD9EE;
   --green:#3A6E4A;--gbg:#B8D9C3;
@@ -222,37 +222,38 @@ textarea.f{resize:none;line-height:1.6}
 .home-phrase{font-size:13px;color:var(--t2);margin-top:6px;font-style:italic;line-height:1.4;max-width:560px}
 .home-row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 .home-card{background:var(--s);border:1.5px solid var(--bd);border-radius:18px;padding:18px;box-shadow:3px 3px 0 var(--bd)}
-.home-card-projects{background:var(--pbg);cursor:pointer;transition:all .15s}
+.home-card-projects{cursor:pointer;transition:all .15s}
 .home-card-projects:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--bd)}
-.home-card-mood{background:var(--s)}
-.home-card-today{background:var(--s);margin-bottom:14px}
+.home-card-mood{}
+.home-card-today{margin-bottom:14px}
 .home-card-title{font-family:var(--fi);font-size:13px;font-weight:500;letter-spacing:-.3px;margin-bottom:14px;color:var(--t)}
 .home-proj-list{display:flex;flex-direction:column;gap:1px}
-.home-proj-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px dashed rgba(26,20,16,.25);font-size:13px;color:var(--t)}
+.home-proj-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px dashed rgba(26,20,16,.18);font-size:13px;color:var(--t)}
 .home-proj-item:last-child{border-bottom:none}
-.home-proj-cnt{font-family:var(--fi);font-size:12px;color:var(--a);font-weight:500}
+.home-proj-cnt{font-family:var(--fi);font-size:11px;background:var(--gbg);color:var(--green);padding:3px 10px;border-radius:12px;border:1px solid var(--green);font-weight:500}
 .home-mood-bars{display:flex;align-items:flex-end;gap:5px;height:60px;margin-bottom:8px}
 .home-mood-bar{flex:1;border-radius:4px 4px 0 0;background:var(--t);min-height:4px;transition:all .2s}
 .home-mood-bar.empty{background:var(--t);opacity:.15}
 .home-mood-days{display:flex;justify-content:space-between;font-family:var(--fi);font-size:9px;color:var(--t);opacity:.6}
 .home-mood-empty{font-size:13px;color:var(--t2);font-style:italic;line-height:1.5;padding:8px 0}
 .home-today-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:13px}
-.home-today-date{font-family:var(--fi);font-size:11px;color:var(--a);font-weight:500}
-.home-today-item{border-radius:12px;padding:11px 13px;margin-bottom:8px;border:1.5px solid var(--bd);display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;transition:all .12s}
+.home-today-date{font-family:var(--fi);font-size:11px;color:var(--a);font-weight:500;background:var(--al);padding:3px 10px;border-radius:12px;border:1px solid var(--a)}
+.home-today-item{border-radius:12px;padding:11px 13px;margin-bottom:8px;border:1.5px solid var(--bd);display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;transition:all .12s;background:var(--s2)}
 .home-today-item:hover{transform:translate(-1px,-1px);box-shadow:2px 2px 0 var(--bd)}
 .home-today-item:last-child{margin-bottom:0}
 .home-today-item-shoot{background:var(--peachbg)}
-.home-today-item-event{background:var(--pbg)}
+.home-today-item-event{background:var(--bbg)}
 .home-today-item.done{background:var(--gbg);opacity:.78}
 .home-today-item.done .home-today-title{text-decoration:line-through;text-decoration-thickness:1px;text-decoration-color:rgba(26,20,16,.4)}
 .home-today-info{flex:1;min-width:0}
 .home-today-title{font-size:13px;font-weight:600;color:var(--t)}
 .home-today-sub{font-size:11px;color:var(--t);opacity:.65;margin-top:2px}
-.home-today-time{font-family:var(--fi);font-size:13px;font-weight:500;background:var(--t);color:var(--s);padding:4px 9px;border-radius:7px;flex-shrink:0}
-.home-today-done{font-family:var(--fi);font-size:13px;font-weight:500;background:var(--green);color:var(--s);padding:4px 9px;border-radius:7px;flex-shrink:0}
+.home-today-time{font-family:var(--fi);font-size:11px;font-weight:500;background:var(--bbg);color:var(--blue);padding:4px 10px;border-radius:12px;border:1px solid var(--blue);flex-shrink:0}
+.home-today-time-event{background:var(--pbg);color:var(--purple);border-color:var(--purple)}
+.home-today-done{font-family:var(--fi);font-size:11px;font-weight:500;background:var(--gbg);color:var(--green);padding:4px 10px;border-radius:12px;border:1px solid var(--green);flex-shrink:0}
 .home-today-empty{font-size:13px;color:var(--t2);padding:8px 0;font-style:italic}
 .home-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.home-stat{background:var(--s);border:1.5px solid var(--bd);border-radius:14px;padding:13px 14px;box-shadow:2px 2px 0 var(--bd);transition:all .15s;cursor:pointer;text-align:left}
+.home-stat{background:var(--s);border:1.5px solid var(--bd);border-radius:14px;padding:13px 14px;box-shadow:2px 2px 0 var(--bd);transition:all .15s;cursor:pointer;text-align:left;font-family:inherit}
 .home-stat:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--bd)}
 .home-stat-label{font-family:var(--fi);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:1.5px}
 .home-stat-num{font-family:var(--fi);font-size:26px;font-weight:500;color:var(--a);line-height:1;margin-top:5px;letter-spacing:-1px}
@@ -1094,6 +1095,23 @@ function localDateStr(d){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+function parseDiaryDate(s){
+  if(!s)return'';
+  s=String(s).trim();
+  // уже ISO формат
+  if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);
+  // русский формат "25 апреля 2026" или "25 апреля"
+  const months={'января':'01','февраля':'02','марта':'03','апреля':'04','мая':'05','июня':'06','июля':'07','августа':'08','сентября':'09','октября':'10','ноября':'11','декабря':'12','січня':'01','лютого':'02','березня':'03','квітня':'04','травня':'05','червня':'06','липня':'07','серпня':'08','вересня':'09','жовтня':'10','листопада':'11','грудня':'12'};
+  const m=s.toLowerCase().match(/(\d{1,2})\s+([а-яёі]+)(?:\s+(\d{4}))?/);
+  if(m){
+    const day=m[1].padStart(2,'0');
+    const month=months[m[2]];
+    const year=m[3]||String(new Date().getFullYear());
+    if(month)return`${year}-${month}-${day}`;
+  }
+  return s;
+}
+
 function renderHome(){
   document.getElementById('home-hello').textContent=homeGreeting()+', Катерина';
   document.getElementById('home-phrase').textContent=homePhraseOfDay();
@@ -1115,29 +1133,20 @@ function renderHome(){
   const weekStart=new Date(today);
   const dayOfWeek=(today.getDay()+6)%7;
   weekStart.setDate(today.getDate()-dayOfWeek);
-  let dbg=`<div style="background:#FFF;border:1.5px solid #1A1410;border-radius:8px;padding:8px 10px;margin-top:8px;font-family:monospace;font-size:10px;line-height:1.5;color:#333">
-    today: ${localDateStr(today)} (день недели=${dayOfWeek})<br>
-    weekStart: ${localDateStr(weekStart)}<br>
-    DB.diary: ${(DB.diary||[]).length} записей<br>`;
-  if(DB.diary&&DB.diary[0]){
-    dbg+=`first: date="${DB.diary[0].date}" mood="${DB.diary[0].mood}"<br>`;
-  }
   const weekData=[];
   for(let i=0;i<7;i++){
     const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);
     const ds=localDateStr(d);
     const entry=(DB.diary||[]).find(e=>{
-      const edate=(e.date||'').slice(0,10);
+      const edate=parseDiaryDate(e.date);
       return edate===ds;
     });
     weekData.push(entry);
-    dbg+=`${ds}: ${entry?'✓ '+(entry.mood||'?'):'—'}<br>`;
   }
-  dbg+=`</div>`;
   const filledCount=weekData.filter(x=>x).length;
   const moodEl=document.getElementById('home-mood-content');
   if(filledCount===0){
-    moodEl.innerHTML=`<div class="home-mood-empty">дневник пока пуст. начни записывать как день прошёл</div>${dbg}`;
+    moodEl.innerHTML=`<div class="home-mood-empty">дневник пока пуст. начни записывать как день прошёл</div>`;
   } else {
     let bars='';
     weekData.forEach(entry=>{
@@ -1148,7 +1157,7 @@ function renderHome(){
       }
     });
     moodEl.innerHTML=`<div class="home-mood-bars">${bars}</div>
-      <div class="home-mood-days"><span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span></div>${dbg}`;
+      <div class="home-mood-days"><span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span></div>`;
   }
   // сегодня
   const todayStr=localDateStr(today);

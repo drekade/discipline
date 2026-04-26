@@ -400,7 +400,7 @@ async def apply_action(action, data):
     elif action == "add_idea":
         return await supa_insert("ideas",{"title":data.get("title",""),"description":data.get("description",""),"category":data.get("category","Идея"),"image_url":None})
     elif action == "add_diary":
-        return await supa_insert("diary",{"date":today_ru,"mood":data.get("mood","нейтрально"),"events":data.get("events",""),"thoughts":data.get("thoughts","")})
+        return await supa_insert("diary",{"date":today,"mood":data.get("mood","нейтрально"),"events":data.get("events",""),"thoughts":data.get("thoughts","")})
     elif action == "add_event":
         return await supa_insert("events",{"title":data.get("title",""),"date":data.get("date",today),"time":data.get("time",""),"category":data.get("category","Личное"),"notes":data.get("notes","")})
     elif action == "add_project":
@@ -859,7 +859,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION | filters.FORWARDED, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🦀 Rak bot v19 started!")
+    print("🦀 Rak bot v20 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
