@@ -226,7 +226,7 @@ textarea.f{resize:none;line-height:1.6}
 .home-card-projects:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--bd)}
 .home-card-mood{}
 .home-card-today{margin-bottom:14px}
-.home-card-title{font-family:var(--fi);font-size:13px;font-weight:500;letter-spacing:-.3px;margin-bottom:14px;color:var(--t)}
+.home-card-title{font-family:var(--fi);font-size:13px;font-weight:500;letter-spacing:-.3px;margin-bottom:14px;color:var(--t);display:block;position:relative;z-index:1}
 .home-proj-list{display:flex;flex-direction:column;gap:1px}
 .home-proj-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px dashed rgba(26,20,16,.18);font-size:13px;color:var(--t)}
 .home-proj-item:last-child{border-bottom:none}
@@ -337,7 +337,6 @@ textarea.f{resize:none;line-height:1.6}
         </div>
 
         <div class="home-card home-card-mood">
-          <div class="home-card-title">настроение недели</div>
           <div id="home-mood-content"></div>
         </div>
       </div>
@@ -1156,7 +1155,8 @@ function renderHome(){
         bars+=`<div class="home-mood-bar empty" style="height:20%"></div>`;
       }
     });
-    moodEl.innerHTML=`<div class="home-mood-bars">${bars}</div>
+    moodEl.innerHTML=`<div style="font-family:var(--fi);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px">настроение недели</div>
+      <div class="home-mood-bars">${bars}</div>
       <div class="home-mood-days"><span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span></div>`;
   }
   // сегодня
