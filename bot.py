@@ -413,6 +413,18 @@ def fmt_date(date_str):
     except:
         return date_str or ""
 
+def append_log(old_text, new_text):
+    """Склеивает новую запись со старой, новая сверху с датой-шапкой."""
+    new_text = (new_text or "").strip()
+    if not new_text:
+        return old_text or ""
+    header = f"━━ {datetime.now().strftime('%d.%m.%Y')} ━━"
+    new_block = f"{header}\n{new_text}"
+    old_text = (old_text or "").strip()
+    if not old_text:
+        return new_block
+    return f"{new_block}\n\n{old_text}"
+
 def main_kbd():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📅 Съёмки", callback_data="shoots"),
@@ -549,7 +561,12 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             entity_type = p["type"]
             entity_id = p["id"]
             if entity_type == "shoot":
-                await supa_update("shoots","id",entity_id,{field:text.strip()})
+                # склейка журналом для notes и script
+                shoots = await supa_get("shoots",100)
+                s_cur = next((x for x in shoots if x.get("id")==entity_id),None)
+                old = s_cur.get(field,"") if s_cur else ""
+                merged = append_log(old, text.strip())
+                await supa_update("shoots","id",entity_id,{field:merged})
                 shoots = await supa_get("shoots",100)
                 s = next((x for x in shoots if x.get("id")==entity_id),None)
                 if s:
@@ -557,7 +574,12 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                         parse_mode="Markdown",reply_markup=shoot_detail_kbd(entity_id,s.get("status","")))
                 return
             elif entity_type == "project":
-                await supa_update("projects","id",entity_id,{field:text.strip()})
+                # склейка журналом для notes и link
+                projects = await supa_get("projects",50)
+                p_cur = next((x for x in projects if x.get("id")==entity_id),None)
+                old = p_cur.get(field,"") if p_cur else ""
+                merged = append_log(old, text.strip())
+                await supa_update("projects","id",entity_id,{field:merged})
                 projects = await supa_get("projects",50)
                 shoots = await supa_get("shoots",100)
                 tasks = await supa_get("tasks",200)
@@ -859,7 +881,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION | filters.FORWARDED, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🦀 Rak bot v20 started!")
+    print("🦀 Rak bot v21 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
