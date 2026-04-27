@@ -546,49 +546,17 @@ textarea.f{resize:none;line-height:1.6}
       <button class="modal-close" onclick="hideModal('modal-edit-shoot')">✕</button>
     </div>
     <input type="hidden" id="es-id">
-
-    <!-- статус вверху как toggle -->
-    <div style="margin-bottom:18px">
-      <button id="es-status-btn" onclick="toggleEsStatus()" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--bd);font-size:13px;font-weight:600;font-family:var(--ff);cursor:pointer;transition:all .15s">○ не снято</button>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="form-row" style="margin-bottom:0"><label class="field-label">Дата</label><input type="date" id="es-date"></div>
-      <div class="form-row" style="margin-bottom:0"><label class="field-label">Время</label><input type="time" id="es-time"></div>
-    </div>
-    <div style="height:14px"></div>
+    <div class="form-row"><label class="field-label">Дата</label><input type="date" id="es-date"></div>
+    <div class="form-row"><label class="field-label">Время</label><input type="time" id="es-time"></div>
     <div class="form-row"><label class="field-label">Проект (тема)</label><select id="es-proj"><option value="">— нет —</option></select></div>
     <div class="form-row"><label class="field-label">Локация</label><input type="text" id="es-loc"></div>
     <div class="form-row"><label class="field-label">Участники</label><input type="text" id="es-people"></div>
-
-    <!-- ССЫЛКИ -->
-    <div class="form-row">
-      <label class="field-label">Ссылки</label>
-      <div id="es-links-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
-      <div style="display:flex;gap:6px">
-        <select id="es-link-type" style="width:130px;padding:8px 10px;border:1.5px solid var(--b);border-radius:9px;background:var(--s2);color:var(--t);font-size:12px;font-family:var(--ff)">
-          <option value="сценарий">📄 сценарий</option>
-          <option value="референс">🎨 референс</option>
-          <option value="ссылка">🔗 ссылка</option>
-        </select>
-        <input type="text" id="es-link-url" placeholder="https://..." style="flex:1;padding:8px 10px;border:1.5px solid var(--b);border-radius:9px;background:var(--s2);color:var(--t);font-size:12px;font-family:var(--ff)">
-        <button onclick="addEsLink()" style="padding:8px 14px;border:1.5px solid var(--bd);border-radius:9px;background:var(--al);color:var(--a);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:2px 2px 0 var(--bd)">+</button>
-      </div>
+    <div class="form-row"><label class="field-label">Статус</label>
+      <select id="es-status"><option value="не снято">не снято</option><option value="снято">снято</option></select>
     </div>
-
-    <!-- НОВАЯ ЗАМЕТКА -->
-    <div class="form-row">
-      <label class="field-label">Добавить заметку</label>
-      <textarea class="f" id="es-note-new" rows="3" placeholder="Новая заметка — добавится сверху с датой..."></textarea>
-    </div>
-
-    <!-- ЖУРНАЛ ЗАМЕТОК (read-only) -->
-    <div id="es-notes-journal-wrap" style="display:none;margin-bottom:14px">
-      <label class="field-label" style="margin-bottom:6px;display:block">История заметок</label>
-      <div id="es-notes-journal" style="background:var(--s2);border:1.5px solid var(--b);border-radius:9px;padding:10px 12px;font-size:12px;font-family:var(--fi);line-height:1.7;color:var(--t2);white-space:pre-wrap;max-height:180px;overflow-y:auto"></div>
-    </div>
-
-    <div style="display:flex;gap:10px;margin-top:6px">
+    <div class="form-row"><label class="field-label">Ссылка на сценарий (script)</label><input type="text" id="es-script" placeholder="https://..."></div>
+    <div class="form-row"><label class="field-label">Заметки (весь журнал)</label><textarea class="f" id="es-notes" rows="8" style="font-family:var(--fi);font-size:12px"></textarea></div>
+    <div style="display:flex;gap:10px;margin-top:14px">
       <button class="btn-primary full" onclick="saveEditShoot()" style="flex:1">💾 Сохранить</button>
       <button onclick="deleteShoot()" style="padding:11px 16px;border:1.5px solid var(--bd);background:var(--peachbg);color:var(--peach);border-radius:10px;cursor:pointer;font-weight:600;font-family:var(--ff);box-shadow:2px 2px 0 var(--bd)">🗑 Удалить</button>
     </div>
@@ -677,6 +645,53 @@ textarea.f{resize:none;line-height:1.6}
   </div>
 </div>
 
+<!-- EDIT IDEA MODAL -->
+<div class="modal-bg hidden" id="modal-edit-idea">
+  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto">
+    <div class="modal-head">
+      <span class="modal-title">Редактировать идею</span>
+      <button class="modal-close" onclick="hideModal('modal-edit-idea')">✕</button>
+    </div>
+    <input type="hidden" id="ei-id">
+    <div class="form-row"><label class="field-label">Заголовок</label><input type="text" id="ei-title" placeholder="Идея..."></div>
+    <div class="form-row"><label class="field-label">Категория</label>
+      <select id="ei-cat"><option>Блог</option><option>Реклама</option><option>Курсы</option><option>Личное</option><option>Другое</option></select>
+    </div>
+
+    <!-- ССЫЛКИ -->
+    <div class="form-row">
+      <label class="field-label">Ссылки</label>
+      <div id="ei-links-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+      <div style="display:flex;gap:6px">
+        <select id="ei-link-type" style="width:130px;padding:8px 10px;border:1.5px solid var(--b);border-radius:9px;background:var(--s2);color:var(--t);font-size:12px;font-family:var(--ff)">
+          <option value="ссылка">🔗 ссылка</option>
+          <option value="референс">🎨 референс</option>
+          <option value="сценарий">📄 сценарий</option>
+        </select>
+        <input type="text" id="ei-link-url" placeholder="https://..." style="flex:1;padding:8px 10px;border:1.5px solid var(--b);border-radius:9px;background:var(--s2);color:var(--t);font-size:12px;font-family:var(--ff)">
+        <button onclick="addEiLink()" style="padding:8px 14px;border:1.5px solid var(--bd);border-radius:9px;background:var(--al);color:var(--a);font-size:13px;font-weight:700;cursor:pointer;box-shadow:2px 2px 0 var(--bd)">+</button>
+      </div>
+    </div>
+
+    <!-- ДОПОЛНИТЬ ОПИСАНИЕ -->
+    <div class="form-row">
+      <label class="field-label">Дополнить описание</label>
+      <textarea class="f" id="ei-desc-add" rows="3" placeholder="Добавится к существующему..."></textarea>
+    </div>
+
+    <!-- ТЕКУЩЕЕ ОПИСАНИЕ (read-only) -->
+    <div id="ei-desc-current-wrap" style="display:none;margin-bottom:14px">
+      <label class="field-label" style="display:block;margin-bottom:6px">Текущее описание</label>
+      <div id="ei-desc-current" style="background:var(--s2);border:1.5px solid var(--b);border-radius:9px;padding:10px 12px;font-size:12px;line-height:1.7;color:var(--t2);white-space:pre-wrap;max-height:150px;overflow-y:auto"></div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="btn-primary full" onclick="saveEditIdea()" style="flex:1">💾 Сохранить</button>
+      <button onclick="deleteIdea()" style="padding:11px 16px;border:1.5px solid var(--bd);background:var(--peachbg);color:var(--peach);border-radius:10px;cursor:pointer;font-weight:600;font-family:var(--ff);box-shadow:2px 2px 0 var(--bd)">🗑 Удалить</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg hidden" id="modal-family">
   <div class="modal">
     <div class="modal-head"><span class="modal-title">Добавить в семью</span><button class="modal-close" onclick="hideModal('modal-family')">✕</button></div>
@@ -699,19 +714,6 @@ const ROLES_EMOJI={'Дочка':'👧','Муж':'👨','Питомец':'🐾','
 
 let DB={shoots:[],projects:[],tasks:[],ideas:[],diary:[],events:[],family:[],scripts:[]};
 let scY=new Date().getFullYear(),scM=new Date().getMonth();
-
-// Парсит ссылки из notes (бот пишет их туда: "🔗 референс: url")
-// Возвращает { links:[{type,url}], pureNotes: string }
-function parseLinksFromNotes(notes){
-  const links=[];const pure=[];
-  for(const line of (notes||'').split('\n')){
-    const m=line.trim().match(/^(?:🔗\s+)?(?:(сценарий|референс|ссылка|script|reference):\s*)?(https?:\/\/\S+)$/i);
-    if(m){const raw=(m[1]||'ссылка').toLowerCase();const map={сценарий:'сценарий',script:'сценарий',референс:'референс',reference:'референс',ссылка:'ссылка'};links.push({type:map[raw]||'ссылка',url:m[2]});}
-    else{pure.push(line);}
-  }
-  while(pure.length&&!pure[pure.length-1].trim())pure.pop();
-  return{links,pureNotes:pure.join('\n')};
-}
 let lcY=new Date().getFullYear(),lcM=new Date().getMonth();
 let acY=new Date().getFullYear(),acM=new Date().getMonth();
 let scSelDay=null,lcSelDay=null,acSelDay=null;
@@ -936,8 +938,8 @@ function renderShoots(){
         <span class="shoot-badge" style="background:${c}">${fmtShort(s.date)}</span>
       </div>
       <div class="shoot-meta">${s.time?s.time+' · ':''}${s.project&&s.location?s.location:''}${s.people?(s.project&&s.location?' · ':'')+s.people:''}</div>
-      ${(()=>{const {links,pureNotes}=parseLinksFromNotes(s.notes||'');return pureNotes.trim()?`<div class="shoot-note">${pureNotes.length>80?pureNotes.substring(0,80)+'...':pureNotes}</div>`:''})()}
-      ${(()=>{const {links}=parseLinksFromNotes(s.notes||'');const typeIcon={сценарий:'📄',референс:'🎨',ссылка:'🔗'};const all=[...(s.script?[{type:'сценарий',url:s.script}]:[]),...links.filter(l=>!s.script||l.url!==s.script)];return all.length?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px" onclick="event.stopPropagation()">${all.map(l=>`<a class="shoot-link" href="${l.url}" target="_blank" rel="noopener">${typeIcon[l.type]||'🔗'} ${l.type}</a>`).join('')}</div>`:''})()}
+      ${s.notes?`<div class="shoot-note">${s.notes.length>80?s.notes.substring(0,80)+'...':s.notes}</div>`:''}
+      ${s.script?`<a class="shoot-link" href="${s.script}" target="_blank" onclick="event.stopPropagation()">📄 Сценарий</a>`:''}
       <div class="shoot-statuses" onclick="event.stopPropagation()">
         <span class="schip ${s.status==='снято'?'schip-done':'schip-pend'}" onclick="toggleShoot(${s.id},'${s.status||'не снято'}')">${s.status==='снято'?'✓ снято':'○ не снято'}</span>
         <span class="schip ${s.edited?'schip-edited':'schip-pend'}" onclick="toggleEdited(${s.id},${!!s.edited})">${s.edited?'✂ смонтировано':'✂ не смонтировано'}</span>
@@ -1016,16 +1018,31 @@ async function toggleProject(id,cur){await dbPatch('projects',id,{status:cur==='
 
 function renderIdeas(){
   const el=document.getElementById('ideas-list');
-  if(!DB.ideas.length){el.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="empty-icon">💡</div>Идей пока нет</div>';return;}
-  el.innerHTML=DB.ideas.map(id=>`
-    <div class="idea-card">
+  const valid=(DB.ideas||[]).filter(i=>(i.title||'').trim());
+  if(!valid.length){el.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="empty-icon">💡</div>Идей пока нет</div>';return;}
+  const typeIcon={сценарий:'📄',референс:'🎨',ссылка:'🔗'};
+  el.innerHTML=valid.map(id=>{
+    const links=parseIdeaLinks(id.notes||'');
+    const linksHtml=links.length?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${links.map(l=>`<a href="${l.url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--blue);padding:3px 9px;background:var(--bbg);border-radius:20px;font-weight:500;text-decoration:none" onclick="event.stopPropagation()">${typeIcon[l.type]||'🔗'} ${l.type}</a>`).join('')}</div>`:'';
+    return`<div class="idea-card" style="cursor:pointer" onclick="openEditIdea(${id.id})">
       <div class="idea-img">${id.image_url?`<img src="${id.image_url}" alt="">`:'💡'}</div>
       <div class="idea-body">
         <div class="idea-cat">${id.category||'Идея'}</div>
         <div style="font-size:14px;font-weight:600;margin-bottom:4px">${id.title||''}</div>
         <div style="font-size:12px;color:var(--t2);line-height:1.6">${id.description||''}</div>
+        ${linksHtml}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+function parseIdeaLinks(notes){
+  const links=[];
+  for(const line of (notes||'').split('\n')){
+    const m=line.trim().match(/^(?:🔗\s+)?(?:(сценарий|референс|ссылка):\s*)?(https?:\/\/\S+)$/i);
+    if(m){const raw=(m[1]||'ссылка').toLowerCase();links.push({type:{сценарий:'сценарий',референс:'референс',ссылка:'ссылка'}[raw]||'ссылка',url:m[2]});}
+  }
+  return links;
 }
 
 function renderDiary(){
@@ -1118,6 +1135,88 @@ async function saveIdea(){
   const d={title:document.getElementById('id-title').value,description:document.getElementById('id-desc').value,category:document.getElementById('id-cat').value,image_url:ideaImgB64||null};
   if(!d.title){alert('Введи заголовок');return;}
   await dbPost('ideas',d);ideaImgB64=null;document.getElementById('idea-img-preview').innerHTML='';hideModal('modal-idea');await load();
+}
+
+// ---- edit idea ----
+let eiLinks=[];
+
+function renderEiLinks(){
+  const typeIcon={сценарий:'📄',референс:'🎨',ссылка:'🔗'};
+  const el=document.getElementById('ei-links-list');
+  if(!eiLinks.length){el.innerHTML='<div style="font-size:12px;color:var(--t3);padding:4px 0">Ссылок пока нет</div>';return;}
+  el.innerHTML=eiLinks.map((l,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;background:var(--s2);border:1.5px solid var(--b);border-radius:9px;padding:7px 10px">
+      <span style="font-size:11px;font-weight:600;color:var(--t2);flex-shrink:0">${typeIcon[l.type]||'🔗'} ${l.type}</span>
+      <a href="${l.url}" target="_blank" rel="noopener" style="flex:1;font-size:12px;color:var(--blue);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${l.url}</a>
+      <button onclick="removeEiLink(${i})" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;padding:0 2px">×</button>
+    </div>`).join('');
+}
+
+function addEiLink(){
+  const url=document.getElementById('ei-link-url').value.trim();
+  if(!url)return;
+  const type=document.getElementById('ei-link-type').value;
+  eiLinks.push({type,url});
+  document.getElementById('ei-link-url').value='';
+  renderEiLinks();
+}
+
+function removeEiLink(i){eiLinks.splice(i,1);renderEiLinks();}
+
+function openEditIdea(id){
+  const idea=(DB.ideas||[]).find(x=>x.id===id);
+  if(!idea)return;
+  document.getElementById('ei-id').value=id;
+  document.getElementById('ei-title').value=idea.title||'';
+  document.getElementById('ei-cat').value=idea.category||'Другое';
+  document.getElementById('ei-desc-add').value='';
+
+  // ссылки из notes
+  eiLinks=parseIdeaLinks(idea.notes||'');
+  renderEiLinks();
+
+  // текущее описание
+  const desc=(idea.description||'').trim();
+  const wrap=document.getElementById('ei-desc-current-wrap');
+  if(desc){
+    document.getElementById('ei-desc-current').textContent=desc;
+    wrap.style.display='block';
+  } else {
+    wrap.style.display='none';
+  }
+  document.getElementById('ei-id').dataset.desc=desc;
+
+  showModal('modal-edit-idea');
+}
+
+async function saveEditIdea(){
+  const id=parseInt(document.getElementById('ei-id').value);
+  const oldDesc=document.getElementById('ei-id').dataset.desc||'';
+  const addDesc=(document.getElementById('ei-desc-add').value||'').trim();
+  const newDesc=oldDesc&&addDesc?oldDesc+'\n\n'+addDesc:addDesc||oldDesc;
+
+  // ссылки в notes
+  const notesLines=eiLinks.map(l=>`🔗 ${l.type}: ${l.url}`);
+  const notes=notesLines.join('\n');
+
+  const data={
+    title:document.getElementById('ei-title').value.trim(),
+    category:document.getElementById('ei-cat').value,
+    description:newDesc,
+    notes:notes
+  };
+  if(!data.title){alert('Введи заголовок');return;}
+  const ok=await dbPatch('ideas',id,data);
+  if(ok){hideModal('modal-edit-idea');await load();}
+  else alert('Не сохранилось 😔');
+}
+
+async function deleteIdea(){
+  const id=parseInt(document.getElementById('ei-id').value);
+  if(!confirm('Удалить идею? Это нельзя отменить.'))return;
+  const ok=await dbDelete('ideas',id);
+  if(ok){hideModal('modal-edit-idea');await load();}
+  else alert('Не удалилось 😔');
 }
 async function saveFamily(){
   const d={name:document.getElementById('fm-name').value,role:document.getElementById('fm-role').value,phone:document.getElementById('fm-phone').value,notes:document.getElementById('fm-notes').value};
@@ -1342,76 +1441,6 @@ function showPage(id,btn,isMob){
 function showModal(id){document.getElementById(id).classList.remove('hidden');}
 function hideModal(id){document.getElementById(id).classList.add('hidden');}
 
-// ---- edit shoot: links state ----
-let esLinks=[]; // [{type,url}]
-let esStatus='не снято';
-
-function toggleEsStatus(){
-  esStatus=esStatus==='снято'?'не снято':'снято';
-  renderEsStatusBtn();
-}
-function renderEsStatusBtn(){
-  const btn=document.getElementById('es-status-btn');
-  if(esStatus==='снято'){
-    btn.textContent='✓ снято';
-    btn.style.background='var(--gbg)';
-    btn.style.color='var(--green)';
-    btn.style.borderColor='#C3E6C0';
-  } else {
-    btn.textContent='○ не снято';
-    btn.style.background='var(--s2)';
-    btn.style.color='var(--t3)';
-    btn.style.borderColor='var(--bd)';
-  }
-}
-
-function renderEsLinks(){
-  const typeIcon={'сценарий':'📄','референс':'🎨','ссылка':'🔗'};
-  const el=document.getElementById('es-links-list');
-  if(!esLinks.length){
-    el.innerHTML='<div style="font-size:12px;color:var(--t3);padding:4px 0">Ссылок пока нет</div>';
-    return;
-  }
-  el.innerHTML=esLinks.map((l,i)=>`
-    <div style="display:flex;align-items:center;gap:8px;background:var(--s2);border:1.5px solid var(--b);border-radius:9px;padding:7px 10px">
-      <span style="font-size:11px;font-weight:600;color:var(--t2);flex-shrink:0">${typeIcon[l.type]||'🔗'} ${l.type}</span>
-      <a href="${l.url}" target="_blank" rel="noopener" style="flex:1;font-size:12px;color:var(--blue);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${l.url}</a>
-      <button onclick="removeEsLink(${i})" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;padding:0 2px" title="Удалить">×</button>
-    </div>`).join('');
-}
-
-function addEsLink(){
-  const url=document.getElementById('es-link-url').value.trim();
-  if(!url){return;}
-  const type=document.getElementById('es-link-type').value;
-  esLinks.push({type,url});
-  document.getElementById('es-link-url').value='';
-  renderEsLinks();
-}
-
-// allow pressing Enter in url input
-document.addEventListener('DOMContentLoaded',()=>{
-  const inp=document.getElementById('es-link-url');
-  if(inp)inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addEsLink();}});
-});
-
-function removeEsLink(i){
-  esLinks.splice(i,1);
-  renderEsLinks();
-}
-
-
-
-function appendLog(oldText,newText){
-  const t=(newText||'').trim();
-  if(!t)return oldText||'';
-  const now=new Date();
-  const d=String(now.getDate()).padStart(2,'0')+'.'+String(now.getMonth()+1).padStart(2,'0')+'.'+now.getFullYear();
-  const block=`━━ ${d} ━━\n${t}`;
-  const old=(oldText||'').trim();
-  return old?block+'\n\n'+old:block;
-}
-
 function openEditShoot(id){
   const s=(DB.shoots||[]).find(x=>x.id===id);
   if(!s)return;
@@ -1420,32 +1449,10 @@ function openEditShoot(id){
   document.getElementById('es-time').value=s.time||'';
   document.getElementById('es-loc').value=s.location||'';
   document.getElementById('es-people').value=s.people||'';
-  document.getElementById('es-note-new').value='';
-
-  // статус
-  esStatus=s.status||'не снято';
-  renderEsStatusBtn();
-
-  // ссылки: из поля script + из notes
-  const {links:notesLinks, pureNotes}=parseLinksFromNotes(s.notes||'');
-  esLinks=[];
-  if(s.script&&s.script.trim())esLinks.push({type:'сценарий',url:s.script.trim()});
-  notesLinks.forEach(l=>{if(!esLinks.find(x=>x.url===l.url))esLinks.push(l);});
-  renderEsLinks();
-
-  // журнал заметок
-  const journal=pureNotes.trim();
-  const wrap=document.getElementById('es-notes-journal-wrap');
-  if(journal){
-    document.getElementById('es-notes-journal').textContent=journal;
-    wrap.style.display='block';
-  } else {
-    wrap.style.display='none';
-  }
-  // store pure notes for later
-  document.getElementById('es-id').dataset.pureNotes=journal;
-
-  // проекты
+  document.getElementById('es-status').value=s.status||'не снято';
+  document.getElementById('es-script').value=s.script||'';
+  document.getElementById('es-notes').value=s.notes||'';
+  // заполняем select проектов
   const sel=document.getElementById('es-proj');
   sel.innerHTML='<option value="">— нет —</option>';
   (DB.projects||[]).forEach(p=>{
@@ -1459,30 +1466,15 @@ function openEditShoot(id){
 
 async function saveEditShoot(){
   const id=parseInt(document.getElementById('es-id').value);
-  const pureNotes=document.getElementById('es-id').dataset.pureNotes||'';
-  const newNote=document.getElementById('es-note-new').value.trim();
-
-  // собираем notes: новая заметка + все ссылки кроме сценария + старый журнал
-  const nonScriptLinks=esLinks.filter(l=>l.type!=='сценарий');
-  let notesBody=pureNotes;
-  if(nonScriptLinks.length){
-    const linkLines=nonScriptLinks.map(l=>`🔗 ${l.type}: ${l.url}`).join('\n');
-    notesBody=notesBody?linkLines+'\n\n'+notesBody:linkLines;
-  }
-  const finalNotes=newNote?appendLog(notesBody,newNote):notesBody;
-
-  // script = первая ссылка типа сценарий
-  const scriptLink=esLinks.find(l=>l.type==='сценарий');
-
   const data={
     date:document.getElementById('es-date').value,
     time:document.getElementById('es-time').value,
     project:document.getElementById('es-proj').value,
     location:document.getElementById('es-loc').value,
     people:document.getElementById('es-people').value,
-    status:esStatus,
-    script:scriptLink?scriptLink.url:'',
-    notes:finalNotes
+    status:document.getElementById('es-status').value,
+    script:document.getElementById('es-script').value,
+    notes:document.getElementById('es-notes').value
   };
   try{
     const r=await fetch(`${SB}/rest/v1/shoots?id=eq.${id}`,{
@@ -1516,6 +1508,12 @@ async function deleteShoot(){
   }catch(e){alert('Ошибка: '+e);}
 }
 document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.add('hidden');}));
+
+// Enter в полях ввода ссылок
+['es-link-url','ei-link-url'].forEach(eid=>{
+  const el=document.getElementById(eid);
+  if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();eid==='es-link-url'?addEsLink():addEiLink();}});
+});
 
 load();
 </script>
