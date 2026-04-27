@@ -360,9 +360,11 @@ textarea.f{resize:none;line-height:1.6}
       <button class="nb" onclick="showPage('diary',this)"><span class="icon">📓</span>Дневник</button>
       <button class="nb" onclick="showPage('family',this)"><span class="icon">👨‍👩‍👧</span>Семья</button>
       <button class="nb" onclick="showPage('week',this)"><span class="icon">📊</span>Итоги</button>
+      <button class="nb" onclick="showPage('timer',this)"><span class="icon">⏱</span>Таймер</button>
     </nav>
     <div class="sidebar-footer">
       <button class="fab-sidebar" onclick="showModal('modal-add')">+ Добавить</button>
+      <button class="timer-fab-sidebar" id="timer-fab-sidebar" onclick="toggleTimerPopup(event)">⏱ таймер</button>
     </div>
   </aside>
 
@@ -383,6 +385,7 @@ textarea.f{resize:none;line-height:1.6}
       <button class="mob-nb" onclick="showPage('diary',this,true)">📓 Дневник</button>
       <button class="mob-nb" onclick="showPage('family',this,true)">👨‍👩‍👧 Семья</button>
       <button class="mob-nb" onclick="showPage('week',this,true)">📊 Итоги</button>
+      <button class="mob-nb" onclick="showPage('timer',this,true)">⏱ Таймер</button>
     </div>
   </div>
 
@@ -587,6 +590,45 @@ textarea.f{resize:none;line-height:1.6}
       <div id="week-proj"></div>
     </div>
 
+
+    <!-- TIMER STATS -->
+    <div class="page" id="page-timer">
+      <div class="page-title">Таймер</div>
+      <div class="page-sub">Рабочие сессии и статистика</div>
+
+      <!-- TODAY -->
+      <div style="background:var(--s);border:1.5px solid var(--bd);border-radius:16px;padding:20px;box-shadow:3px 3px 0 var(--bd);margin-bottom:16px">
+        <div style="font-family:var(--fi);font-size:13px;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px">Сегодня</div>
+        <div class="stats-grid" style="margin-bottom:14px">
+          <div class="stat-c"><div class="stat-n" id="ts-today-total">0м</div><div class="stat-l">всего</div></div>
+          <div class="stat-c"><div class="stat-n" id="ts-today-sessions">0</div><div class="stat-l">сессий</div></div>
+          <div class="stat-c"><div class="stat-n" id="ts-today-avg">—</div><div class="stat-l">средняя</div></div>
+          <div class="stat-c"><div class="stat-n" id="ts-today-longest">—</div><div class="stat-l">длинная</div></div>
+        </div>
+        <div id="ts-today-log"></div>
+      </div>
+
+      <!-- MONTH STATS -->
+      <div style="background:var(--s);border:1.5px solid var(--bd);border-radius:16px;padding:20px;box-shadow:3px 3px 0 var(--bd)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <button class="cal-nav-btn" onclick="tsChangeMonth(-1)">‹</button>
+          <div style="flex:1;text-align:center;font-family:var(--fi);font-size:15px;font-weight:500" id="ts-month-label"></div>
+          <button class="cal-nav-btn" onclick="tsChangeMonth(1)">›</button>
+        </div>
+        <div class="stats-grid" style="margin-bottom:16px">
+          <div class="stat-c"><div class="stat-n" id="ts-month-total">0м</div><div class="stat-l">всего</div></div>
+          <div class="stat-c"><div class="stat-n" id="ts-month-sessions">0</div><div class="stat-l">сессий</div></div>
+          <div class="stat-c"><div class="stat-n" id="ts-month-avg">—</div><div class="stat-l">ср. без паузы</div></div>
+          <div class="stat-c"><div class="stat-n" id="ts-month-days">0</div><div class="stat-l">рабочих дней</div></div>
+        </div>
+        <!-- breakdown by tag -->
+        <div style="font-family:var(--fi);font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">по тегам</div>
+        <div id="ts-breakdown" style="display:flex;flex-direction:column;gap:8px"></div>
+        <!-- sessions list -->
+        <div style="font-family:var(--fi);font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-top:18px;margin-bottom:10px">все сессии</div>
+        <div id="ts-sessions-list" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -1127,23 +1169,17 @@ function toggleTimerPopup(e){
   e&&e.stopPropagation();
   const popup=document.getElementById('timer-popup');
   if(popup.classList.contains('open')){closeTimerPopup();return;}
-  // position near clicked element
-  const btn=e&&e.currentTarget;
   const isMob=window.innerWidth<=768;
   if(isMob){
-    // center bottom
     popup.style.left='50%';popup.style.transform='translateX(-50%)';
-    popup.style.bottom='80px';popup.style.top='auto';popup.style.right='auto';
+    popup.style.bottom='84px';popup.style.top='auto';popup.style.right='auto';
   } else {
-    // above sidebar fab
-    const r=btn?btn.getBoundingClientRect():null;
-    if(r){
-      popup.style.left=(r.right+12)+'px';
-      popup.style.top='auto';
-      popup.style.bottom=(window.innerHeight-r.bottom)+'px';
-      popup.style.right='auto';
-      popup.style.transform='none';
-    }
+    // position to the right of sidebar (sidebar is 204px wide + 16px offset = 236px)
+    popup.style.left='248px';
+    popup.style.bottom='16px';
+    popup.style.top='auto';
+    popup.style.right='auto';
+    popup.style.transform='none';
   }
   popup.classList.add('open');
   tRenderLog();
@@ -1161,6 +1197,134 @@ document.addEventListener('click',e=>{
     closeTimerPopup();
   }
 });
+
+// ===== TIMER STATS PAGE =====
+let tsY=new Date().getFullYear(), tsM=new Date().getMonth();
+const TS_MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+function tsFmtMins(m){
+  if(!m)return'0м';
+  if(m<60)return m+'м';
+  const h=Math.floor(m/60),r=m%60;
+  return r?`${h}ч ${r}м`:`${h}ч`;
+}
+function tsFmtTime(iso){
+  const d=new Date(iso);
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function tsFmtDate(dateStr){
+  // dateStr = YYYY-MM-DD
+  try{const[,m,d]=dateStr.split('-');return`${parseInt(d)} ${['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][parseInt(m)-1]}`;}
+  catch{return dateStr;}
+}
+
+function tsRenderAll(){
+  tsRenderToday();
+  tsRenderMonth();
+}
+
+function tsRenderToday(){
+  const today=tTodayStr();
+  const items=(tSessions||[]).filter(s=>s.date===today);
+  const total=items.reduce((a,s)=>a+s.minutes,0);
+  const avg=items.length?Math.round(total/items.length):0;
+  const longest=items.length?Math.max(...items.map(s=>s.minutes)):0;
+
+  const elTot=document.getElementById('ts-today-total');
+  const elSes=document.getElementById('ts-today-sessions');
+  const elAvg=document.getElementById('ts-today-avg');
+  const elLng=document.getElementById('ts-today-longest');
+  if(elTot)elTot.textContent=tsFmtMins(total);
+  if(elSes)elSes.textContent=items.length;
+  if(elAvg)elAvg.textContent=items.length?tsFmtMins(avg):'—';
+  if(elLng)elLng.textContent=items.length?tsFmtMins(longest):'—';
+
+  const log=document.getElementById('ts-today-log');
+  if(!log)return;
+  if(!items.length){log.innerHTML='<div style="font-size:13px;color:var(--t3);text-align:center;padding:12px;font-style:italic">сегодня сессий нет</div>';return;}
+  log.innerHTML=items.map(s=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg);border-radius:10px;margin-bottom:5px;border:1px solid var(--b)">
+      <div style="font-size:13px;font-weight:600;flex:1;color:var(--t)">${s.tag}</div>
+      <div style="font-family:var(--fi);font-size:12px;color:var(--a);font-weight:500">${tsFmtMins(s.minutes)}</div>
+      <div style="font-size:11px;color:var(--t3)">${tsFmtTime(s.startedAt)}–${tsFmtTime(s.endedAt)}</div>
+      <button onclick="tsDelSession(${s.id})" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:0 2px">×</button>
+    </div>`).join('');
+}
+
+function tsRenderMonth(){
+  const lbl=document.getElementById('ts-month-label');
+  if(lbl)lbl.textContent=`${TS_MONTHS[tsM]} ${tsY}`;
+
+  const items=(tSessions||[]).filter(s=>{
+    const[y,m]=s.date.split('-');
+    return parseInt(y)===tsY&&parseInt(m)-1===tsM;
+  });
+  const total=items.reduce((a,s)=>a+s.minutes,0);
+  const avg=items.length?Math.round(total/items.length):0;
+  const days=new Set(items.map(s=>s.date)).size;
+
+  const set=id=>v=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('ts-month-total')(tsFmtMins(total));
+  set('ts-month-sessions')(items.length);
+  set('ts-month-avg')(items.length?tsFmtMins(avg):'—');
+  set('ts-month-days')(days);
+
+  // breakdown
+  const byTag={};
+  items.forEach(s=>{byTag[s.tag]=(byTag[s.tag]||0)+s.minutes;});
+  const sorted=Object.entries(byTag).sort((a,b)=>b[1]-a[1]);
+  const maxMin=sorted[0]?sorted[0][1]:1;
+  const bd=document.getElementById('ts-breakdown');
+  if(bd){
+    if(!sorted.length){bd.innerHTML='<div style="font-size:13px;color:var(--t3);font-style:italic">нет данных</div>';} 
+    else{bd.innerHTML=sorted.map(([tag,mins])=>`
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:12px;font-weight:600;color:var(--t);width:100px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${tag}</div>
+        <div style="flex:1;height:8px;background:var(--b);border-radius:4px;overflow:hidden">
+          <div style="height:100%;border-radius:4px;background:var(--a);width:${Math.round(mins/maxMin*100)}%"></div>
+        </div>
+        <div style="font-family:var(--fi);font-size:11px;color:var(--t3);width:44px;text-align:right;flex-shrink:0">${tsFmtMins(mins)}</div>
+      </div>`).join('');}
+  }
+
+  // sessions list grouped by day
+  const byDay={};
+  items.forEach(s=>{if(!byDay[s.date])byDay[s.date]=[];byDay[s.date].push(s);});
+  const sl=document.getElementById('ts-sessions-list');
+  if(sl){
+    if(!items.length){sl.innerHTML='<div style="font-size:13px;color:var(--t3);font-style:italic">нет сессий в этом месяце</div>';return;}
+    const days2=Object.keys(byDay).sort().reverse();
+    sl.innerHTML=days2.map(date=>{
+      const ds=byDay[date];
+      const dayTotal=ds.reduce((a,s)=>a+s.minutes,0);
+      return`<div style="margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:flex;justify-content:space-between">
+          <span>${tsFmtDate(date)}</span><span style="font-family:var(--fi);color:var(--a)">${tsFmtMins(dayTotal)}</span>
+        </div>
+        ${ds.map(s=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg);border-radius:9px;margin-bottom:4px;border:1px solid var(--b)">
+          <div style="font-size:12px;font-weight:600;flex:1;color:var(--t)">${s.tag}</div>
+          <div style="font-family:var(--fi);font-size:12px;color:var(--a)">${tsFmtMins(s.minutes)}</div>
+          <div style="font-size:11px;color:var(--t3)">${tsFmtTime(s.startedAt)}–${tsFmtTime(s.endedAt)}</div>
+          <button onclick="tsDelSession(${s.id})" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:0 2px">×</button>
+        </div>`).join('')}
+      </div>`;
+    }).join('');
+  }
+}
+
+function tsChangeMonth(d){
+  tsM+=d;
+  if(tsM>11){tsM=0;tsY++;}
+  if(tsM<0){tsM=11;tsY--;}
+  tsRenderMonth();
+}
+
+function tsDelSession(id){
+  tSessions=tSessions.filter(s=>s.id!==id);
+  tSave();
+  tsRenderAll();
+  tRenderLog(); // update popup log too
+}
 
 tLoad();
 document.addEventListener('DOMContentLoaded',()=>{tSetControls();tUpdateFabs();tRenderLog();});
@@ -1654,6 +1818,7 @@ function showPage(id,btn,isMob){
     document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
   }
   if(btn)btn.classList.add('active');
+  if(id==='timer')tsRenderAll();
 }
 function showModal(id){document.getElementById(id).classList.remove('hidden');}
 function hideModal(id){document.getElementById(id).classList.add('hidden');}
