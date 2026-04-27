@@ -1587,7 +1587,12 @@ async function saveEditIdea(){
     notes:notes
   };
   if(!data.title){alert('Введи заголовок');return;}
-  const ok=await dbPatch('ideas',id,data);
+  // сначала пробуем с notes, если нет колонки — без неё
+  let ok=await dbPatch('ideas',id,data);
+  if(!ok){
+    const dataNoNotes={title:data.title,category:data.category,description:data.description};
+    ok=await dbPatch('ideas',id,dataNoNotes);
+  }
   if(ok){hideModal('modal-edit-idea');await load();}
   else alert('Не сохранилось 😔');
 }
