@@ -46,6 +46,7 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 4. ЗАВЕРШЕНИЕ ПРОЕКТА (action: complete_project) — "закончила/завершила проект X"
 
 5. ИДЕЯ (action: add_idea) — "идея:", "ідея:"
+   data: {"title": "суть идеи одной фразой", "description": "детали если есть", "category": "Идея"}
 
 6. ДНЕВНИК (action: add_diary) — Катерина рассказывает про свой день: что делала, как встала, когда работала, как себя чувствовала, что было, как день прошёл.
    ПРИМЕРЫ когда ВСЕГДА action=add_diary:
@@ -97,6 +98,7 @@ data для add_multiple_shoots: {{"shoots":[{{"date":"YYYY-MM-DD","time":"HH:MM
 data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
 data для add_event: title, date(YYYY-MM-DD), time, category, notes
 data для delete_shoot: shoot_date, shoot_location, shoot_time
+data для add_idea: title (суть идеи), description (детали, необязательно), category (необязательно)
 data для clear_field: field, entity
 data для clarify: partial
 data для clarify_reply: field_given, value
@@ -410,7 +412,15 @@ async def apply_action(action, data):
                 await supa_update("projects","id",p["id"],{"status":"готово"})
                 return True
     elif action == "add_idea":
-        return await supa_insert("ideas",{"title":data.get("title",""),"description":data.get("description",""),"category":data.get("category","Идея"),"image_url":None})
+        # модель иногда возвращает "idea" вместо "title" — нормализуем
+        title = (data.get("title") or data.get("idea") or data.get("name") or "").strip()
+        desc  = (data.get("description") or data.get("text") or data.get("content") or "").strip()
+        if not title and desc:
+            title, desc = desc, ""
+        if not title:
+            print(f"SKIP add_idea: no title in data={data}")
+            return False
+        return await supa_insert("ideas",{"title":title,"description":desc,"category":data.get("category","Идея"),"image_url":None})
     elif action == "add_diary":
         return await supa_insert("diary",{"date":today,"mood":data.get("mood","нейтрально"),"events":data.get("events",""),"thoughts":data.get("thoughts","")})
     elif action == "add_event":
@@ -643,8 +653,19 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 await msg.reply_text("Идей пока нет.", reply_markup=reply_kbd())
                 return
             lines = ["💡 *Идеи:*\n"]
-            for i in ideas[:20]:
-                lines.append(f"• {i.get('title','?')}")
+            shown = 0
+            for idea in ideas[:50]:
+                t = (idea.get('title') or '').strip()
+                if not t:
+                    continue
+                d = (idea.get('description') or '').strip()
+                lines.append(f"• *{t}*" + (f"\n  {d[:80]}" if d else ""))
+                shown += 1
+                if shown >= 20:
+                    break
+            if shown == 0:
+                await msg.reply_text("Идей пока нет.", reply_markup=reply_kbd())
+                return
             await msg.reply_text("\n".join(lines), parse_mode="Markdown", reply_markup=reply_kbd())
             return
         elif text_stripped == "📓 Дневник":
@@ -1070,15 +1091,18 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     if cb == "ideas":
-        items = await supa_get("ideas",10)
-        if not items:
+        items = await supa_get("ideas",50)
+        shown = [i for i in items if (i.get('title') or '').strip()]
+        if not shown:
             await q.edit_message_text("💡 Идей пока нет", reply_markup=main_kbd())
             return
-        lines = ["💡 *Идеи:*\n"]
-        for i in items:
-            lines.append(f"• *{i.get('title','')}*")
-            if i.get("description"): lines.append(f"  {i['description'][:150]}")
-        await q.edit_message_text("\n".join(lines),parse_mode="Markdown",
+        parts = ["💡 *Идеи:*\n"]
+        for i in shown[:20]:
+            t = i['title'].strip()
+            parts.append(f"• *{t}*")
+            d = (i.get('description') or '').strip()
+            if d: parts.append(f"  {d[:150]}")
+        await q.edit_message_text("\n".join(parts),parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад",callback_data="main")]]))
         return
 
