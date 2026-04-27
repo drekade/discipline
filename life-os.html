@@ -84,7 +84,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 
 /* GRID LAYOUT for shoots */
 .shoots-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
-.shoot-card{background:var(--s);border-radius:14px;padding:16px;border:1.5px solid var(--bd);border-left:4px solid var(--a);box-shadow:3px 3px 0 var(--bd);transition:all .15s}
+.shoot-card{background:var(--s);border-radius:14px;padding:16px;border:1.5px solid var(--bd);border-left:4px solid var(--a);box-shadow:3px 3px 0 var(--bd);transition:all .15s;cursor:pointer}
 .shoot-card:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--bd)}
 .shoot-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
 .shoot-title{font-size:15px;font-weight:600;color:var(--t)}
@@ -539,6 +539,30 @@ textarea.f{resize:none;line-height:1.6}
 <button class="mob-fab" onclick="showModal('modal-add')">+</button>
 
 <!-- MODALS -->
+<div class="modal-bg hidden" id="modal-edit-shoot">
+  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
+    <div class="modal-head">
+      <span class="modal-title">Редактировать съёмку</span>
+      <button class="modal-close" onclick="hideModal('modal-edit-shoot')">✕</button>
+    </div>
+    <input type="hidden" id="es-id">
+    <div class="form-row"><label class="field-label">Дата</label><input type="date" id="es-date"></div>
+    <div class="form-row"><label class="field-label">Время</label><input type="time" id="es-time"></div>
+    <div class="form-row"><label class="field-label">Проект (тема)</label><select id="es-proj"><option value="">— нет —</option></select></div>
+    <div class="form-row"><label class="field-label">Локация</label><input type="text" id="es-loc"></div>
+    <div class="form-row"><label class="field-label">Участники</label><input type="text" id="es-people"></div>
+    <div class="form-row"><label class="field-label">Статус</label>
+      <select id="es-status"><option value="не снято">не снято</option><option value="снято">снято</option></select>
+    </div>
+    <div class="form-row"><label class="field-label">Ссылка на сценарий (script)</label><input type="text" id="es-script" placeholder="https://..."></div>
+    <div class="form-row"><label class="field-label">Заметки (весь журнал)</label><textarea class="f" id="es-notes" rows="8" style="font-family:var(--fi);font-size:12px"></textarea></div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn-primary full" onclick="saveEditShoot()" style="flex:1">💾 Сохранить</button>
+      <button onclick="deleteShoot()" style="padding:11px 16px;border:1.5px solid var(--bd);background:var(--peachbg);color:var(--peach);border-radius:10px;cursor:pointer;font-weight:600;font-family:var(--ff);box-shadow:2px 2px 0 var(--bd)">🗑 Удалить</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg hidden" id="modal-add">
   <div class="modal">
     <div class="modal-head"><span class="modal-title">Добавить</span><button class="modal-close" onclick="hideModal('modal-add')">✕</button></div>
@@ -861,15 +885,15 @@ function renderShoots(){
   el.innerHTML=sorted.map(s=>{
     const pi=DB.projects.findIndex(p=>p.name===s.project);
     const c=PC[pi>=0?pi%5:0];
-    return`<div class="shoot-card" style="border-top:4px solid ${c};border-left:none">
+    return`<div class="shoot-card" style="border-top:4px solid ${c};border-left:none" onclick="openEditShoot(${s.id})">
       <div class="shoot-header">
         <div class="shoot-title">${s.project||s.location||'Съёмка'}</div>
         <span class="shoot-badge" style="background:${c}">${fmtShort(s.date)}</span>
       </div>
       <div class="shoot-meta">${s.time?s.time+' · ':''}${s.project&&s.location?s.location:''}${s.people?(s.project&&s.location?' · ':'')+s.people:''}</div>
       ${s.notes?`<div class="shoot-note">${s.notes.length>80?s.notes.substring(0,80)+'...':s.notes}</div>`:''}
-      ${s.script?`<a class="shoot-link" href="${s.script}" target="_blank">📄 Сценарий</a>`:''}
-      <div class="shoot-statuses">
+      ${s.script?`<a class="shoot-link" href="${s.script}" target="_blank" onclick="event.stopPropagation()">📄 Сценарий</a>`:''}
+      <div class="shoot-statuses" onclick="event.stopPropagation()">
         <span class="schip ${s.status==='снято'?'schip-done':'schip-pend'}" onclick="toggleShoot(${s.id},'${s.status||'не снято'}')">${s.status==='снято'?'✓ снято':'○ не снято'}</span>
         <span class="schip ${s.edited?'schip-edited':'schip-pend'}" onclick="toggleEdited(${s.id},${!!s.edited})">${s.edited?'✂ смонтировано':'✂ не смонтировано'}</span>
       </div>
@@ -1272,6 +1296,73 @@ function showPage(id,btn,isMob){
 }
 function showModal(id){document.getElementById(id).classList.remove('hidden');}
 function hideModal(id){document.getElementById(id).classList.add('hidden');}
+
+function openEditShoot(id){
+  const s=(DB.shoots||[]).find(x=>x.id===id);
+  if(!s)return;
+  document.getElementById('es-id').value=s.id;
+  document.getElementById('es-date').value=(s.date||'').slice(0,10);
+  document.getElementById('es-time').value=s.time||'';
+  document.getElementById('es-loc').value=s.location||'';
+  document.getElementById('es-people').value=s.people||'';
+  document.getElementById('es-status').value=s.status||'не снято';
+  document.getElementById('es-script').value=s.script||'';
+  document.getElementById('es-notes').value=s.notes||'';
+  // заполняем select проектов
+  const sel=document.getElementById('es-proj');
+  sel.innerHTML='<option value="">— нет —</option>';
+  (DB.projects||[]).forEach(p=>{
+    const opt=document.createElement('option');
+    opt.value=p.name;opt.textContent=p.name;
+    if(p.name===s.project)opt.selected=true;
+    sel.appendChild(opt);
+  });
+  showModal('modal-edit-shoot');
+}
+
+async function saveEditShoot(){
+  const id=parseInt(document.getElementById('es-id').value);
+  const data={
+    date:document.getElementById('es-date').value,
+    time:document.getElementById('es-time').value,
+    project:document.getElementById('es-proj').value,
+    location:document.getElementById('es-loc').value,
+    people:document.getElementById('es-people').value,
+    status:document.getElementById('es-status').value,
+    script:document.getElementById('es-script').value,
+    notes:document.getElementById('es-notes').value
+  };
+  try{
+    const r=await fetch(`${SB}/rest/v1/shoots?id=eq.${id}`,{
+      method:'PATCH',
+      headers:{...SH,'Content-Type':'application/json'},
+      body:JSON.stringify(data)
+    });
+    if(r.ok){
+      hideModal('modal-edit-shoot');
+      await load();
+    } else {
+      alert('Не сохранилось 😔');
+    }
+  }catch(e){alert('Ошибка: '+e);}
+}
+
+async function deleteShoot(){
+  const id=parseInt(document.getElementById('es-id').value);
+  if(!confirm('Точно удалить эту съёмку? Это нельзя отменить.'))return;
+  try{
+    const r=await fetch(`${SB}/rest/v1/shoots?id=eq.${id}`,{
+      method:'DELETE',
+      headers:SH
+    });
+    if(r.ok){
+      hideModal('modal-edit-shoot');
+      await load();
+    } else {
+      alert('Не удалилось 😔');
+    }
+  }catch(e){alert('Ошибка: '+e);}
+}
 document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.add('hidden');}));
 
 load();
