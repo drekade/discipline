@@ -279,6 +279,61 @@ textarea.f{resize:none;line-height:1.6}
 @media(max-width:768px){
   .scripts-grid{grid-template-columns:1fr}
 }
+
+/* ===== TIMER FAB + POPUP ===== */
+.timer-fab-sidebar{margin-top:8px;width:100%;padding:9px;border-radius:10px;border:1.5px solid var(--bd);background:var(--s2);color:var(--t2);font-size:15px;cursor:pointer;font-family:var(--ff);font-weight:600;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:2px 2px 0 var(--bd)}
+.timer-fab-sidebar:hover{background:var(--al);color:var(--a);border-color:var(--a)}
+.timer-fab-sidebar.running{background:var(--gbg);color:var(--green);border-color:var(--green);animation:tpulse 2s infinite}
+.timer-fab-sidebar.paused{background:var(--ambg,#F4D778);color:#7A5A1A;border-color:#C8A030}
+@keyframes tpulse{0%,100%{box-shadow:2px 2px 0 var(--green)}50%{box-shadow:2px 2px 0 var(--green),0 0 0 4px rgba(58,110,74,.15)}}
+
+/* floating timer circle on mobile */
+.timer-fab-mob{position:fixed;bottom:84px;right:16px;width:48px;height:48px;border-radius:50%;background:var(--s);border:1.5px solid var(--bd);color:var(--t2);font-size:20px;cursor:pointer;box-shadow:3px 3px 0 var(--bd);z-index:101;display:none;align-items:center;justify-content:center;transition:all .2s}
+.timer-fab-mob.running{background:var(--gbg);color:var(--green);border-color:var(--green);animation:tpulse 2s infinite}
+.timer-fab-mob.paused{background:#F4D778;color:#7A5A1A;border-color:#C8A030}
+@media(max-width:768px){.timer-fab-mob{display:flex}}
+
+/* POPUP */
+.timer-popup{position:fixed;background:var(--s);border:1.5px solid var(--bd);border-radius:18px;padding:20px;width:300px;box-shadow:5px 5px 0 var(--bd);z-index:300;display:none;flex-direction:column;gap:12px}
+.timer-popup.open{display:flex}
+.timer-popup-head{display:flex;align-items:center;justify-content:space-between}
+.timer-popup-title{font-family:var(--fi);font-size:13px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:.8px}
+.timer-popup-close{background:none;border:none;color:var(--t3);cursor:pointer;font-size:18px;line-height:1;padding:0 2px}
+.timer-popup-close:hover{color:var(--t)}
+
+/* TAGS in popup */
+.tp-tags{display:flex;flex-wrap:wrap;gap:6px}
+.tp-tag{padding:6px 13px;border-radius:20px;border:1.5px solid var(--bd);background:var(--s2);color:var(--t);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--ff);transition:all .12s;box-shadow:2px 2px 0 var(--bd)}
+.tp-tag:hover{background:var(--al);color:var(--a);border-color:var(--a)}
+.tp-tag.active{background:var(--a);color:#fff;border-color:var(--a)}
+.tp-other{width:100%;padding:7px 11px;border:1.5px solid var(--b);border-radius:20px;background:var(--s2);color:var(--t);font-size:12px;font-family:var(--ff);display:none;margin-top:2px}
+.tp-other.show{display:block}
+.tp-other:focus{outline:none;border-color:var(--a)}
+
+/* DISPLAY */
+.tp-display{text-align:center;padding:6px 0 2px}
+.tp-digits{font-family:var(--fi);font-size:40px;font-weight:500;color:var(--t);letter-spacing:-1px;line-height:1}
+.tp-badge{font-size:11px;font-weight:600;color:var(--a);background:var(--al);padding:3px 12px;border-radius:20px;border:1px solid var(--a);display:inline-block;margin-top:6px;min-height:22px}
+
+/* CONTROLS */
+.tp-controls{display:flex;gap:8px}
+.tp-btn{flex:1;padding:10px 8px;border-radius:10px;border:1.5px solid var(--bd);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--ff);transition:all .15s;box-shadow:2px 2px 0 var(--bd)}
+.tp-btn:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--bd)}
+.tp-btn:active:not(:disabled){transform:translate(1px,1px);box-shadow:1px 1px 0 var(--bd)}
+.tp-btn:disabled{opacity:.35;cursor:not-allowed}
+.tp-btn-start{background:var(--a);color:#fff;border-color:var(--a)}
+.tp-btn-pause{background:var(--s2);color:var(--t)}
+.tp-btn-stop{background:var(--peachbg);color:var(--peach);border-color:var(--peach)}
+
+/* TODAY mini log */
+.tp-log{display:flex;flex-direction:column;gap:4px;max-height:140px;overflow-y:auto}
+.tp-log-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg);border-radius:8px;font-size:12px}
+.tp-log-tag{flex:1;font-weight:600;color:var(--t)}
+.tp-log-dur{font-family:var(--fi);color:var(--a);font-weight:500}
+.tp-log-del{background:none;border:none;color:var(--t3);cursor:pointer;font-size:13px;padding:0 2px}
+.tp-log-del:hover{color:var(--peach)}
+.tp-log-empty{font-size:12px;color:var(--t3);text-align:center;padding:8px;font-style:italic}
+
 </style>
 </head>
 <body>
@@ -948,7 +1003,166 @@ function renderShoots(){
   }).join('');
 }
 
-async function toggleShoot(id,cur){await dbPatch('shoots',id,{status:cur==='снято'?'не снято':'снято'});await load();}
+async function toggleShoot(id,cur){await dbPatch('shoots',id,{status:cur==='снято'?'не снято':'снято'});await 
+// ===== TIMER =====
+const TK='life_timer_v1';
+let tSessions=[];
+let tState='idle'; // idle|running|paused
+let tTag='монтаж';
+let tStart=null;
+let tElapsed=0;
+let tTick=null;
+
+function tLoad(){try{const d=localStorage.getItem(TK);if(d)tSessions=JSON.parse(d);}catch{}}
+function tSave(){localStorage.setItem(TK,JSON.stringify(tSessions));}
+
+function tTodayStr(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function tFmtMs(ms){const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;return`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;}
+function tFmtMins(m){if(m<60)return`${m}м`;const h=Math.floor(m/60),r=m%60;return r?`${h}ч ${r}м`:`${h}ч`;}
+
+function tpSelectTag(btn){
+  if(tState!=='idle')return;
+  document.querySelectorAll('.tp-tag').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  tTag=btn.dataset.tag;
+  const inp=document.getElementById('tp-other');
+  inp.classList.toggle('show',tTag==='другое');
+  if(tTag==='другое')inp.focus();
+}
+
+function tGetTag(){
+  if(tTag==='другое'){const v=(document.getElementById('tp-other').value||'').trim();return v||'другое';}
+  return tTag;
+}
+
+function tpStart(){
+  if(tState==='idle'){tElapsed=0;tStart=Date.now();tState='running';tUpdateBadge();}
+  else if(tState==='paused'){tStart=Date.now();tState='running';}
+  tSetControls();
+  clearInterval(tTick);
+  tTick=setInterval(()=>{
+    const total=tElapsed+(tStart?Date.now()-tStart:0);
+    document.getElementById('tp-digits').textContent=tFmtMs(total);
+  },500);
+  tUpdateFabs();
+}
+
+function tpPause(){
+  if(tState!=='running')return;
+  tElapsed+=Date.now()-tStart;tStart=null;tState='paused';
+  clearInterval(tTick);tSetControls();tUpdateFabs();
+}
+
+function tpStop(){
+  if(tState==='idle')return;
+  const totalMs=tElapsed+(tState==='running'?Date.now()-tStart:0);
+  const mins=Math.round(totalMs/60000);
+  clearInterval(tTick);
+  if(mins>=1){
+    tSessions.unshift({id:Date.now(),tag:tGetTag(),date:tTodayStr(),startedAt:new Date(Date.now()-totalMs).toISOString(),endedAt:new Date().toISOString(),minutes:mins});
+    tSave();
+  }
+  tElapsed=0;tStart=null;tState='idle';
+  document.getElementById('tp-digits').textContent='00:00:00';
+  document.getElementById('tp-badge').innerHTML='';
+  tSetControls();tUpdateFabs();tRenderLog();
+}
+
+function tSetControls(){
+  const running=tState==='running',active=tState!=='idle';
+  const bs=document.getElementById('tp-btn-start');
+  bs.textContent=tState==='paused'?'▶ Продолжить':'▶ Начать';
+  bs.disabled=running;
+  document.getElementById('tp-btn-pause').disabled=!running;
+  document.getElementById('tp-btn-stop').disabled=!active;
+  // lock tags
+  document.querySelectorAll('.tp-tag').forEach(b=>b.style.opacity=active?.4:1);
+  document.getElementById('tp-other').disabled=active;
+}
+
+function tUpdateBadge(){
+  document.getElementById('tp-badge').innerHTML=`<span class="tp-badge">${tGetTag()}</span>`;
+}
+
+function tUpdateFabs(){
+  ['timer-fab-sidebar','timer-fab-mob'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    el.classList.remove('running','paused');
+    if(tState==='running'){el.classList.add('running');el.title='Идёт: '+tGetTag();}
+    else if(tState==='paused'){el.classList.add('paused');el.title='На паузе';}
+    else{el.title='Таймер';}
+  });
+  // update sidebar label
+  const sf=document.getElementById('timer-fab-sidebar');
+  if(sf){
+    if(tState==='running'){sf.innerHTML='⏱ <span style="font-family:var(--fi);font-size:11px" id="sf-tick"></span>';}
+    else if(tState==='paused'){sf.innerHTML='⏸ пауза';}
+    else{sf.innerHTML='⏱ таймер';}
+  }
+}
+
+function tRenderLog(){
+  const today=tTodayStr();
+  const items=tSessions.filter(s=>s.date===today);
+  const el=document.getElementById('tp-log');
+  if(!items.length){el.innerHTML='<div class="tp-log-empty">сегодня сессий нет</div>';return;}
+  const total=items.reduce((a,s)=>a+s.minutes,0);
+  el.innerHTML=`<div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-bottom:6px">сегодня · ${tFmtMins(total)}</div>`+
+  `<div class="tp-log">`+items.map(s=>`
+    <div class="tp-log-item">
+      <div class="tp-log-tag">${s.tag}</div>
+      <div class="tp-log-dur">${tFmtMins(s.minutes)}</div>
+      <button class="tp-log-del" onclick="tDelSession(${s.id})">×</button>
+    </div>`).join('')+'</div>';
+}
+
+function tDelSession(id){
+  tSessions=tSessions.filter(s=>s.id!==id);tSave();tRenderLog();
+}
+
+// popup positioning
+function toggleTimerPopup(e){
+  e&&e.stopPropagation();
+  const popup=document.getElementById('timer-popup');
+  if(popup.classList.contains('open')){closeTimerPopup();return;}
+  // position near clicked element
+  const btn=e&&e.currentTarget;
+  const isMob=window.innerWidth<=768;
+  if(isMob){
+    // center bottom
+    popup.style.left='50%';popup.style.transform='translateX(-50%)';
+    popup.style.bottom='80px';popup.style.top='auto';popup.style.right='auto';
+  } else {
+    // above sidebar fab
+    const r=btn?btn.getBoundingClientRect():null;
+    if(r){
+      popup.style.left=(r.right+12)+'px';
+      popup.style.top='auto';
+      popup.style.bottom=(window.innerHeight-r.bottom)+'px';
+      popup.style.right='auto';
+      popup.style.transform='none';
+    }
+  }
+  popup.classList.add('open');
+  tRenderLog();
+}
+
+function closeTimerPopup(){
+  document.getElementById('timer-popup').classList.remove('open');
+}
+
+// close on outside click
+document.addEventListener('click',e=>{
+  const popup=document.getElementById('timer-popup');
+  if(popup&&popup.classList.contains('open')&&!popup.contains(e.target)&&
+     !e.target.closest('#timer-fab-sidebar')&&!e.target.closest('#timer-fab-mob')){
+    closeTimerPopup();
+  }
+});
+
+tLoad();tSetControls();tUpdateFabs();
+
+load();}
 async function toggleEdited(id,cur){await dbPatch('shoots',id,{edited:!cur});await load();}
 
 function renderEvents(){
@@ -1517,5 +1731,46 @@ document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>
 
 load();
 </script>
+
+<!-- TIMER MOBILE FAB -->
+<button class="timer-fab-mob" id="timer-fab-mob" onclick="toggleTimerPopup(event)" title="Таймер">⏱</button>
+
+<!-- TIMER POPUP -->
+<div class="timer-popup" id="timer-popup">
+  <div class="timer-popup-head">
+    <span class="timer-popup-title">⏱ Таймер</span>
+    <button class="timer-popup-close" onclick="closeTimerPopup()">✕</button>
+  </div>
+
+  <!-- tags -->
+  <div id="tp-tags-wrap">
+    <div class="tp-tags">
+      <button class="tp-tag active" data-tag="монтаж" onclick="tpSelectTag(this)">✂️ монтаж</button>
+      <button class="tp-tag" data-tag="съёмка" onclick="tpSelectTag(this)">📷 съёмка</button>
+      <button class="tp-tag" data-tag="сценарий" onclick="tpSelectTag(this)">📝 сценарий</button>
+      <button class="tp-tag" data-tag="дизайн" onclick="tpSelectTag(this)">🎨 дизайн</button>
+      <button class="tp-tag" data-tag="переписка" onclick="tpSelectTag(this)">💬 переписка</button>
+      <button class="tp-tag" data-tag="другое" onclick="tpSelectTag(this)">✦ другое</button>
+    </div>
+    <input class="tp-other" id="tp-other" placeholder="Что именно?" maxlength="40">
+  </div>
+
+  <!-- display -->
+  <div class="tp-display">
+    <div class="tp-digits" id="tp-digits">00:00:00</div>
+    <div id="tp-badge" style="min-height:22px;margin-top:6px"></div>
+  </div>
+
+  <!-- controls -->
+  <div class="tp-controls">
+    <button class="tp-btn tp-btn-start" id="tp-btn-start" onclick="tpStart()">▶ Начать</button>
+    <button class="tp-btn tp-btn-pause" id="tp-btn-pause" onclick="tpPause()" disabled>⏸</button>
+    <button class="tp-btn tp-btn-stop" id="tp-btn-stop" onclick="tpStop()" disabled>⏹</button>
+  </div>
+
+  <!-- today log -->
+  <div id="tp-log"></div>
+</div>
+
 </body>
 </html>
