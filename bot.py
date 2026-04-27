@@ -1,6 +1,6 @@
 import os, json, httpx, asyncio, random
 from datetime import datetime, timedelta
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, BotCommand, MenuButtonCommands
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
@@ -167,11 +167,23 @@ async def supa_get(table, limit=100, order="created_at.desc"):
         r = await c.get(f"{SUPA_URL}/rest/v1/{table}?order={order}&limit={limit}", headers=SUPA_H)
         return r.json() if r.status_code == 200 else []
 
-async def supa_insert(table, data):
+async def supa_insert(table, data, return_id=False):
+    headers = dict(SUPA_H)
+    if return_id:
+        headers["Prefer"] = "return=representation"
     async with httpx.AsyncClient() as c:
-        r = await c.post(f"{SUPA_URL}/rest/v1/{table}", headers=SUPA_H, json=data)
+        r = await c.post(f"{SUPA_URL}/rest/v1/{table}", headers=headers, json=data)
         print(f"INSERT {table}: {r.status_code} {r.text[:80]}")
-        return r.status_code in (200, 201)
+        if r.status_code in (200, 201):
+            if return_id:
+                try:
+                    arr = r.json()
+                    if isinstance(arr, list) and arr:
+                        return arr[0].get("id")
+                except:
+                    pass
+            return True
+        return False if not return_id else None
 
 async def supa_update(table, field, value, data):
     async with httpx.AsyncClient() as c:
@@ -435,6 +447,26 @@ def main_kbd():
          InlineKeyboardButton("📊 Итоги", callback_data="week")]
     ])
 
+def reply_kbd():
+    """Глобальная клавиатура внизу - всегда видна"""
+    return ReplyKeyboardMarkup([
+        [KeyboardButton("🏠 Сегодня"), KeyboardButton("📅 Съёмки")],
+        [KeyboardButton("🎬 Проекты"), KeyboardButton("💡 Идеи")],
+        [KeyboardButton("📓 Дневник"), KeyboardButton("📊 Итоги")]
+    ], resize_keyboard=True, is_persistent=True)
+
+def proj_detail_kbd_with_figma(proj_id, status, has_figma):
+    """Расширенная клавиатура проекта с кнопкой фигма"""
+    toggle_label = "Вернуть в работу" if status == "готово" else "✅ Завершить"
+    figma_label = "🎨 Открыть Figma" if has_figma else "🎨 Добавить Figma"
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(toggle_label, callback_data=f"toggle_proj_{proj_id}")],
+        [InlineKeyboardButton("🔗 Добавить ссылку", callback_data=f"addlink_proj_{proj_id}"),
+         InlineKeyboardButton("📝 Добавить заметку", callback_data=f"addnote_proj_{proj_id}")],
+        [InlineKeyboardButton(figma_label, callback_data=f"figma_proj_{proj_id}")],
+        [InlineKeyboardButton("◀️ К проектам", callback_data="projects")]
+    ])
+
 def shoot_detail_kbd(shoot_id, status):
     toggle_label = "Отметить снято ✅" if status != "снято" else "Отметить не снято 🔸"
     return InlineKeyboardMarkup([
@@ -455,9 +487,9 @@ def proj_detail_kbd(proj_id, status):
     ])
 
 def render_shoot(s):
-    lines = [f"📅 {s.get('date','')} {s.get('time','')}",
-             f"📍 {s.get('location','')}"]
+    lines = [f"📅 {s.get('date','')} {s.get('time','')}"]
     if s.get("project"): lines.append(f"🎬 {s['project']}")
+    if s.get("location"): lines.append(f"📍 {s['location']}")
     if s.get("people"): lines.append(f"👥 {s['people']}")
     if s.get("notes"): lines.append(f"📝 {s['notes']}")
     if s.get("script"): lines.append(f"🔗 {s['script']}")
@@ -508,8 +540,10 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "Привет, Катерина! Я Рак — твой личный ассистент 🦀\n\n"
         "Пиши как угодно — русский, украинский, вперемешку.\n"
         "Можешь пересылать сообщения от координатора.\n\n"
-        "Записываю съёмки, идеи, проекты, события и дневник 🙂",
-        reply_markup=main_kbd()
+        "Записываю съёмки, идеи, проекты, события и дневник.\n"
+        "Кнопки внизу — быстрые переходы.\n"
+        "Префиксы: «сценарий: <ссылка>», «референс: <ссылка>», «фигма: <ссылка>»",
+        reply_markup=reply_kbd()
     )
     # Schedule check-ins (если доступен job_queue)
     if ctx.job_queue is not None:
@@ -525,6 +559,36 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     else:
         print("JobQueue unavailable, check-ins disabled")
 
+async def cmd_today_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    update.message.text = "🏠 Сегодня"
+    await handle_message(update, ctx)
+
+async def cmd_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🦀 *Что я умею:*\n\n"
+        "📝 *Записываю автоматически:*\n"
+        "• съёмки (дата, локация, проект, люди)\n"
+        "• идеи (начни с «идея:»)\n"
+        "• события (врач, школа)\n"
+        "• дневник (рассказ про день)\n\n"
+        "🔗 *Префиксы для ссылок:*\n"
+        "• «сценарий: <ссылка>» — создаст запись в архиве, привяжет к последней съёмке\n"
+        "• «референс: <ссылка>» — добавит к последней съёмке в журнал\n"
+        "• «фигма: <ссылка>» — привяжет к проекту\n\n"
+        "❓ *Спрашивай по данным:*\n"
+        "• «кто снимался в этом месяце»\n"
+        "• «когда последняя съёмка с олегом»\n"
+        "• «что у меня запланировано»\n"
+        "• «съёмки с локомотивом»",
+        parse_mode="Markdown", reply_markup=reply_kbd()
+    )
+
+async def cmd_clear(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    conversations[uid] = []
+    pending.pop(uid, None)
+    await update.message.reply_text("🧹 Контекст очищен. Начинаем сначала.", reply_markup=reply_kbd())
+
 async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     uid = update.effective_user.id
@@ -533,12 +597,102 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("Напиши что-нибудь 🙂")
         return
 
+    # === Перехват кнопок Reply Keyboard ===
+    text_stripped = text.strip()
+    if text_stripped in ("🏠 Сегодня", "📅 Съёмки", "🎬 Проекты", "💡 Идеи", "📓 Дневник", "📊 Итоги"):
+        if text_stripped == "🏠 Сегодня":
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            shoots = await supa_get("shoots", 100)
+            events = await supa_get("events", 100)
+            today_shoots = [s for s in shoots if s.get("date") == today_str]
+            today_events = [e for e in events if e.get("date") == today_str]
+            lines = [f"📅 *Сегодня — {datetime.now().strftime('%d.%m.%Y')}*\n"]
+            if not today_shoots and not today_events:
+                lines.append("Сегодня свободно ✦")
+            for s in today_shoots:
+                what = s.get("project") or s.get("location") or "съёмка"
+                done = "✅" if s.get("status") == "снято" else "🔸"
+                lines.append(f"{done} {s.get('time','')} — {what}")
+            for e in today_events:
+                lines.append(f"📍 {e.get('time','')} — {e.get('title','')}")
+            await msg.reply_text("\n".join(lines), parse_mode="Markdown", reply_markup=reply_kbd())
+            return
+        elif text_stripped == "📅 Съёмки":
+            await msg.reply_text("Все съёмки:", reply_markup=main_kbd())
+            from telegram import Update as _U
+            # имитируем callback на shoots
+            class Fake:
+                pass
+            return
+        elif text_stripped == "🎬 Проекты":
+            projects = await supa_get("projects", 50)
+            shoots = await supa_get("shoots", 100)
+            tasks = await supa_get("tasks", 200)
+            if not projects:
+                await msg.reply_text("Проектов пока нет.", reply_markup=reply_kbd())
+                return
+            buttons = []
+            for p in projects:
+                icon = "✅" if p.get("status") == "готово" else "🔸"
+                buttons.append([InlineKeyboardButton(f"{icon} {p.get('name','?')}", callback_data=f"proj_{p['id']}")])
+            await msg.reply_text("🎬 Проекты:", reply_markup=InlineKeyboardMarkup(buttons))
+            return
+        elif text_stripped == "💡 Идеи":
+            ideas = await supa_get("ideas", 50)
+            if not ideas:
+                await msg.reply_text("Идей пока нет.", reply_markup=reply_kbd())
+                return
+            lines = ["💡 *Идеи:*\n"]
+            for i in ideas[:20]:
+                lines.append(f"• {i.get('title','?')}")
+            await msg.reply_text("\n".join(lines), parse_mode="Markdown", reply_markup=reply_kbd())
+            return
+        elif text_stripped == "📓 Дневник":
+            diary = await supa_get("diary", 20, order="date.desc")
+            if not diary:
+                await msg.reply_text("Дневник пока пуст.", reply_markup=reply_kbd())
+                return
+            lines = ["📓 *Дневник:*\n"]
+            for d in diary[:10]:
+                mood_icon = {"хорошо":"🙂","нейтрально":"😐","плохо":"😔"}.get(d.get("mood","нейтрально"),"😐")
+                lines.append(f"{mood_icon} {d.get('date','')} — {(d.get('events','') or '')[:60]}")
+            await msg.reply_text("\n".join(lines), parse_mode="Markdown", reply_markup=reply_kbd())
+            return
+        elif text_stripped == "📊 Итоги":
+            shoots = await supa_get("shoots", 200)
+            projects = await supa_get("projects", 50)
+            ideas = await supa_get("ideas", 100)
+            diary = await supa_get("diary", 100)
+            week_ago = datetime.now() - timedelta(days=7)
+            week_shoots = sum(1 for s in shoots if datetime.strptime(s["created_at"][:10], "%Y-%m-%d") >= week_ago) if shoots else 0
+            done_shoots = sum(1 for s in shoots if s.get("status") == "снято" and datetime.strptime(s["created_at"][:10], "%Y-%m-%d") >= week_ago) if shoots else 0
+            active_proj = sum(1 for p in projects if p.get("status") != "готово")
+            await msg.reply_text(
+                f"📊 *Итоги за неделю*\n\n"
+                f"📅 Съёмок добавлено: {week_shoots}\n"
+                f"✅ Съёмок проведено: {done_shoots}\n"
+                f"🎬 Активных проектов: {active_proj}\n"
+                f"💡 Идей всего: {len(ideas)}\n"
+                f"📓 Записей в дневнике: {len(diary)}",
+                parse_mode="Markdown", reply_markup=reply_kbd()
+            )
+            return
+
     # Check if waiting for link/note
     if uid in pending:
         p = pending[uid]
         # pending от clarify обрабатываем ниже в общей ветке Groq, не здесь
         if p.get("type") == "clarify_shoot":
             pass
+        elif p.get("type") == "figma_url_for_proj":
+            proj_id = p["proj_id"]
+            url = text.strip()
+            await supa_update("projects", "id", proj_id, {"figma_url": url})
+            pending.pop(uid, None)
+            projects = await supa_get("projects", 50)
+            proj = next((x for x in projects if x.get("id") == proj_id), None)
+            await msg.reply_text(f"🎨 Figma добавлена к «{proj.get('name','') if proj else '?'}» ✓", reply_markup=reply_kbd())
+            return
         else:
             # стоп-слова: отмена или очистка вместо ввода заметки/ссылки
             stop_words = ("отмен","отміни","не надо","забей","стоп","cancel","скасуй")
@@ -586,8 +740,89 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 p_obj = next((x for x in projects if x.get("id")==entity_id),None)
                 if p_obj:
                     await msg.reply_text(f"{'🔗 Ссылка' if field=='link' else '📝 Заметка'} добавлена ✓\n\n"+render_project(p_obj,shoots,tasks),
-                        parse_mode="Markdown",reply_markup=proj_detail_kbd(entity_id,p_obj.get("status","")))
+                        parse_mode="Markdown",reply_markup=proj_detail_kbd_with_figma(entity_id,p_obj.get("status",""),bool(p_obj.get("figma_url"))))
                 return
+
+    # === Распознавание префиксов «сценарий:», «референс:», «фигма:» ===
+    text_low = text.lower().strip()
+    prefix_match = None
+    for prefix in ("сценарій:", "сценарий:", "сценарій ", "сценарий "):
+        if text_low.startswith(prefix):
+            prefix_match = ("script", text[len(prefix):].strip())
+            break
+    if not prefix_match:
+        for prefix in ("референс:", "реф:", "референс ", "реф "):
+            if text_low.startswith(prefix):
+                prefix_match = ("ref", text[len(prefix):].strip())
+                break
+    if not prefix_match:
+        for prefix in ("фігма:", "фигма:", "figma:", "фігма ", "фигма ", "figma "):
+            if text_low.startswith(prefix):
+                prefix_match = ("figma", text[len(prefix):].strip())
+                break
+
+    if prefix_match:
+        kind, value = prefix_match
+        if not value:
+            await msg.reply_text(f"После «{kind}» жду ссылку или текст. Пример: сценарий: https://...")
+            return
+        # ищем последнюю созданную съёмку
+        shoots = await supa_get("shoots", 5, order="created_at.desc")
+        last_shoot = shoots[0] if shoots else None
+
+        if kind == "script":
+            # создаём запись в scripts, привязываем к последней съёмке
+            if not last_shoot:
+                await msg.reply_text("Сначала добавь съёмку, потом сценарий.")
+                return
+            title = f"Сценарий — {last_shoot.get('project') or last_shoot.get('location') or last_shoot.get('date','?')}"
+            new_id = await supa_insert("scripts", {"title": title, "link": value, "tag": "другое"}, return_id=True)
+            if new_id:
+                # обновляем массив script_ids у съёмки
+                cur = last_shoot.get("script_ids") or []
+                cur.append(new_id)
+                await supa_update("shoots", "id", last_shoot["id"], {"script_ids": cur})
+                pending[uid] = {"type": "script_tag", "script_id": new_id, "shoot_id": last_shoot["id"]}
+                await msg.reply_text(
+                    f"📜 Сценарий привязала к съёмке {last_shoot.get('date','')} {last_shoot.get('location','')}.\nКакой тип?",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("🎤 интервью", callback_data=f"stag_{new_id}_інтерв'ю"),
+                         InlineKeyboardButton("📷 подсъёмы", callback_data=f"stag_{new_id}_підзйом")],
+                        [InlineKeyboardButton("🎬 постановка", callback_data=f"stag_{new_id}_постановка"),
+                         InlineKeyboardButton("✦ другое", callback_data=f"stag_{new_id}_інше")]
+                    ])
+                )
+            else:
+                await msg.reply_text("Не получилось сохранить 😔")
+            return
+
+        if kind == "ref":
+            if not last_shoot:
+                await msg.reply_text("Сначала добавь съёмку, потом референс.")
+                return
+            old_notes = last_shoot.get("notes", "")
+            new_text = f"🔗 референс: {value}"
+            merged = append_log(old_notes, new_text)
+            await supa_update("shoots", "id", last_shoot["id"], {"notes": merged})
+            await msg.reply_text(f"🔗 Референс добавила к съёмке {last_shoot.get('date','')} {last_shoot.get('location','')} ✓", reply_markup=reply_kbd())
+            return
+
+        if kind == "figma":
+            # ищем последний упомянутый проект (или последний созданный)
+            projects = await supa_get("projects", 50, order="created_at.desc")
+            active = [p for p in projects if p.get("status") != "готово"]
+            if not active:
+                await msg.reply_text("Нет активных проектов. Сначала добавь проект.")
+                return
+            if len(active) == 1:
+                p = active[0]
+                await supa_update("projects", "id", p["id"], {"figma_url": value})
+                await msg.reply_text(f"🎨 Figma добавлена к проекту «{p.get('name','')}» ✓", reply_markup=reply_kbd())
+            else:
+                pending[uid] = {"type": "figma_choose", "url": value}
+                buttons = [[InlineKeyboardButton(p["name"], callback_data=f"figma_pick_{p['id']}")] for p in active[:6]]
+                await msg.reply_text(f"🎨 К какому проекту привязать figma?", reply_markup=InlineKeyboardMarkup(buttons))
+            return
 
     add_history(uid, "user", text)
     thinking = await msg.reply_text("⏳")
@@ -682,6 +917,44 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await q.edit_message_text("Выбери раздел:", reply_markup=main_kbd())
         return
 
+    # === Тег сценария ===
+    if cb.startswith("stag_"):
+        parts = cb.split("_", 2)
+        script_id = int(parts[1])
+        tag = parts[2]
+        await supa_update("scripts", "id", script_id, {"tag": tag})
+        pending.pop(uid, None)
+        await q.edit_message_text(f"📜 Тег сценария: *{tag}* ✓", parse_mode="Markdown")
+        return
+
+    # === Выбор проекта для figma ===
+    if cb.startswith("figma_pick_"):
+        proj_id = int(cb.split("_")[2])
+        p = pending.pop(uid, None)
+        if p and p.get("type") == "figma_choose":
+            await supa_update("projects", "id", proj_id, {"figma_url": p["url"]})
+            projects = await supa_get("projects", 50)
+            proj = next((x for x in projects if x.get("id") == proj_id), None)
+            await q.edit_message_text(f"🎨 Figma добавлена к проекту «{proj.get('name','') if proj else '?'}» ✓")
+        else:
+            await q.edit_message_text("Не нашла что привязать 😔")
+        return
+
+    # === Кнопка figma в карточке проекта ===
+    if cb.startswith("figma_proj_"):
+        proj_id = int(cb.split("_")[2])
+        projects = await supa_get("projects", 50)
+        proj = next((x for x in projects if x.get("id") == proj_id), None)
+        if not proj:
+            await q.edit_message_text("Проект не найден")
+            return
+        if proj.get("figma_url"):
+            await q.message.reply_text(f"🎨 Figma проекта:\n{proj['figma_url']}", reply_markup=reply_kbd())
+        else:
+            pending[uid] = {"type": "figma_url_for_proj", "proj_id": proj_id}
+            await q.message.reply_text("🎨 Пришли ссылку на Figma:")
+        return
+
     if cb == "shoots":
         pending.pop(uid, None)
         items = await supa_get("shoots",20,order="date.asc")
@@ -765,7 +1038,7 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if not p:
             await q.edit_message_text("Не найдено")
             return
-        await q.edit_message_text(render_project(p,shoots,tasks),parse_mode="Markdown",reply_markup=proj_detail_kbd(proj_id,p.get("status","")))
+        await q.edit_message_text(render_project(p,shoots,tasks),parse_mode="Markdown",reply_markup=proj_detail_kbd_with_figma(proj_id,p.get("status",""),bool(p.get("figma_url"))))
         return
 
     if cb.startswith("addlink_proj_"):
@@ -793,7 +1066,7 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         tasks = await supa_get("tasks",200)
         p = next((x for x in projects if x.get("id")==proj_id),None)
         if p:
-            await q.edit_message_text(render_project(p,shoots,tasks),parse_mode="Markdown",reply_markup=proj_detail_kbd(proj_id,p.get("status","")))
+            await q.edit_message_text(render_project(p,shoots,tasks),parse_mode="Markdown",reply_markup=proj_detail_kbd_with_figma(proj_id,p.get("status",""),bool(p.get("figma_url"))))
         return
 
     if cb == "ideas":
@@ -879,9 +1152,26 @@ def main():
     time.sleep(15)
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("today", cmd_today_handler))
+    app.add_handler(CommandHandler("help", cmd_help))
+    app.add_handler(CommandHandler("clear", cmd_clear))
     app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION | filters.FORWARDED, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    print("🦀 Rak bot v21 started!")
+
+    async def post_init(application):
+        await application.bot.set_my_commands([
+            BotCommand("today", "что у меня сегодня"),
+            BotCommand("help", "что я умею"),
+            BotCommand("clear", "очистить контекст"),
+            BotCommand("start", "перезапуск"),
+        ])
+        try:
+            await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
+        except Exception as e:
+            print(f"menu button: {e}")
+    app.post_init = post_init
+
+    print("🦀 Rak bot v22 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
