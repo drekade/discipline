@@ -1003,7 +1003,8 @@ function renderShoots(){
   }).join('');
 }
 
-async function toggleShoot(id,cur){await dbPatch('shoots',id,{status:cur==='снято'?'не снято':'снято'});await 
+async function toggleShoot(id,cur){await dbPatch('shoots',id,{status:cur==='снято'?'не снято':'снято'});await load();}
+
 // ===== TIMER =====
 const TK='life_timer_v1';
 let tSessions=[];
@@ -1071,13 +1072,13 @@ function tpStop(){
 function tSetControls(){
   const running=tState==='running',active=tState!=='idle';
   const bs=document.getElementById('tp-btn-start');
+  if(!bs)return; // popup not in DOM yet
   bs.textContent=tState==='paused'?'▶ Продолжить':'▶ Начать';
   bs.disabled=running;
-  document.getElementById('tp-btn-pause').disabled=!running;
-  document.getElementById('tp-btn-stop').disabled=!active;
-  // lock tags
+  const bp=document.getElementById('tp-btn-pause');if(bp)bp.disabled=!running;
+  const bst=document.getElementById('tp-btn-stop');if(bst)bst.disabled=!active;
   document.querySelectorAll('.tp-tag').forEach(b=>b.style.opacity=active?.4:1);
-  document.getElementById('tp-other').disabled=active;
+  const oth=document.getElementById('tp-other');if(oth)oth.disabled=active;
 }
 
 function tUpdateBadge(){
@@ -1105,6 +1106,7 @@ function tRenderLog(){
   const today=tTodayStr();
   const items=tSessions.filter(s=>s.date===today);
   const el=document.getElementById('tp-log');
+  if(!el)return; // popup not open
   if(!items.length){el.innerHTML='<div class="tp-log-empty">сегодня сессий нет</div>';return;}
   const total=items.reduce((a,s)=>a+s.minutes,0);
   el.innerHTML=`<div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-bottom:6px">сегодня · ${tFmtMins(total)}</div>`+
@@ -1160,9 +1162,10 @@ document.addEventListener('click',e=>{
   }
 });
 
-tLoad();tSetControls();tUpdateFabs();
+tLoad();
+document.addEventListener('DOMContentLoaded',()=>{tSetControls();tUpdateFabs();tRenderLog();});
 
-load();}
+load();
 async function toggleEdited(id,cur){await dbPatch('shoots',id,{edited:!cur});await load();}
 
 function renderEvents(){
