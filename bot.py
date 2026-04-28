@@ -64,14 +64,21 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 
 8. НОВЫЙ ПРОЕКТ (action: add_project)
 
-9. ОЧИСТКА ПОЛЯ (action: clear_field) — "отмени/убери/очисти заметку/ссылку"
+9. СЦЕНАРИЙ БЕЗ СЪЁМКИ (action: add_script) — сообщение содержит ссылку (http/https) И слово "сценарий"/"сценарій"/"скрипт" БЕЗ явной даты И БЕЗ явной локации.
+   Создаём съёмку-заготовку: дата пустая, локация "?", статус "не снято", project = проект если упомянут.
+   В notes пишем "⏳ не запланировано — дата и место не известны".
+   НЕ придумывай дату/локацию. НЕ спрашивай тип сценария.
+   data: {{"url": "https://...", "project": "проект если упомянут иначе пустая строка", "title": "о чём сценарий одной фразой"}}
+   Если в сообщении ЕСТЬ дата И локация — это add_shoot со script внутри, не add_script.
+
+10. ОЧИСТКА ПОЛЯ (action: clear_field) — "отмени/убери/очисти заметку/ссылку"
    data: {{field: "notes"|"script"|"link", entity: "shoot"|"project"}}
 
-10. ОТВЕТ НА УТОЧНЕНИЕ (action: clarify_reply) — ТОЛЬКО если ТВОЙ ПРОШЛЫЙ reply был вопросом "какая дата?"/"во сколько?"/"где?",
+11. ОТВЕТ НА УТОЧНЕНИЕ (action: clarify_reply) — ТОЛЬКО если ТВОЙ ПРОШЛЫЙ reply был вопросом "какая дата?"/"во сколько?"/"где?",
     а Катерина даёт эти недостающие данные одним-двумя словами ("завтра", "в 10", "25 апреля").
     data: {{field_given: "date"|"time"|"location", value: "..."}}
 
-11. ЗАПРОС ИНФОРМАЦИИ (action: query) — Катерина спрашивает что-то по своим данным.
+12. ЗАПРОС ИНФОРМАЦИИ (action: query) — Катерина спрашивает что-то по своим данным.
     ПРИМЕРЫ:
     • "какие люди снимались в этом месяце" → intent=list_people, period=month
     • "кто снимался на этой неделе" → intent=list_people, period=week
@@ -84,7 +91,7 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
     data: {{intent: "list_people"|"count_shoots"|"list_shoots"|"last_shoot_with_person"|"project_stats"|"upcoming", period: "week"|"month"|"all", params: {{...}}}}
     reply: всегда пиши "Сейчас посмотрю..." — основной текст бот сформирует сам по данным.
 
-12. РАЗГОВОР (action: none) — только короткие междометия и прямые вопросы.
+13. РАЗГОВОР (action: none) — только короткие междометия и прямые вопросы.
     "привет","дякую","ок","да","нет" — action: none.
 
 ХАРАКТЕР: отвечай на том же языке что Катерина. Поддержи если тяжело. Не навязывайся с вопросами.
@@ -92,7 +99,7 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 ПОСЛЕ СОХРАНЕНИЯ В ДНЕВНИК скажи коротко что записала, можешь мягко спросить как она.
 
 ФОРМАТ — только JSON без markdown:
-{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|clarify|clarify_reply|clear_field|complete_project|add_idea|add_diary|add_event|add_project|query","data":{{}}}}
+{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|clarify|clarify_reply|clear_field|complete_project|add_idea|add_diary|add_event|add_project|add_script|query","data":{{}}}}
 
 data для add_multiple_shoots: {{"shoots":[{{"date":"YYYY-MM-DD","time":"HH:MM","location":"","project":"","people":"","script":"","notes":""}}]}}
 data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
@@ -103,6 +110,7 @@ data для clear_field: field, entity
 data для clarify: partial
 data для clarify_reply: field_given, value
 data для query: intent, period (опционально), params (опционально)
+data для add_script: url, title, project (опционально), script_type (опционально)
 
 ⚠️ ОБЯЗАТЕЛЬНО: твой ответ — это ВАЛИДНЫЙ JSON в одну строку с тремя ключами reply, action, data. Не пустой {{}}. Не markdown. Не ```. Просто JSON.
 ПРИМЕР минимального ответа: {{"reply":"Окей","action":"none","data":{{}}}}
@@ -411,6 +419,26 @@ async def apply_action(action, data):
             if data.get("project_name","").lower() in p.get("name","").lower():
                 await supa_update("projects","id",p["id"],{"status":"готово"})
                 return True
+    elif action == "add_script":
+        url=(data.get("url") or "").strip()
+        if not url:
+            print(f"SKIP add_script: no url in data={data}")
+            return False
+        project=(data.get("project") or "").strip()
+        title=(data.get("title") or "").strip()
+        # Создаём съёмку-заготовку без даты и места
+        shoot_data={
+            "date": None,
+            "time": None,
+            "location": "?",
+            "project": project,
+            "people": "",
+            "status": "не снято",
+            "script": url,
+            "notes": f"⏳ не запланировано — дата и место не известны{chr(10)}📄 сценарий: {title}" if title else "⏳ не запланировано — дата и место не известны"
+        }
+        ok=await supa_insert("shoots", shoot_data)
+        return ok
     elif action == "add_idea":
         # модель иногда возвращает "idea" вместо "title" — нормализуем
         title = (data.get("title") or data.get("idea") or data.get("name") or "").strip()
