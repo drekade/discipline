@@ -1056,8 +1056,38 @@ let tStart=null;
 let tElapsed=0;
 let tTick=null;
 
-function tLoad(){try{const d=localStorage.getItem(TK);if(d)tSessions=JSON.parse(d);}catch{}}
+const TK_STATE='life_timer_state_v1';
+
+function tLoad(){
+  try{const d=localStorage.getItem(TK);if(d)tSessions=JSON.parse(d);}catch{}
+  // восстанавливаем активный таймер после перезагрузки
+  try{
+    const s=localStorage.getItem(TK_STATE);
+    if(s){
+      const st=JSON.parse(s);
+      tTag=st.tag||'монтаж';
+      if(st.state==='running'){
+        tElapsed=st.elapsed||0;
+        tStart=st.startedAt; // абсолютный timestamp
+        tState='running';
+      } else if(st.state==='paused'){
+        tElapsed=st.elapsed||0;
+        tStart=null;
+        tState='paused';
+      }
+    }
+  }catch{}
+}
+
 function tSave(){localStorage.setItem(TK,JSON.stringify(tSessions));}
+
+function tSaveState(){
+  if(tState==='idle'){localStorage.removeItem(TK_STATE);return;}
+  const elapsed=tElapsed+(tState==='running'&&tStart?Date.now()-tStart:0);
+  localStorage.setItem(TK_STATE,JSON.stringify({
+    state:tState, tag:tTag, elapsed, startedAt:tStart
+  }));
+}
 
 function tTodayStr(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function tFmtMs(ms){const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;return`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;}
@@ -1081,7 +1111,7 @@ function tGetTag(){
 function tpStart(){
   if(tState==='idle'){tElapsed=0;tStart=Date.now();tState='running';tUpdateBadge();}
   else if(tState==='paused'){tStart=Date.now();tState='running';}
-  tSetControls();
+  tSetControls();tSaveState();
   clearInterval(tTick);
   tTick=setInterval(()=>{
     const total=tElapsed+(tStart?Date.now()-tStart:0);
@@ -1093,7 +1123,7 @@ function tpStart(){
 function tpPause(){
   if(tState!=='running')return;
   tElapsed+=Date.now()-tStart;tStart=null;tState='paused';
-  clearInterval(tTick);tSetControls();tUpdateFabs();
+  clearInterval(tTick);tSetControls();tSaveState();tUpdateFabs();
 }
 
 function tpStop(){
@@ -1105,7 +1135,7 @@ function tpStop(){
     tSessions.unshift({id:Date.now(),tag:tGetTag(),date:tTodayStr(),startedAt:new Date(Date.now()-totalMs).toISOString(),endedAt:new Date().toISOString(),minutes:mins});
     tSave();
   }
-  tElapsed=0;tStart=null;tState='idle';
+  tElapsed=0;tStart=null;tState='idle';localStorage.removeItem(TK_STATE);
   document.getElementById('tp-digits').textContent='00:00:00';
   document.getElementById('tp-badge').innerHTML='';
   tSetControls();tUpdateFabs();tRenderLog();
@@ -1327,7 +1357,28 @@ function tsDelSession(id){
 }
 
 tLoad();
-document.addEventListener('DOMContentLoaded',()=>{tSetControls();tUpdateFabs();tRenderLog();});
+document.addEventListener('DOMContentLoaded',()=>{
+  tSetControls();tUpdateFabs();tRenderLog();
+  // восстанавливаем тег в попапе
+  document.querySelectorAll('.tp-tag').forEach(b=>{
+    if(b.dataset.tag===tTag)b.classList.add('active');
+    else b.classList.remove('active');
+  });
+  // если таймер был запущен — возобновляем тик
+  if(tState==='running'){
+    tUpdateBadge();
+    clearInterval(tTick);
+    tTick=setInterval(()=>{
+      const total=tElapsed+(tStart?Date.now()-tStart:0);
+      const el=document.getElementById('tp-digits');
+      if(el)el.textContent=tFmtMs(total);
+    },500);
+  } else if(tState==='paused'){
+    tUpdateBadge();
+    const el=document.getElementById('tp-digits');
+    if(el)el.textContent=tFmtMs(tElapsed);
+  }
+});
 
 load();
 async function toggleEdited(id,cur){await dbPatch('shoots',id,{edited:!cur});await load();}
