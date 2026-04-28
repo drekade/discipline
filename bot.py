@@ -820,26 +820,23 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         last_shoot = shoots[0] if shoots else None
 
         if kind == "script":
-            # создаём запись в scripts, привязываем к последней съёмке
-            if not last_shoot:
-                await msg.reply_text("Сначала добавь съёмку, потом сценарий.")
-                return
-            title = f"Сценарий — {last_shoot.get('project') or last_shoot.get('location') or last_shoot.get('date','?')}"
-            new_id = await supa_insert("scripts", {"title": title, "link": value, "tag": "другое"}, return_id=True)
-            if new_id:
-                # обновляем массив script_ids у съёмки
-                cur = last_shoot.get("script_ids") or []
-                cur.append(new_id)
-                await supa_update("shoots", "id", last_shoot["id"], {"script_ids": cur})
-                pending[uid] = {"type": "script_tag", "script_id": new_id, "shoot_id": last_shoot["id"]}
+            # Создаём съёмку-заготовку без даты/места
+            shoot_data = {
+                "date": None,
+                "time": None,
+                "location": "?",
+                "project": "",
+                "people": "",
+                "status": "не снято",
+                "script": value,
+                "notes": "⏳ не запланировано — дата и место не известны"
+            }
+            shoot_id = await supa_insert("shoots", shoot_data, return_id=True)
+            if shoot_id:
                 await msg.reply_text(
-                    f"📜 Сценарий привязала к съёмке {last_shoot.get('date','')} {last_shoot.get('location','')}.\nКакой тип?",
-                    reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("🎤 интервью", callback_data=f"stag_{new_id}_інтерв'ю"),
-                         InlineKeyboardButton("📷 подсъёмы", callback_data=f"stag_{new_id}_підзйом")],
-                        [InlineKeyboardButton("🎬 постановка", callback_data=f"stag_{new_id}_постановка"),
-                         InlineKeyboardButton("✦ другое", callback_data=f"stag_{new_id}_інше")]
-                    ])
+                    "📜 Сценарий сохранила. Создала съёмку-заготовку — дата и место пока не известны.\n"
+                    "Как только решишь — открой карточку в браузере и допиши.",
+                    reply_markup=reply_kbd()
                 )
             else:
                 await msg.reply_text("Не получилось сохранить 😔")
