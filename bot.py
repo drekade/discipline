@@ -820,12 +820,17 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         last_shoot = shoots[0] if shoots else None
 
         if kind == "script":
-            # Создаём съёмку-заготовку без даты/места
+            import re as _re
+            raw_text = text
+            cleaned = _re.sub(r'https?://\S+', '', raw_text)
+            cleaned = _re.sub(r'(?i)(сценарій?|скрипт)\s*:', '', cleaned)
+            cleaned = cleaned.strip(' .,\n\t\u2014-')
+            shoot_title = cleaned if len(cleaned) > 2 else "Сценарий без названия"
             shoot_data = {
                 "date": None,
                 "time": None,
                 "location": "?",
-                "project": "",
+                "project": shoot_title,
                 "people": "",
                 "status": "не снято",
                 "script": value,
@@ -834,7 +839,7 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             shoot_id = await supa_insert("shoots", shoot_data, return_id=True)
             if shoot_id:
                 await msg.reply_text(
-                    "📜 Сценарий сохранила. Создала съёмку-заготовку — дата и место пока не известны.\n"
+                    f"📜 Сохранила сценарий «{shoot_title}». Создала съёмку-заготовку — дата и место пока не известны.\n"
                     "Как только решишь — открой карточку в браузере и допиши.",
                     reply_markup=reply_kbd()
                 )
