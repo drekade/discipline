@@ -826,6 +826,7 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             cleaned = _re.sub(r'(?i)(сценарій?|скрипт)\s*:', '', cleaned)
             cleaned = cleaned.strip(' .,\n\t\u2014-')
             shoot_title = cleaned if len(cleaned) > 2 else "Сценарий без названия"
+            # 1. Создаём съёмку-заготовку
             shoot_data = {
                 "date": None,
                 "time": None,
@@ -837,6 +838,12 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 "notes": "⏳ не запланировано — дата и место не известны"
             }
             shoot_id = await supa_insert("shoots", shoot_data, return_id=True)
+            # 2. Пишем в таблицу scripts
+            await supa_insert("scripts", {
+                "title": f"Сценарий — {shoot_title}",
+                "link": value,
+                "tag": "другое"
+            })
             if shoot_id:
                 await msg.reply_text(
                     f"📜 Сохранила сценарий «{shoot_title}». Создала съёмку-заготовку — дата и место пока не известны.\n"
