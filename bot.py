@@ -1105,7 +1105,7 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             return
         lines = ["💡 Идеи:\n"]
         for i in items:
-            lines.append(f"• *{i.get('title','')}*")
+            lines.append(f"• {i.get('title','')}")
             if i.get("description"): lines.append(f"  {i['description'][:150]}")
         await q.edit_message_text("\n".join(lines),
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад",callback_data="main")]]))
@@ -1135,7 +1135,7 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             return
         moods = {"хорошо":"😊","нейтрально":"😐","плохо":"😔"}
         me = moods.get(d.get("mood","нейтрально"),"😐")
-        lines = [f"{me} *{d.get('date','')}*"]
+        lines = [f"{me} {d.get('date','')}"]
         if d.get("events"): lines.append(f"\n📌 {d['events']}")
         if d.get("thoughts"): lines.append(f"\n💭 {d['thoughts']}")
         await q.edit_message_text("\n".join(lines),
@@ -1150,7 +1150,7 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             return
         lines = ["🗓 События:\n"]
         for e in items:
-            lines.append(f"• *{e.get('date','')}* {e.get('time','')} — {e.get('title','')}")
+            lines.append(f"• {e.get('date','')} {e.get('time','')} — {e.get('title','')}")
             if e.get("category"): lines.append(f"  {e['category']}")
         await q.edit_message_text("\n".join(lines),
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад",callback_data="main")]]))
@@ -1200,7 +1200,7 @@ def main():
             print(f"menu button: {e}")
     app.post_init = post_init
 
-    print("🦀 Rak bot v24 started!")
+    print("🦀 Rak bot v25 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
