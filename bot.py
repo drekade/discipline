@@ -46,7 +46,6 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 4. ЗАВЕРШЕНИЕ ПРОЕКТА (action: complete_project) — "закончила/завершила проект X"
 
 5. ИДЕЯ (action: add_idea) — "идея:", "ідея:"
-   data: {{"title": "суть идеи одной фразой", "description": "детали если есть", "category": "Идея"}}
 
 6. ДНЕВНИК (action: add_diary) — Катерина рассказывает про свой день: что делала, как встала, когда работала, как себя чувствовала, что было, как день прошёл.
    ПРИМЕРЫ когда ВСЕГДА action=add_diary:
@@ -64,21 +63,14 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 
 8. НОВЫЙ ПРОЕКТ (action: add_project)
 
-9. СЦЕНАРИЙ БЕЗ СЪЁМКИ (action: add_script) — сообщение содержит ссылку (http/https) И слово "сценарий"/"сценарій"/"скрипт" БЕЗ явной даты И БЕЗ явной локации.
-   Создаём съёмку-заготовку: дата пустая, локация "?", статус "не снято", project = проект если упомянут.
-   В notes пишем "⏳ не запланировано — дата и место не известны".
-   НЕ придумывай дату/локацию. НЕ спрашивай тип сценария.
-   data: {{"url": "https://...", "project": "проект если упомянут иначе пустая строка", "title": "о чём сценарий одной фразой"}}
-   Если в сообщении ЕСТЬ дата И локация — это add_shoot со script внутри, не add_script.
-
-10. ОЧИСТКА ПОЛЯ (action: clear_field) — "отмени/убери/очисти заметку/ссылку"
+9. ОЧИСТКА ПОЛЯ (action: clear_field) — "отмени/убери/очисти заметку/ссылку"
    data: {{field: "notes"|"script"|"link", entity: "shoot"|"project"}}
 
-11. ОТВЕТ НА УТОЧНЕНИЕ (action: clarify_reply) — ТОЛЬКО если ТВОЙ ПРОШЛЫЙ reply был вопросом "какая дата?"/"во сколько?"/"где?",
+10. ОТВЕТ НА УТОЧНЕНИЕ (action: clarify_reply) — ТОЛЬКО если ТВОЙ ПРОШЛЫЙ reply был вопросом "какая дата?"/"во сколько?"/"где?",
     а Катерина даёт эти недостающие данные одним-двумя словами ("завтра", "в 10", "25 апреля").
     data: {{field_given: "date"|"time"|"location", value: "..."}}
 
-12. ЗАПРОС ИНФОРМАЦИИ (action: query) — Катерина спрашивает что-то по своим данным.
+11. ЗАПРОС ИНФОРМАЦИИ (action: query) — Катерина спрашивает что-то по своим данным.
     ПРИМЕРЫ:
     • "какие люди снимались в этом месяце" → intent=list_people, period=month
     • "кто снимался на этой неделе" → intent=list_people, period=week
@@ -91,7 +83,7 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
     data: {{intent: "list_people"|"count_shoots"|"list_shoots"|"last_shoot_with_person"|"project_stats"|"upcoming", period: "week"|"month"|"all", params: {{...}}}}
     reply: всегда пиши "Сейчас посмотрю..." — основной текст бот сформирует сам по данным.
 
-13. РАЗГОВОР (action: none) — только короткие междометия и прямые вопросы.
+12. РАЗГОВОР (action: none) — только короткие междометия и прямые вопросы.
     "привет","дякую","ок","да","нет" — action: none.
 
 ХАРАКТЕР: отвечай на том же языке что Катерина. Поддержи если тяжело. Не навязывайся с вопросами.
@@ -99,18 +91,16 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 ПОСЛЕ СОХРАНЕНИЯ В ДНЕВНИК скажи коротко что записала, можешь мягко спросить как она.
 
 ФОРМАТ — только JSON без markdown:
-{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|clarify|clarify_reply|clear_field|complete_project|add_idea|add_diary|add_event|add_project|add_script|query","data":{{}}}}
+{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|clarify|clarify_reply|clear_field|complete_project|add_idea|add_diary|add_event|add_project|query","data":{{}}}}
 
 data для add_multiple_shoots: {{"shoots":[{{"date":"YYYY-MM-DD","time":"HH:MM","location":"","project":"","people":"","script":"","notes":""}}]}}
 data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
 data для add_event: title, date(YYYY-MM-DD), time, category, notes
 data для delete_shoot: shoot_date, shoot_location, shoot_time
-data для add_idea: title (суть идеи), description (детали, необязательно), category (необязательно)
 data для clear_field: field, entity
 data для clarify: partial
 data для clarify_reply: field_given, value
 data для query: intent, period (опционально), params (опционально)
-data для add_script: url, title, project (опционально), script_type (опционально)
 
 ⚠️ ОБЯЗАТЕЛЬНО: твой ответ — это ВАЛИДНЫЙ JSON в одну строку с тремя ключами reply, action, data. Не пустой {{}}. Не markdown. Не ```. Просто JSON.
 ПРИМЕР минимального ответа: {{"reply":"Окей","action":"none","data":{{}}}}
@@ -419,36 +409,8 @@ async def apply_action(action, data):
             if data.get("project_name","").lower() in p.get("name","").lower():
                 await supa_update("projects","id",p["id"],{"status":"готово"})
                 return True
-    elif action == "add_script":
-        url=(data.get("url") or "").strip()
-        if not url:
-            print(f"SKIP add_script: no url in data={data}")
-            return False
-        project=(data.get("project") or "").strip()
-        title=(data.get("title") or "").strip()
-        # Создаём съёмку-заготовку без даты и места
-        shoot_data={
-            "date": None,
-            "time": None,
-            "location": "?",
-            "project": project,
-            "people": "",
-            "status": "не снято",
-            "script": url,
-            "notes": f"⏳ не запланировано — дата и место не известны{chr(10)}📄 сценарий: {title}" if title else "⏳ не запланировано — дата и место не известны"
-        }
-        ok=await supa_insert("shoots", shoot_data)
-        return ok
     elif action == "add_idea":
-        # модель иногда возвращает "idea" вместо "title" — нормализуем
-        title = (data.get("title") or data.get("idea") or data.get("name") or "").strip()
-        desc  = (data.get("description") or data.get("text") or data.get("content") or "").strip()
-        if not title and desc:
-            title, desc = desc, ""
-        if not title:
-            print(f"SKIP add_idea: no title in data={data}")
-            return False
-        return await supa_insert("ideas",{"title":title,"description":desc,"category":data.get("category","Идея"),"image_url":None})
+        return await supa_insert("ideas",{"title":data.get("title",""),"description":data.get("description",""),"category":data.get("category","Идея"),"image_url":None})
     elif action == "add_diary":
         return await supa_insert("diary",{"date":today,"mood":data.get("mood","нейтрально"),"events":data.get("events",""),"thoughts":data.get("thoughts","")})
     elif action == "add_event":
@@ -639,21 +601,25 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     text_stripped = text.strip()
     if text_stripped in ("🏠 Сегодня", "📅 Съёмки", "🎬 Проекты", "💡 Идеи", "📓 Дневник", "📊 Итоги"):
         if text_stripped == "🏠 Сегодня":
-            today_str = datetime.now().strftime("%Y-%m-%d")
-            shoots = await supa_get("shoots", 100)
-            events = await supa_get("events", 100)
-            today_shoots = [s for s in shoots if s.get("date") == today_str]
-            today_events = [e for e in events if e.get("date") == today_str]
-            lines = [f"📅 *Сегодня — {datetime.now().strftime('%d.%m.%Y')}*\n"]
-            if not today_shoots and not today_events:
-                lines.append("Сегодня свободно ✦")
-            for s in today_shoots:
-                what = s.get("project") or s.get("location") or "съёмка"
-                done = "✅" if s.get("status") == "снято" else "🔸"
-                lines.append(f"{done} {s.get('time','')} — {what}")
-            for e in today_events:
-                lines.append(f"📍 {e.get('time','')} — {e.get('title','')}")
-            await msg.reply_text("\n".join(lines), parse_mode="Markdown", reply_markup=reply_kbd())
+            try:
+                today_str = datetime.now().strftime("%Y-%m-%d")
+                shoots = await supa_get("shoots", 100)
+                events = await supa_get("events", 100)
+                today_shoots = [s for s in (shoots or []) if s.get("date") == today_str]
+                today_events = [e for e in (events or []) if e.get("date") == today_str]
+                lines = [f"📅 Сегодня — {datetime.now().strftime('%d.%m.%Y')}\n"]
+                if not today_shoots and not today_events:
+                    lines.append("Сегодня свободно ✦")
+                for s in today_shoots:
+                    what = s.get("project") or s.get("location") or "съёмка"
+                    done = "✅" if s.get("status") == "снято" else "🔸"
+                    lines.append(f"{done} {s.get('time','')} — {what}")
+                for e in today_events:
+                    lines.append(f"📍 {e.get('time','')} — {e.get('title','')}")
+                await msg.reply_text("\n".join(lines), reply_markup=reply_kbd())
+            except Exception as e:
+                print(f"TODAY ERROR: {e}")
+                await msg.reply_text("Не получилось загрузить 😔", reply_markup=reply_kbd())
             return
         elif text_stripped == "📅 Съёмки":
             await msg.reply_text("Все съёмки:", reply_markup=main_kbd())
@@ -676,55 +642,69 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             await msg.reply_text("🎬 Проекты:", reply_markup=InlineKeyboardMarkup(buttons))
             return
         elif text_stripped == "💡 Идеи":
-            ideas = await supa_get("ideas", 50)
-            if not ideas:
-                await msg.reply_text("Идей пока нет.", reply_markup=reply_kbd())
-                return
-            lines = ["💡 *Идеи:*\n"]
-            shown = 0
-            for idea in ideas[:50]:
-                t = (idea.get('title') or '').strip()
-                if not t:
-                    continue
-                d = (idea.get('description') or '').strip()
-                lines.append(f"• *{t}*" + (f"\n  {d[:80]}" if d else ""))
-                shown += 1
-                if shown >= 20:
-                    break
-            if shown == 0:
-                await msg.reply_text("Идей пока нет.", reply_markup=reply_kbd())
-                return
-            await msg.reply_text("\n".join(lines), parse_mode="Markdown", reply_markup=reply_kbd())
+            try:
+                ideas = await supa_get("ideas", 50)
+                if not ideas:
+                    await msg.reply_text("Идей пока нет.", reply_markup=reply_kbd())
+                    return
+                lines = ["💡 Идеи:\n"]
+                for i in ideas[:20]:
+                    title = (i.get("title") or i.get("description") or "?").strip()
+                    if len(title) > 80:
+                        title = title[:80] + "..."
+                    lines.append(f"• {title}")
+                await msg.reply_text("\n".join(lines), reply_markup=reply_kbd())
+            except Exception as e:
+                print(f"IDEAS ERROR: {e}")
+                await msg.reply_text("Не получилось загрузить идеи 😔", reply_markup=reply_kbd())
             return
         elif text_stripped == "📓 Дневник":
-            diary = await supa_get("diary", 20, order="date.desc")
-            if not diary:
-                await msg.reply_text("Дневник пока пуст.", reply_markup=reply_kbd())
-                return
-            lines = ["📓 *Дневник:*\n"]
-            for d in diary[:10]:
-                mood_icon = {"хорошо":"🙂","нейтрально":"😐","плохо":"😔"}.get(d.get("mood","нейтрально"),"😐")
-                lines.append(f"{mood_icon} {d.get('date','')} — {(d.get('events','') or '')[:60]}")
-            await msg.reply_text("\n".join(lines), parse_mode="Markdown", reply_markup=reply_kbd())
+            try:
+                diary = await supa_get("diary", 20, order="date.desc")
+                if not diary:
+                    await msg.reply_text("Дневник пока пуст.", reply_markup=reply_kbd())
+                    return
+                lines = ["📓 Дневник:\n"]
+                for d in diary[:10]:
+                    mood_icon = {"хорошо":"🙂","нейтрально":"😐","плохо":"😔"}.get(d.get("mood","нейтрально"),"😐")
+                    events_text = (d.get("events","") or "")[:60]
+                    lines.append(f"{mood_icon} {d.get('date','')} — {events_text}")
+                await msg.reply_text("\n".join(lines), reply_markup=reply_kbd())
+            except Exception as e:
+                print(f"DIARY ERROR: {e}")
+                await msg.reply_text("Не получилось загрузить дневник 😔", reply_markup=reply_kbd())
             return
         elif text_stripped == "📊 Итоги":
-            shoots = await supa_get("shoots", 200)
-            projects = await supa_get("projects", 50)
-            ideas = await supa_get("ideas", 100)
-            diary = await supa_get("diary", 100)
-            week_ago = datetime.now() - timedelta(days=7)
-            week_shoots = sum(1 for s in shoots if datetime.strptime(s["created_at"][:10], "%Y-%m-%d") >= week_ago) if shoots else 0
-            done_shoots = sum(1 for s in shoots if s.get("status") == "снято" and datetime.strptime(s["created_at"][:10], "%Y-%m-%d") >= week_ago) if shoots else 0
-            active_proj = sum(1 for p in projects if p.get("status") != "готово")
-            await msg.reply_text(
-                f"📊 *Итоги за неделю*\n\n"
-                f"📅 Съёмок добавлено: {week_shoots}\n"
-                f"✅ Съёмок проведено: {done_shoots}\n"
-                f"🎬 Активных проектов: {active_proj}\n"
-                f"💡 Идей всего: {len(ideas)}\n"
-                f"📓 Записей в дневнике: {len(diary)}",
-                parse_mode="Markdown", reply_markup=reply_kbd()
-            )
+            try:
+                shoots = await supa_get("shoots", 200)
+                projects = await supa_get("projects", 50)
+                ideas = await supa_get("ideas", 100)
+                diary = await supa_get("diary", 100)
+                week_ago = datetime.now() - timedelta(days=7)
+                week_shoots = 0
+                done_shoots = 0
+                for s in shoots or []:
+                    try:
+                        ca = datetime.strptime(s.get("created_at","")[:10], "%Y-%m-%d")
+                        if ca >= week_ago:
+                            week_shoots += 1
+                            if s.get("status") == "снято":
+                                done_shoots += 1
+                    except:
+                        pass
+                active_proj = sum(1 for p in (projects or []) if p.get("status") != "готово")
+                await msg.reply_text(
+                    f"📊 Итоги за неделю\n\n"
+                    f"📅 Съёмок добавлено: {week_shoots}\n"
+                    f"✅ Съёмок проведено: {done_shoots}\n"
+                    f"🎬 Активных проектов: {active_proj}\n"
+                    f"💡 Идей всего: {len(ideas or [])}\n"
+                    f"📓 Записей в дневнике: {len(diary or [])}",
+                    reply_markup=reply_kbd()
+                )
+            except Exception as e:
+                print(f"WEEK ERROR: {e}")
+                await msg.reply_text("Не получилось загрузить итоги 😔", reply_markup=reply_kbd())
             return
 
     # Check if waiting for link/note
@@ -820,35 +800,26 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         last_shoot = shoots[0] if shoots else None
 
         if kind == "script":
-            import re as _re
-            raw_text = text
-            cleaned = _re.sub(r'https?://\S+', '', raw_text)
-            cleaned = _re.sub(r'(?i)(сценарій?|скрипт)\s*:', '', cleaned)
-            cleaned = cleaned.strip(' .,\n\t\u2014-')
-            shoot_title = cleaned if len(cleaned) > 2 else "Сценарий без названия"
-            # 1. Создаём съёмку-заготовку
-            shoot_data = {
-                "date": None,
-                "time": None,
-                "location": "?",
-                "project": shoot_title,
-                "people": "",
-                "status": "не снято",
-                "script": value,
-                "notes": "⏳ не запланировано — дата и место не известны"
-            }
-            shoot_id = await supa_insert("shoots", shoot_data, return_id=True)
-            # 2. Пишем в таблицу scripts
-            await supa_insert("scripts", {
-                "title": f"Сценарий — {shoot_title}",
-                "link": value,
-                "tag": "другое"
-            })
-            if shoot_id:
+            # создаём запись в scripts, привязываем к последней съёмке
+            if not last_shoot:
+                await msg.reply_text("Сначала добавь съёмку, потом сценарий.")
+                return
+            title = f"Сценарий — {last_shoot.get('project') or last_shoot.get('location') or last_shoot.get('date','?')}"
+            new_id = await supa_insert("scripts", {"title": title, "link": value, "tag": "другое"}, return_id=True)
+            if new_id:
+                # обновляем массив script_ids у съёмки
+                cur = last_shoot.get("script_ids") or []
+                cur.append(new_id)
+                await supa_update("shoots", "id", last_shoot["id"], {"script_ids": cur})
+                pending[uid] = {"type": "script_tag", "script_id": new_id, "shoot_id": last_shoot["id"]}
                 await msg.reply_text(
-                    f"📜 Сохранила сценарий «{shoot_title}». Создала съёмку-заготовку — дата и место пока не известны.\n"
-                    "Как только решишь — открой карточку в браузере и допиши.",
-                    reply_markup=reply_kbd()
+                    f"📜 Сценарий привязала к съёмке {last_shoot.get('date','')} {last_shoot.get('location','')}.\nКакой тип?",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("🎤 интервью", callback_data=f"stag_{new_id}_інтерв'ю"),
+                         InlineKeyboardButton("📷 подсъёмы", callback_data=f"stag_{new_id}_підзйом")],
+                        [InlineKeyboardButton("🎬 постановка", callback_data=f"stag_{new_id}_постановка"),
+                         InlineKeyboardButton("✦ другое", callback_data=f"stag_{new_id}_інше")]
+                    ])
                 )
             else:
                 await msg.reply_text("Не получилось сохранить 😔")
@@ -1128,18 +1099,15 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     if cb == "ideas":
-        items = await supa_get("ideas",50)
-        shown = [i for i in items if (i.get('title') or '').strip()]
-        if not shown:
+        items = await supa_get("ideas",10)
+        if not items:
             await q.edit_message_text("💡 Идей пока нет", reply_markup=main_kbd())
             return
-        parts = ["💡 *Идеи:*\n"]
-        for i in shown[:20]:
-            t = i['title'].strip()
-            parts.append(f"• *{t}*")
-            d = (i.get('description') or '').strip()
-            if d: parts.append(f"  {d[:150]}")
-        await q.edit_message_text("\n".join(parts),parse_mode="Markdown",
+        lines = ["💡 *Идеи:*\n"]
+        for i in items:
+            lines.append(f"• *{i.get('title','')}*")
+            if i.get("description"): lines.append(f"  {i['description'][:150]}")
+        await q.edit_message_text("\n".join(lines),parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад",callback_data="main")]]))
         return
 
@@ -1232,7 +1200,7 @@ def main():
             print(f"menu button: {e}")
     app.post_init = post_init
 
-    print("🦀 Rak bot v22 started!")
+    print("🦀 Rak bot v23 started!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
