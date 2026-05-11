@@ -41,10 +41,6 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
    Если нет локации — это не съёмка.
 
 3. УДАЛЕНИЕ СЪЁМКИ (action: delete_shoot) — "удали съёмку X"
-
-3б. ОТМЕНА СЪЁМКИ (action: cancel_shoot) — "съёмка такого-то числа отменилась", "отменяется съёмка X", "съёмка X не состоится", с причиной или без.
-   НЕ удаляет — меняет статус на "отменена" и сохраняет причину.
-   data: {{"date": "YYYY-MM-DD", "location": "если есть", "reason": "причина если указана"}}
    data: {{shoot_date, shoot_location, shoot_time}}
 
 4. ЗАВЕРШЕНИЕ ПРОЕКТА (action: complete_project) — "закончила/завершила проект X"
@@ -95,7 +91,7 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 ПОСЛЕ СОХРАНЕНИЯ В ДНЕВНИК скажи коротко что записала, можешь мягко спросить как она.
 
 ФОРМАТ — только JSON без markdown:
-{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|cancel_shoot|clarify|clarify_reply|clear_field|complete_project|add_idea|add_diary|add_event|add_project|add_script|update_topic|query","data":{{}}}}
+{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|clarify|clarify_reply|clear_field|complete_project|add_idea|add_diary|add_event|add_project|query","data":{{}}}}
 
 data для add_multiple_shoots: {{"shoots":[{{"date":"YYYY-MM-DD","time":"HH:MM","location":"","project":"","people":"","script":"","notes":""}}]}}
 data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
@@ -406,22 +402,6 @@ async def apply_action(action, data):
             time_match = not time_val or time_val in s.get("time","")
             if date_match and loc_match and time_match:
                 return await supa_delete("shoots","id",s["id"])
-        return False
-    elif action == "cancel_shoot":
-        shoots = await supa_get("shoots", 100)
-        date_val = data.get("date","")
-        loc_val = (data.get("location","") or "").lower()
-        reason = (data.get("reason","") or "").strip()
-        for s in shoots:
-            date_match = not date_val or s.get("date","") == date_val
-            loc_match = not loc_val or loc_val in (s.get("location","") or "").lower() or loc_val in (s.get("project","") or "").lower()
-            if date_match and loc_match and s.get("status") != "отменена":
-                notes = (s.get("notes") or "").strip()
-                if reason:
-                    import re as _re
-                    notes = _re.sub(r'✕ причина отмены: .+\n?', '', notes).strip()
-                    notes = (notes + "\n" if notes else "") + f"✕ причина отмены: {reason}"
-                return await supa_update("shoots","id",s["id"],{"status":"отменена","notes":notes})
         return False
     elif action == "complete_project":
         projects = await supa_get("projects", 50)
@@ -1006,17 +986,42 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     if cb == "shoots":
         pending.pop(uid, None)
-        items = await supa_get("shoots",20,order="date.asc")
-        if not items:
-            await q.edit_message_text("📅 Съёмок пока нет", reply_markup=main_kbd())
+        from datetime import date, timedelta
+        all_shoots = await supa_get("shoots", 100, order="date.desc")
+        today_str = date.today().isoformat()
+        cutoff = (date.today() - timedelta(days=45)).isoformat()
+
+        # фильтруем: не отменённые, за последние 45 дней + будущие
+        active = [s for s in all_shoots
+                  if s.get("status") != "отменена"
+                  and (not s.get("date") or s.get("date","") >= cutoff)]
+
+        upcoming = sorted([s for s in active if (s.get("date") or "") >= today_str],
+                          key=lambda s: (s.get("date",""), s.get("time","")))
+        recent   = sorted([s for s in active if (s.get("date") or "") < today_str],
+                          key=lambda s: s.get("date",""), reverse=True)[:7]
+
+        if not active:
+            await q.edit_message_text("📅 Актуальных съёмок нет", reply_markup=main_kbd())
             return
+
         buttons = []
-        for s in items:
-            icon = "✅" if s.get("status")=="снято" else "🔸"
-            # показываем что снимали (project) вместо локации; если проекта нет — локация как fallback
-            what = s.get("project","").strip() or s.get("location","?")
-            label = f"{icon} {fmt_date(s.get('date',''))} {s.get('time','')} — {what[:22]}"
-            buttons.append([InlineKeyboardButton(label, callback_data=f"shoot_{s['id']}")])
+        if upcoming:
+            buttons.append([InlineKeyboardButton("— предстоящие —", callback_data="noop")])
+            for s in upcoming[:5]:
+                icon = "🔜"
+                what = (s.get("project") or s.get("location") or "съёмка")[:20]
+                t = s.get("time","")
+                label = f"{icon} {fmt_date(s.get('date',''))} {t} — {what}"
+                buttons.append([InlineKeyboardButton(label, callback_data=f"shoot_{s['id']}")])
+        if recent:
+            buttons.append([InlineKeyboardButton("— недавние —", callback_data="noop")])
+            for s in recent:
+                icon = "✅" if s.get("status")=="снято" else "🔸"
+                what = (s.get("project") or s.get("location") or "съёмка")[:20]
+                t = s.get("time","")
+                label = f"{icon} {fmt_date(s.get('date',''))} {t} — {what}"
+                buttons.append([InlineKeyboardButton(label, callback_data=f"shoot_{s['id']}")])
         buttons.append([InlineKeyboardButton("◀️ Назад", callback_data="main")])
         await q.edit_message_text("📅 Выбери съёмку:", reply_markup=InlineKeyboardMarkup(buttons))
         return
