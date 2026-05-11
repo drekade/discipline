@@ -928,20 +928,25 @@ function renderShootDayDetail(){
   if(!items.length){el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${scSelDay} — съёмок нет</div></div>`;return;}
   const html=items.map(s=>{
     const pi=DB.projects.findIndex(p=>p.name===s.project);
-    const c=PC[pi>=0?pi%5:0];
-    return`<div class="day-shoot-item" style="border-left-color:${c}">
-      <div style="flex:1">
-        <div style="font-size:14px;font-weight:600">${s.project||s.location||'Съёмка'}</div>
-        <div style="font-size:12px;color:var(--t3)">${s.time||''}${s.project&&s.location?' · '+s.location:''}${s.people?' · '+s.people:''}</div>
-        ${s.script?`<a href="${s.script}" target="_blank" style="font-size:11px;color:var(--blue)">📄 Сценарий</a>`:''}
+    const clr=PC[pi>=0?pi%5:0];
+    const isCancelled=s.status==='отменена';
+    return`<div class="shoot-card" style="border-top:4px solid ${isCancelled?'#C4552A':clr};border-left:none;${isCancelled?'opacity:.55':''};margin-bottom:10px" onclick="openEditShoot(${s.id})">
+      <div class="shoot-header">
+        <div class="shoot-title">${s.project||s.location||'Съёмка'}${isCancelled?' <span style=\"font-size:10px;color:#C4552A;font-weight:600\">✕ отменена</span>':''}</div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:4px">
+      <div class="shoot-meta">${s.time?s.time+' · ':''}${s.project&&s.location?s.location:''}${s.people?(s.project&&s.location?' · ':'')+s.people:''}</div>
+      ${s.notes?`<div class="shoot-note">${s.notes.length>80?s.notes.substring(0,80)+'...':s.notes}</div>`:''}
+      ${s.script?`<a class="shoot-link" href="${s.script}" target="_blank" onclick="event.stopPropagation()">📄 Сценарий</a>`:''}
+      ${!isCancelled?`<div class="shoot-statuses" onclick="event.stopPropagation()">
         <span class="schip ${s.status==='снято'?'schip-done':'schip-pend'}" onclick="toggleShoot(${s.id},'${s.status||'не снято'}')">${s.status==='снято'?'✓ снято':'○ не снято'}</span>
         <span class="schip ${s.edited?'schip-edited':'schip-pend'}" onclick="toggleEdited(${s.id},${!!s.edited})">${s.edited?'✂ смонт.':'✂ не смонт.'}</span>
-      </div>
+      </div>`:`<div class="shoot-statuses" onclick="event.stopPropagation()">
+        <span class="schip schip-cancel">✕ отменена</span>
+        <span class="schip schip-pend" onclick="cancelShoot(${s.id},'не снято')">↺ восстановить</span>
+      </div>`}
     </div>`;
   }).join('');
-  el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${scSelDay} — ${items.length} съёмок</div>${html}</div>`;
+  el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${scSelDay} — ${items.length} ${items.length===1?'съёмка':'съёмок'}</div><div style="margin-top:10px">${html}</div></div>`;
 }
 
 function renderLifeCal(){
