@@ -1437,13 +1437,41 @@ function renderProjects(){
         ${t.date?`<span class="task-date">${fmtShort(t.date)}</span>`:''}
       </div>`;
     }).join('');
+    // съёмки этого проекта
+    const projShoots=(DB.shoots||[])
+      .filter(s=>s.project===p.name && s.status!=='отменена')
+      .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const shootsHtml=projShoots.map(s=>{
+      const statusChip=s.status==='снято'
+        ?'<span class="schip schip-done" style="font-size:10px;padding:2px 7px">✓ снято</span>'
+        :'<span class="schip schip-pend" style="font-size:10px;padding:2px 7px">○ не снято</span>';
+      const editedChip=s.edited
+        ?'<span class="schip schip-edited" style="font-size:10px;padding:2px 7px">✂ смонт.</span>'
+        :'<span class="schip schip-pend" style="font-size:10px;padding:2px 7px">✂ не смонт.</span>';
+      return`<div onclick="openEditShoot(${s.id})" style="padding:8px 10px;background:var(--s2);border-radius:9px;margin-bottom:5px;cursor:pointer;border:1px solid var(--b);transition:all .12s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--b)'">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="flex:1;min-width:0">
+            <span style="font-size:12px;font-weight:600;color:var(--t)">${s.location||'съёмка'}</span>
+            <span style="font-size:11px;color:var(--t3);margin-left:6px">${s.date?fmtShort(s.date):''} ${s.time||''}</span>
+            ${s.people?`<div style="font-size:11px;color:var(--t3);margin-top:1px">${s.people}</div>`:''}
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0">${statusChip}${editedChip}</div>
+        </div>
+      </div>`;
+    }).join('');
+
     return`<div class="proj-card" style="border-top-color:${PC[i%5]}">
       <div class="proj-name">${p.name}</div>
-      <div class="proj-meta">${tasks.length?`${done}/${tasks.length} выполнено`:'Задач нет'}${inprog?' · '+inprog+' в работе':''}</div>
+      <div class="proj-meta">${tasks.length?`${done}/${tasks.length} задач`:''}${inprog?' · '+inprog+' в работе':''}${projShoots.length?' · '+projShoots.length+' съём.':''}</div>
       ${p.link?`<a href="${p.link}" target="_blank" class="link-row" style="margin-bottom:6px">🔗 Документ</a>`:''}
       ${p.figma_url?`<a href="${p.figma_url}" target="_blank" class="link-row" style="margin-bottom:8px;color:#A85638">🎨 Figma</a>`:''}
       ${tasks.length?`<div class="task-list">${taskHtml}</div>`:''}
       <button class="add-task-btn" onclick="openAddTask(${p.id})">+ добавить задачу</button>
+      ${projShoots.length?`
+      <div style="margin-top:12px;padding-top:10px;border-top:1.5px solid var(--b)">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);margin-bottom:8px">📷 съёмки (${projShoots.length})</div>
+        ${shootsHtml}
+      </div>`:''}
       <div style="margin-top:10px">
         <span class="schip ${p.status==='готово'?'schip-done':'schip-pend'}" style="cursor:pointer" onclick="toggleProject(${p.id},'${p.status||'в работе'}')">${p.status||'в работе'}</span>
       </div>
