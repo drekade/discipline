@@ -118,12 +118,12 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 .add-task-btn:hover{border-color:var(--a);color:var(--a)}
 
 /* IDEAS GRID */
-.ideas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;align-items:start}
-.idea-card{background:var(--s);border:1.5px solid var(--bd);border-radius:14px;overflow:hidden;box-shadow:3px 3px 0 var(--bd);transition:all .15s}
+.ideas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.idea-card{background:var(--s);border:1.5px solid var(--bd);border-radius:14px;overflow:hidden;box-shadow:3px 3px 0 var(--bd);transition:all .15s;display:flex;flex-direction:column}
 .idea-card:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--bd)}
-.idea-img{width:100%;height:140px;background:linear-gradient(135deg,var(--al),var(--s2));display:flex;align-items:center;justify-content:center;font-size:44px;overflow:hidden}
+.idea-img{width:100%;height:80px;background:linear-gradient(135deg,var(--al),var(--s2));display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden;flex-shrink:0}
 .idea-img img{width:100%;height:100%;object-fit:cover}
-.idea-body{padding:14px}
+.idea-body{padding:12px;flex:1;display:flex;flex-direction:column;min-height:0}
 .idea-cat{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;background:var(--al);color:var(--ad);margin-bottom:6px}
 
 /* DIARY */
@@ -1478,13 +1478,15 @@ function renderIdeas(){
   const typeIcon={сценарий:'📄',референс:'🎨',ссылка:'🔗'};
   el.innerHTML=valid.map(id=>{
     const links=parseIdeaLinks(id.notes||'');
-    const linksHtml=links.length?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${links.map(l=>`<a href="${l.url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--blue);padding:3px 9px;background:var(--bbg);border-radius:20px;font-weight:500;text-decoration:none" onclick="event.stopPropagation()">${typeIcon[l.type]||'🔗'} ${l.type}</a>`).join('')}</div>`:'';
+    const desc=(id.description||'').trim();
+    const descShort=desc.length>90?desc.slice(0,90)+'…':desc;
+    const linksHtml=links.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">${links.map(l=>`<a href="${l.url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--blue);padding:2px 8px;background:var(--bbg);border-radius:20px;font-weight:500;text-decoration:none" onclick="event.stopPropagation()">${typeIcon[l.type]||'🔗'} ${l.type}</a>`).join('')}</div>`:'';
     return`<div class="idea-card" style="cursor:pointer" onclick="openEditIdea(${id.id})">
-      <div class="idea-img">${id.image_url?`<img src="${id.image_url}" alt="">`:'💡'}</div>
+      ${id.image_url?`<div class="idea-img"><img src="${id.image_url}" alt=""></div>`:''}
       <div class="idea-body">
-        <div class="idea-cat">${id.category||'Идея'}</div>
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${id.title||''}</div>
-        <div style="font-size:12px;color:var(--t2);line-height:1.6">${id.description||''}</div>
+        <div class="idea-cat" style="margin-bottom:6px">${id.category||'Идея'}</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:5px;line-height:1.3;color:var(--t)">${id.title||''}</div>
+        ${descShort?`<div style="font-size:11px;color:var(--t2);line-height:1.55;flex:1">${descShort}</div>`:''}
         ${linksHtml}
       </div>
     </div>`;
