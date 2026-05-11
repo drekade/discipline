@@ -97,6 +97,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t);min-height:100vh}
 .schip-done{background:var(--gbg);color:var(--green);border-color:#C3E6C0}
 .schip-pend{background:var(--s2);color:var(--t3);border-color:var(--b)}
 .schip-edited{background:var(--bbg);color:var(--blue);border-color:#C5DDF5}
+.schip-cancel{background:#F4EDE8;color:#7A3A20;border-color:#C4552A;opacity:.75}
 
 /* PROJECTS GRID */
 .proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
@@ -333,29 +334,6 @@ textarea.f{resize:none;line-height:1.6}
 .tp-log-del{background:none;border:none;color:var(--t3);cursor:pointer;font-size:13px;padding:0 2px}
 .tp-log-del:hover{color:var(--peach)}
 .tp-log-empty{font-size:12px;color:var(--t3);text-align:center;padding:8px;font-style:italic}
-
-
-/* ===== TOPICS ===== */
-.topics-section{margin-top:12px;border-top:1.5px solid var(--b);padding-top:10px}
-.topics-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.topics-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3)}
-.topic-add-btn{font-size:11px;color:var(--a);background:none;border:none;cursor:pointer;font-weight:600;padding:0;font-family:var(--ff)}
-.topic-item{background:var(--s2);border:1.5px solid var(--b);border-radius:10px;padding:10px 12px;margin-bottom:6px}
-.topic-item-head{display:flex;align-items:center;gap:8px;cursor:pointer}
-.topic-item-title{flex:1;font-size:13px;font-weight:600;color:var(--t)}
-.topic-item-expand{font-size:11px;color:var(--t3);transition:transform .15s}
-.topic-item-expand.open{transform:rotate(180deg)}
-.topic-stages{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;padding-top:8px;border-top:1px solid var(--b)}
-.stage-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;border:1.5px solid var(--bd);background:var(--s);font-size:11px;font-weight:500;cursor:pointer;transition:all .12s;color:var(--t)}
-.stage-chip.done{background:var(--gbg);border-color:var(--green);color:var(--green)}
-.stage-chip.active{background:var(--al);border-color:var(--a);color:var(--a)}
-.stage-chip:hover{transform:translate(-1px,-1px);box-shadow:2px 2px 0 var(--bd)}
-.topic-shoots{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px}
-.topic-shoot-chip{font-size:10px;padding:2px 8px;background:var(--s);border:1px solid var(--b);border-radius:10px;color:var(--t2)}
-.topic-actions{display:flex;gap:6px;margin-top:8px}
-.topic-action-btn{font-size:10px;color:var(--t3);background:none;border:none;cursor:pointer;padding:0;font-family:var(--ff)}
-.topic-action-btn:hover{color:var(--a)}
-.topics-empty{font-size:12px;color:var(--t3);font-style:italic;padding:4px 0}
 
 </style>
 </head>
@@ -672,7 +650,15 @@ textarea.f{resize:none;line-height:1.6}
     <div class="form-row"><label class="field-label">Локация</label><input type="text" id="es-loc"></div>
     <div class="form-row"><label class="field-label">Участники</label><input type="text" id="es-people"></div>
     <div class="form-row"><label class="field-label">Статус</label>
-      <select id="es-status"><option value="не снято">не снято</option><option value="снято">снято</option></select>
+      <select id="es-status" onchange="document.getElementById('es-cancel-wrap').style.display=this.value==='отменена'?'block':'none'">
+        <option value="не снято">не снято</option>
+        <option value="снято">снято</option>
+        <option value="отменена">отменена</option>
+      </select>
+    </div>
+    <div class="form-row" id="es-cancel-wrap" style="display:none">
+      <label class="field-label">Причина отмены</label>
+      <input type="text" id="es-cancel-reason" placeholder="Почему отменили?">
     </div>
     <div class="form-row"><label class="field-label">Ссылка на сценарий (script)</label><input type="text" id="es-script" placeholder="https://..."></div>
     <div class="form-row"><label class="field-label">Заметки (весь журнал)</label><textarea class="f" id="es-notes" rows="8" style="font-family:var(--fi);font-size:12px"></textarea></div>
@@ -778,12 +764,6 @@ textarea.f{resize:none;line-height:1.6}
       <select id="ei-cat"><option>Блог</option><option>Реклама</option><option>Курсы</option><option>Личное</option><option>Другое</option></select>
     </div>
 
-    <!-- ТЕМЫ -->
-    <div class="form-row" id="es-topics-wrap" style="display:none">
-      <label class="field-label">Темы проекта</label>
-      <div id="es-topics-list" style="display:flex;flex-wrap:wrap;gap:6px;min-height:24px"></div>
-    </div>
-
     <!-- ССЫЛКИ -->
     <div class="form-row">
       <label class="field-label">Ссылки</label>
@@ -838,7 +818,7 @@ const SH={'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/j
 const PC=['#C4552A','#1A5FA5','#4A42B5','#2E6E1A','#C47A0A'];
 const ROLES_EMOJI={'Дочка':'👧','Муж':'👨','Питомец':'🐾','Врач':'👩‍⚕️','Ветеринар':'🐕','Другое':'👤'};
 
-let DB={shoots:[],projects:[],tasks:[],ideas:[],diary:[],events:[],family:[],scripts:[],topics:[]};
+let DB={shoots:[],projects:[],tasks:[],ideas:[],diary:[],events:[],family:[],scripts:[]};
 let scY=new Date().getFullYear(),scM=new Date().getMonth();
 let lcY=new Date().getFullYear(),lcM=new Date().getMonth();
 let acY=new Date().getFullYear(),acM=new Date().getMonth();
@@ -864,12 +844,12 @@ async function dbDelete(t,id){
 
 async function load(){
   try{
-    const [s,p,tk,top,i,d,ev,fm,sc]=await Promise.all([
-      dbGet('shoots'),dbGet('projects'),dbGet('tasks').catch(()=>[]),dbGet('topics').catch(()=>[]),
+    const [s,p,tk,i,d,ev,fm,sc]=await Promise.all([
+      dbGet('shoots'),dbGet('projects'),dbGet('tasks').catch(()=>[]),
       dbGet('ideas'),dbGet('diary'),dbGet('events').catch(()=>[]),dbGet('family').catch(()=>[]),
       dbGet('scripts').catch(()=>[])
     ]);
-    DB={shoots:s||[],projects:p||[],tasks:tk||[],topics:top||[],ideas:i||[],diary:d||[],events:ev||[],family:fm||[],scripts:sc||[]};
+    DB={shoots:s||[],projects:p||[],tasks:tk||[],ideas:i||[],diary:d||[],events:ev||[],family:fm||[],scripts:sc||[]};
     setSyncOk(true);renderAll();
   }catch(e){setSyncOk(false);}
 }
@@ -885,8 +865,12 @@ function renderAll(){
 }
 
 function fmtShort(d){
-  try{const dt=new Date(d+'T00:00:00');return`${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}`;}
-  catch{return d||'';}
+  if(!d)return'?';
+  try{
+    const dt=new Date(d+'T00:00:00');
+    if(isNaN(dt.getTime()))return'?';
+    return`${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}`;
+  }catch{return'?';}
 }
 
 // CALENDARS
@@ -1054,22 +1038,26 @@ function renderAllDayDetail(){
 function renderShoots(){
   const el=document.getElementById('shoots-list');
   if(!DB.shoots.length){el.innerHTML='<div class="empty"><div class="empty-icon">📅</div>Съёмок пока нет<br>Добавь через бота или кнопку +</div>';return;}
-  const sorted=[...DB.shoots].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const sorted=[...DB.shoots].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   el.innerHTML=sorted.map(s=>{
     const pi=DB.projects.findIndex(p=>p.name===s.project);
     const c=PC[pi>=0?pi%5:0];
-    return`<div class="shoot-card" style="border-top:4px solid ${c};border-left:none" onclick="openEditShoot(${s.id})">
+    const isCancelled=s.status==='отменена';
+    return`<div class="shoot-card" style="border-top:4px solid ${isCancelled?'#C4552A':c};border-left:none;${isCancelled?'opacity:.55':''}" onclick="openEditShoot(${s.id})">
       <div class="shoot-header">
-        <div class="shoot-title">${s.project||s.location||'Съёмка'}</div>
-        <span class="shoot-badge" style="background:${c}">${fmtShort(s.date)}</span>
+        <div class="shoot-title">${s.project||s.location||'Съёмка'}${isCancelled?' <span style=\"font-size:10px;color:#C4552A;font-weight:600\">✕ отменена</span>':''}</div>
+        <span class="shoot-badge" style="background:${isCancelled?'#C4552A':c}">${s.date?fmtShort(s.date):'⏳'}</span>
       </div>
       <div class="shoot-meta">${s.time?s.time+' · ':''}${s.project&&s.location?s.location:''}${s.people?(s.project&&s.location?' · ':'')+s.people:''}</div>
       ${s.notes?`<div class="shoot-note">${s.notes.length>80?s.notes.substring(0,80)+'...':s.notes}</div>`:''}
       ${s.script?`<a class="shoot-link" href="${s.script}" target="_blank" onclick="event.stopPropagation()">📄 Сценарий</a>`:''}
-      <div class="shoot-statuses" onclick="event.stopPropagation()">
+      ${!isCancelled?`<div class="shoot-statuses" onclick="event.stopPropagation()">
         <span class="schip ${s.status==='снято'?'schip-done':'schip-pend'}" onclick="toggleShoot(${s.id},'${s.status||'не снято'}')">${s.status==='снято'?'✓ снято':'○ не снято'}</span>
         <span class="schip ${s.edited?'schip-edited':'schip-pend'}" onclick="toggleEdited(${s.id},${!!s.edited})">${s.edited?'✂ смонтировано':'✂ не смонтировано'}</span>
-      </div>
+      </div>`:`<div class="shoot-statuses" onclick="event.stopPropagation()">
+        <span class="schip schip-cancel" onclick="cancelShoot(${s.id},'отменена')">✕ отменена</span>
+        <span class="schip schip-pend" onclick="cancelShoot(${s.id},'не снято')" style="font-size:10px">↺ восстановить</span>
+      </div>`}
     </div>`;
   }).join('');
 }
@@ -1385,83 +1373,6 @@ function tsDelSession(id){
   tRenderLog(); // update popup log too
 }
 
-// ===== TOPICS =====
-function openNewTopic(projId){
-  document.getElementById('topic-id').value='';
-  document.getElementById('topic-proj-id').value=projId;
-  document.getElementById('topic-title').value='';
-  document.getElementById('topic-stages').value='';
-  document.getElementById('topic-modal-title').textContent='Новая тема';
-  document.getElementById('topic-delete-btn').style.display='none';
-  showModal('modal-topic');
-}
-
-function openEditTopic(id){
-  const t=(DB.topics||[]).find(x=>x.id===id);
-  if(!t)return;
-  document.getElementById('topic-id').value=id;
-  document.getElementById('topic-proj-id').value=t.project_id;
-  document.getElementById('topic-title').value=t.title||'';
-  // stages: [{name,done}] or strings
-  const stages=Array.isArray(t.stages)?t.stages:[];
-  document.getElementById('topic-stages').value=stages.map(s=>typeof s==='string'?s:(s.name||'')).join('\n');
-  document.getElementById('topic-modal-title').textContent='Редактировать тему';
-  document.getElementById('topic-delete-btn').style.display='block';
-  showModal('modal-topic');
-}
-
-async function saveTopic(){
-  const id=document.getElementById('topic-id').value;
-  const projId=parseInt(document.getElementById('topic-proj-id').value);
-  const title=document.getElementById('topic-title').value.trim();
-  if(!title){alert('Введи название темы');return;}
-
-  // parse stages — preserve done state if editing
-  const stageLines=document.getElementById('topic-stages').value.split('\n').map(s=>s.trim()).filter(Boolean);
-  let oldStages=[];
-  if(id){
-    const old=(DB.topics||[]).find(x=>x.id===parseInt(id));
-    if(old)oldStages=Array.isArray(old.stages)?old.stages:[];
-  }
-  const stages=stageLines.map(name=>{
-    const existing=oldStages.find(s=>(s.name||s)===name);
-    return{name,done:existing?existing.done===true:false};
-  });
-
-  const data={project_id:projId,title,stages,sort_order:0};
-  let ok;
-  if(id){
-    ok=await dbPatch('topics',parseInt(id),data);
-  } else {
-    // set sort_order to end
-    const existing=(DB.topics||[]).filter(t=>t.project_id===projId);
-    data.sort_order=existing.length;
-    ok=await dbPost('topics',data);
-    ok=ok!==false;
-  }
-  if(ok!==false){hideModal('modal-topic');await load();}
-  else alert('Не сохранилось 😔');
-}
-
-async function deleteTopic(){
-  const id=parseInt(document.getElementById('topic-id').value);
-  if(!confirm('Удалить тему?'))return;
-  const ok=await dbDelete('topics',id);
-  if(ok){hideModal('modal-topic');await load();}
-  else alert('Не удалилось 😔');
-}
-
-async function toggleStage(topicId,stageIdx,isDone){
-  const t=(DB.topics||[]).find(x=>x.id===topicId);
-  if(!t)return;
-  const stages=Array.isArray(t.stages)?[...t.stages]:[];
-  if(stages[stageIdx]){
-    stages[stageIdx]={...stages[stageIdx],done:!isDone};
-  }
-  await dbPatch('topics',topicId,{stages});
-  await load();
-}
-
 tLoad();
 document.addEventListener('DOMContentLoaded',()=>{
   tSetControls();tUpdateFabs();tRenderLog();
@@ -1488,6 +1399,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 load();
 async function toggleEdited(id,cur){await dbPatch('shoots',id,{edited:!cur});await load();}
+async function cancelShoot(id,newStatus){await dbPatch('shoots',id,{status:newStatus});await load();}
 
 function renderEvents(){
   const el=document.getElementById('events-list');
@@ -1520,51 +1432,13 @@ function renderProjects(){
         ${t.date?`<span class="task-date">${fmtShort(t.date)}</span>`:''}
       </div>`;
     }).join('');
-
-    // TOPICS
-    const topics=(DB.topics||[]).filter(t=>t.project_id===p.id).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
-    const topicsHtml=topics.length?topics.map(t=>{
-      const stages=Array.isArray(t.stages)?t.stages:[];
-      const stagesHtml=stages.map((st,si)=>{
-        const isDone=st.done===true;
-        const isActive=!isDone&&si===stages.findIndex(s=>!s.done);
-        return`<span class="stage-chip${isDone?' done':isActive?' active':''}" onclick="toggleStage(${t.id},${si},${isDone});event.stopPropagation()">${isDone?'✓ ':isActive?'→ ':''}${st.name||st}</span>`;
-      }).join('');
-      // linked shoots
-      const linkedShoots=(DB.shoots||[]).filter(s=>{
-        const ids=s.topic_ids||[];
-        return Array.isArray(ids)?ids.includes(t.id):false;
-      });
-      const shootsHtml=linkedShoots.length?`<div class="topic-shoots">${linkedShoots.map(s=>`<span class="topic-shoot-chip">📷 ${s.project||s.location||fmtShort(s.date)||'съёмка'}</span>`).join('')}</div>`:'';
-      return`<div class="topic-item">
-        <div class="topic-item-head" onclick="this.nextElementSibling&&(this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none');this.querySelector('.topic-item-expand').classList.toggle('open')">
-          <span class="topic-item-title">${t.title||'Без названия'}</span>
-          <span class="topic-item-expand">▾</span>
-          <button onclick="openEditTopic(${t.id});event.stopPropagation()" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:0 4px" title="Редактировать">✎</button>
-        </div>
-        <div style="display:none">
-          ${stages.length?`<div class="topic-stages">${stagesHtml}</div>`:'<div style="font-size:11px;color:var(--t3);padding:6px 0;font-style:italic">Стадий нет — добавь через редактирование</div>'}
-          ${shootsHtml}
-        </div>
-      </div>`;
-    }).join(''):'<div class="topics-empty">Тем пока нет</div>';
-
     return`<div class="proj-card" style="border-top-color:${PC[i%5]}">
       <div class="proj-name">${p.name}</div>
-      <div class="proj-meta">${tasks.length?`${done}/${tasks.length} задач`:''}${inprog?' · '+inprog+' в работе':''}${topics.length?' · '+topics.length+' тем':''}</div>
+      <div class="proj-meta">${tasks.length?`${done}/${tasks.length} выполнено`:'Задач нет'}${inprog?' · '+inprog+' в работе':''}</div>
       ${p.link?`<a href="${p.link}" target="_blank" class="link-row" style="margin-bottom:6px">🔗 Документ</a>`:''}
       ${p.figma_url?`<a href="${p.figma_url}" target="_blank" class="link-row" style="margin-bottom:8px;color:#A85638">🎨 Figma</a>`:''}
       ${tasks.length?`<div class="task-list">${taskHtml}</div>`:''}
       <button class="add-task-btn" onclick="openAddTask(${p.id})">+ добавить задачу</button>
-
-      <div class="topics-section">
-        <div class="topics-header">
-          <span class="topics-title">Темы (${topics.length})</span>
-          <button class="topic-add-btn" onclick="openNewTopic(${p.id})">+ добавить тему</button>
-        </div>
-        ${topicsHtml}
-      </div>
-
       <div style="margin-top:10px">
         <span class="schip ${p.status==='готово'?'schip-done':'schip-pend'}" style="cursor:pointer" onclick="toggleProject(${p.id},'${p.status||'в работе'}')">${p.status||'в работе'}</span>
       </div>
@@ -2034,6 +1908,18 @@ function openEditShoot(id){
   document.getElementById('es-status').value=s.status||'не снято';
   document.getElementById('es-script').value=s.script||'';
   document.getElementById('es-notes').value=s.notes||'';
+  // показываем поле причины если отменена
+  const cancelWrap=document.getElementById('es-cancel-wrap');
+  const cancelReason=document.getElementById('es-cancel-reason');
+  if(s.status==='отменена'){
+    cancelWrap.style.display='block';
+    // вытаскиваем причину из notes
+    const m=(s.notes||'').match(/✕ причина отмены: (.+)/);
+    cancelReason.value=m?m[1]:'';
+  } else {
+    cancelWrap.style.display='none';
+    cancelReason.value='';
+  }
   // заполняем select проектов
   const sel=document.getElementById('es-proj');
   sel.innerHTML='<option value="">— нет —</option>';
@@ -2043,46 +1929,29 @@ function openEditShoot(id){
     if(p.name===s.project)opt.selected=true;
     sel.appendChild(opt);
   });
-  // темы проекта
-  esRenderTopics(s.project, s.topic_ids||[]);
-  const esSelProj=document.getElementById('es-proj');
-  esSelProj.onchange=()=>esRenderTopics(esSelProj.value,[]);
   showModal('modal-edit-shoot');
-}
-
-function esRenderTopics(projName, selectedIds){
-  const proj=(DB.projects||[]).find(p=>p.name===projName);
-  const wrap=document.getElementById('es-topics-wrap');
-  const list=document.getElementById('es-topics-list');
-  if(!wrap||!list)return;
-  if(!proj){wrap.style.display='none';return;}
-  const topics=(DB.topics||[]).filter(t=>t.project_id===proj.id).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
-  if(!topics.length){wrap.style.display='none';return;}
-  wrap.style.display='block';
-  list.innerHTML=topics.map(t=>{
-    const sel=(selectedIds||[]).includes(t.id);
-    return`<label style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1.5px solid ${sel?'var(--a)':'var(--b)'};background:${sel?'var(--al)':'var(--s2)'};cursor:pointer;font-size:12px;font-weight:600;color:${sel?'var(--a)':'var(--t2)'};transition:all .12s">
-      <input type="checkbox" data-topic-id="${t.id}" ${sel?'checked':''} style="display:none" onchange="const l=this.closest('label');l.style.background=this.checked?'var(--al)':'var(--s2)';l.style.borderColor=this.checked?'var(--a)':'var(--b)';l.style.color=this.checked?'var(--a)':'var(--t2)'">
-      ${t.title}
-    </label>`;
-  }).join('');
 }
 
 async function saveEditShoot(){
   const id=parseInt(document.getElementById('es-id').value);
-  // собираем выбранные темы
-  const topicCheckboxes=document.querySelectorAll('#es-topics-list input[type=checkbox]');
-  const topicIds=[...topicCheckboxes].filter(cb=>cb.checked).map(cb=>parseInt(cb.dataset.topicId));
+  const status=document.getElementById('es-status').value;
+  let notes=document.getElementById('es-notes').value;
+  // если отменена — добавляем причину в notes
+  if(status==='отменена'){
+    const reason=(document.getElementById('es-cancel-reason').value||'').trim();
+    // убираем старую причину если была
+    notes=notes.split('\n').filter(l=>!l.startsWith('\u2715 причина отмены:')).join('\n').trim();
+    if(reason)notes=(notes?notes+'\n':'')+'\u2715 причина отмены: '+reason;
+  }
   const data={
-    date:document.getElementById('es-date').value,
-    time:document.getElementById('es-time').value,
+    date:document.getElementById('es-date').value||null,
+    time:document.getElementById('es-time').value||null,
     project:document.getElementById('es-proj').value,
     location:document.getElementById('es-loc').value,
     people:document.getElementById('es-people').value,
-    status:document.getElementById('es-status').value,
+    status,
     script:document.getElementById('es-script').value,
-    notes:document.getElementById('es-notes').value,
-    topic_ids:topicIds
+    notes
   };
   try{
     const r=await fetch(`${SB}/rest/v1/shoots?id=eq.${id}`,{
@@ -2164,31 +2033,6 @@ load();
 
   <!-- today log -->
   <div id="tp-log"></div>
-</div>
-
-
-<!-- TOPIC MODAL -->
-<div class="modal-bg hidden" id="modal-topic">
-  <div class="modal" style="max-width:480px">
-    <div class="modal-head">
-      <span class="modal-title" id="topic-modal-title">Тема</span>
-      <button class="modal-close" onclick="hideModal('modal-topic')">✕</button>
-    </div>
-    <input type="hidden" id="topic-id">
-    <input type="hidden" id="topic-proj-id">
-    <div class="form-row">
-      <label class="field-label">Название темы</label>
-      <input type="text" id="topic-title" placeholder="Например: Урок 1 — Базовые команды">
-    </div>
-    <div class="form-row">
-      <label class="field-label">Стадии <span style="font-size:11px;color:var(--t3);font-weight:400">(каждая с новой строки)</span></label>
-      <textarea class="f" id="topic-stages" rows="5" placeholder="сценарий&#10;снято&#10;смонтировано&#10;готово"></textarea>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:6px">
-      <button class="btn-primary full" onclick="saveTopic()" style="flex:1">💾 Сохранить</button>
-      <button id="topic-delete-btn" onclick="deleteTopic()" style="display:none;padding:11px 16px;border:1.5px solid var(--bd);background:var(--peachbg);color:var(--peach);border-radius:10px;cursor:pointer;font-weight:600;font-family:var(--ff);box-shadow:2px 2px 0 var(--bd)">🗑 Удалить</button>
-    </div>
-  </div>
 </div>
 
 </body>
