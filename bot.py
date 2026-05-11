@@ -91,7 +91,7 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 ПОСЛЕ СОХРАНЕНИЯ В ДНЕВНИК скажи коротко что записала, можешь мягко спросить как она.
 
 ФОРМАТ — только JSON без markdown:
-{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|clarify|clarify_reply|clear_field|complete_project|add_idea|add_diary|add_event|add_project|query","data":{{}}}}
+{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|clarify|clarify_reply|clear_field|complete_project|add_idea|add_diary|add_event|add_project|add_script|update_topic|query","data":{{}}}}
 
 data для add_multiple_shoots: {{"shoots":[{{"date":"YYYY-MM-DD","time":"HH:MM","location":"","project":"","people":"","script":"","notes":""}}]}}
 data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
@@ -417,6 +417,43 @@ async def apply_action(action, data):
         return await supa_insert("events",{"title":data.get("title",""),"date":data.get("date",today),"time":data.get("time",""),"category":data.get("category","Личное"),"notes":data.get("notes","")})
     elif action == "add_project":
         return await supa_insert("projects",{"name":data.get("name",""),"description":data.get("description",""),"status":"в работе"})
+    elif action == "update_topic":
+        topic_name=(data.get("topic") or "").strip()
+        proj_name=(data.get("project") or "").strip()
+        stage_name=(data.get("stage") or "").strip()
+        if not topic_name:
+            return False
+        # ищем тему в Supabase
+        topics_r=await supa_get("topics",50)
+        # фильтруем по проекту если указан
+        if proj_name:
+            projs=await supa_get("projects",20)
+            proj_match=next((p for p in projs if proj_name.lower() in (p.get("name") or "").lower()),None)
+            if proj_match:
+                topics_r=[t for t in topics_r if t.get("project_id")==proj_match.get("id")]
+        # ищем тему по названию
+        topic=next((t for t in topics_r if topic_name.lower() in (t.get("title") or "").lower()),None)
+        if not topic:
+            print(f"TOPIC NOT FOUND: {topic_name}")
+            return False
+        stages=topic.get("stages") or []
+        # найти стадию и отметить
+        updated=False
+        for st in stages:
+            if isinstance(st,dict) and stage_name.lower() in (st.get("name") or "").lower():
+                st["done"]=True
+                updated=True
+                break
+        if not updated and stages:
+            # отметить первую незавершённую
+            for st in stages:
+                if isinstance(st,dict) and not st.get("done"):
+                    st["done"]=True
+                    updated=True
+                    break
+        if updated:
+            return await supa_update("topics","id",topic["id"],{"stages":stages})
+        return False
     return False
 
 def fmt_date(date_str):
