@@ -1225,6 +1225,7 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await q.edit_message_text("Неизвестная команда", reply_markup=main_kbd())
 
 
+def main():
     import time
     time.sleep(5)
     app = Application.builder().token(TELEGRAM_TOKEN).build()
