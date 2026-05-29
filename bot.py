@@ -74,7 +74,7 @@ async def ask_groq(messages):
         r = await c.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"},
-            json={"model": "openai/gpt-oss-120b", "messages": groq_messages, "temperature": 0.2, "max_tokens": 800}
+            json={"model": "openai/gpt-oss-120b", "messages": groq_messages, "temperature": 0.2, "max_tokens": 2000}
         )
     print(f"GROQ status: {r.status_code}")
     data = r.json()
@@ -593,8 +593,25 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_today_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    update.message.text = "🏠 Сегодня"
-    await handle_message(update, ctx)
+    try:
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        shoots = await supa_get("shoots", 100)
+        events = await supa_get("events", 100)
+        today_shoots = [s for s in (shoots or []) if s.get("date") == today_str and s.get("status") != "отменена"]
+        today_events = [e for e in (events or []) if e.get("date") == today_str]
+        lines = [f"📅 Сегодня — {datetime.now().strftime('%d.%m.%Y')}\n"]
+        if not today_shoots and not today_events:
+            lines.append("Сегодня свободно ✦")
+        for s in today_shoots:
+            what = s.get("project") or s.get("location") or "съёмка"
+            done = "✅" if s.get("status") == "снято" else "🔸"
+            lines.append(f"{done} {(s.get('time') or '')} — {what}")
+        for e in today_events:
+            lines.append(f"🗓 {e.get('time','')} — {e.get('title','')}")
+        await update.message.reply_text("\n".join(lines), reply_markup=reply_kbd())
+    except Exception as e:
+        print(f"TODAY ERROR: {e}")
+        await update.message.reply_text("Не получилось загрузить 😔", reply_markup=reply_kbd())
 
 
 async def cmd_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
