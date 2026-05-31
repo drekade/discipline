@@ -70,13 +70,20 @@ async def ask_groq(messages):
         text = "".join(p.get("text","") for p in m.get("parts",[]))
         groq_messages.append({"role": role, "content": text})
     groq_messages.append({"role": "assistant", "content": "{"})
-    async with httpx.AsyncClient(timeout=30) as c:
-        r = await c.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"},
-            json={"model": "openai/gpt-oss-120b", "messages": groq_messages, "temperature": 0.2, "max_tokens": 2000}
-        )
-    print(f"GROQ status: {r.status_code}")
+    for _attempt in range(3):
+        async with httpx.AsyncClient(timeout=30) as c:
+            r = await c.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"},
+                json={"model": "openai/gpt-oss-120b", "messages": groq_messages, "temperature": 0.2, "max_tokens": 2000}
+            )
+        print(f"GROQ status: {r.status_code}")
+        if r.status_code == 429:
+            wait = int(r.headers.get("retry-after", 10))
+            print(f"GROQ rate limit, waiting {wait}s...")
+            await asyncio.sleep(min(wait, 15))
+            continue
+        break
     data = r.json()
     if "error" in data:
         print(f"GROQ ERROR: {data}")
