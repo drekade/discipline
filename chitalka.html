@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Читалка 🐾</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Читалка">
+<meta name="theme-color" content="#F2EBDB">
+<link rel="apple-touch-icon" href="icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2EBDB; --card:#FFFDF8; --ink:#2B2238; --lilac:#5D3A8E;
+  --orange:#FE702D; --muted:#8a7f6a; --line:#C9BFAA;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  min-height:100vh; background:var(--bg);
+  font-family:'Nunito','Arial Rounded MT Bold',system-ui,sans-serif;
+  display:flex; flex-direction:column; align-items:center;
+  padding:14px 12px 22px; user-select:none; overflow-x:hidden;
+}
+button{font-family:inherit; cursor:pointer;}
+
+/* ── верхняя панель ── */
+.topbar{width:100%; max-width:560px; display:flex; justify-content:space-between; align-items:center; gap:8px;}
+.langs{display:flex; gap:6px;}
+.pill{border:3px solid var(--lilac); background:transparent; color:var(--lilac);
+  border-radius:999px; padding:7px 14px; font-weight:800; font-size:13px;}
+.pill.on{background:var(--lilac); color:var(--bg); box-shadow:3px 3px 0 var(--ink);}
+.right{display:flex; align-items:center; gap:10px;}
+.counter{display:flex; align-items:baseline; gap:5px;}
+.counter b{font-size:26px; font-weight:900; color:var(--lilac);}
+.counter span{font-size:11px; font-weight:700; color:var(--muted); letter-spacing:.05em;}
+.eye{border:3px solid var(--line); background:var(--card); border-radius:12px;
+  padding:6px 10px; font-size:16px;}
+
+/* ── режимы ── */
+.modes{display:flex; gap:6px; margin-top:14px; max-width:560px; width:100%;
+  overflow-x:auto; padding-bottom:4px; scrollbar-width:none;}
+.modes::-webkit-scrollbar{display:none;}
+.mode{flex:0 0 auto; border:3px solid var(--line); background:var(--card); color:#6b6151;
+  border-radius:14px; padding:9px 13px; font-weight:800; font-size:13px; white-space:nowrap;}
+.mode.on{border-color:var(--orange); background:var(--orange); color:#fff; box-shadow:4px 4px 0 var(--lilac);}
+
+/* ── подрежимы ── */
+.subbar{display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; justify-content:center; max-width:560px; min-height:34px;}
+.chip{border:2px solid var(--line); background:transparent; color:var(--muted);
+  border-radius:999px; padding:6px 12px; font-weight:800; font-size:12px;}
+.chip.on{border-color:var(--lilac); background:var(--lilac); color:var(--bg);}
+
+/* ── сцена ── */
+.stage{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  width:100%; max-width:560px; position:relative; padding-top:8px; min-height:340px;}
+.card{background:var(--card); border:4px solid var(--lilac); border-radius:26px;
+  box-shadow:8px 8px 0 var(--lilac); padding:40px 32px; min-width:240px; max-width:94vw;
+  text-align:center; transition:transform .12s ease; border-width:4px;}
+.card:active{transform:scale(.97);}
+.word{font-weight:900; letter-spacing:.06em; line-height:1; white-space:nowrap;}
+.sz-big{font-size:clamp(68px,17vw,120px);}
+.sz-mid{font-size:clamp(54px,13vw,96px);}
+.sz-small{font-size:clamp(42px,10vw,76px);}
+.v{color:var(--orange);} .c{color:var(--ink);} .s{color:var(--lilac);}
+
+.appear{animation:cardIn .3s cubic-bezier(.34,1.56,.64,1);}
+@keyframes cardIn{from{transform:scale(.6) rotate(-3deg);opacity:0;}to{transform:scale(1) rotate(0);opacity:1;}}
+.pop{animation:cardPop .3s ease forwards;}
+@keyframes cardPop{to{transform:scale(1.16) rotate(3deg);opacity:0;}}
+
+.praise{position:absolute; top:4%; font-size:28px; font-weight:900; color:var(--orange);
+  pointer-events:none; animation:praiseUp .7s ease forwards;}
+@keyframes praiseUp{from{transform:translateY(12px) scale(.7);opacity:0;}
+  30%{transform:translateY(0) scale(1.1);opacity:1;}
+  to{transform:translateY(-10px) scale(1);opacity:0;}}
+.milestone{position:absolute; bottom:2%; background:var(--lilac); color:var(--bg);
+  border-radius:16px; padding:11px 20px; font-size:17px; font-weight:800;
+  box-shadow:5px 5px 0 var(--ink); pointer-events:none; animation:mileIn .4s cubic-bezier(.34,1.56,.64,1);}
+@keyframes mileIn{from{transform:translateY(18px) scale(.8);opacity:0;}to{transform:translateY(0) scale(1);opacity:1;}}
+
+.hint{margin-top:20px; font-size:14px; font-weight:700; color:var(--muted); text-align:center;}
+
+/* семьи слов */
+.famRow{display:flex; gap:8px; margin-top:18px; flex-wrap:wrap; justify-content:center;}
+.famItem{font-size:17px; font-weight:800; color:var(--muted); border:2px solid transparent;
+  border-radius:10px; padding:3px 9px; background:rgba(255,255,255,.5);}
+.famItem.cur{color:var(--lilac); border-color:var(--lilac); background:var(--card);}
+.famItem.done{color:var(--orange); text-decoration:none; opacity:.75;}
+
+/* проверка смысла + найди слово */
+.qTitle{font-size:21px; font-weight:900; color:var(--ink); margin-bottom:14px; text-align:center;}
+.bigEmoji{font-size:clamp(72px,20vw,120px); line-height:1; margin-bottom:18px; text-align:center;}
+.opts{display:flex; gap:12px; flex-wrap:wrap; justify-content:center;}
+.optE{font-size:46px; background:var(--card); border:3px solid var(--line); border-radius:20px;
+  padding:14px 20px; transition:transform .1s;}
+.optW{font-size:clamp(26px,7vw,38px); font-weight:900; letter-spacing:.05em;
+  background:var(--card); border:3px solid var(--line); border-radius:18px; padding:14px 22px;}
+.optE:active,.optW:active{transform:scale(.95);}
+.opt-ok{border-color:#3E9B4F !important; background:#E7F5E9 !important;}
+.opt-bad{animation:shake .4s; border-color:#C0392B !important;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-7px);}75%{transform:translateX(7px);}}
+
+/* быстрый показ */
+.flashBtns{display:flex; gap:12px; margin-top:24px;}
+.fbtn{border:3px solid var(--lilac); background:var(--card); color:var(--lilac);
+  border-radius:16px; padding:12px 20px; font-weight:800; font-size:16px;}
+.fbtn.main{background:var(--lilac); color:var(--bg); box-shadow:4px 4px 0 var(--ink);}
+.hidden-word{color:var(--line) !important;}
+
+/* лапки */
+.paws{display:flex; gap:5px; margin-top:14px; font-size:22px;}
+.paw{opacity:.18; transition:opacity .3s;}
+.paw.on{opacity:1; animation:pawPop .35s cubic-bezier(.34,1.56,.64,1);}
+@keyframes pawPop{from{transform:scale(0);}60%{transform:scale(1.4);}to{transform:scale(1);}}
+
+/* родительская панель */
+.overlay{position:fixed; inset:0; background:rgba(43,34,56,.45); display:none;
+  align-items:center; justify-content:center; padding:16px; z-index:50;}
+.overlay.show{display:flex;}
+.panel{background:var(--card); border:4px solid var(--lilac); border-radius:22px;
+  box-shadow:8px 8px 0 var(--lilac); padding:24px; max-width:420px; width:100%;}
+.panel h2{margin:0 0 14px; font-size:19px; color:var(--lilac);}
+.stat{display:flex; justify-content:space-between; padding:7px 0; border-bottom:2px dashed var(--line);
+  font-size:14px; font-weight:700; color:var(--ink);}
+.stat b{color:var(--lilac);}
+.errList{font-size:13px; color:var(--muted); margin-top:8px; line-height:1.5;}
+.panelBtns{display:flex; gap:10px; margin-top:18px;}
+.pbtn{flex:1; border:3px solid var(--lilac); background:var(--card); color:var(--lilac);
+  border-radius:14px; padding:10px; font-weight:800; font-size:14px;}
+.pbtn.danger{border-color:#C0392B; color:#C0392B;}
+
+@media (prefers-reduced-motion: reduce){
+  .appear,.pop,.praise,.milestone,.paw.on,.opt-bad{animation:none;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="langs">
+    <button class="pill" id="langUa" onclick="setLang('ua')">УКР</button>
+    <button class="pill" id="langRu" onclick="setLang('ru')">РУС</button>
+  </div>
+  <div class="right">
+    <div class="counter"><b id="cnt">0</b><span id="cntLbl">прочитано</span></div>
+    <button class="eye" onclick="openPanel()" title="Для дорослих">👁</button>
+  </div>
+</div>
+
+<div class="modes" id="modes"></div>
+<div class="subbar" id="subbar"></div>
+
+<div class="stage" id="stage"></div>
+
+<div class="paws" id="paws"></div>
+
+<div class="overlay" id="overlay" onclick="if(event.target===this)closePanel()">
+  <div class="panel">
+    <h2 id="pTitle">Для дорослих</h2>
+    <div id="pStats"></div>
+    <div class="errList" id="pErrs"></div>
+    <div class="panelBtns">
+      <button class="pbtn danger" onclick="resetProgress()" id="pReset">Скинути прогрес</button>
+      <button class="pbtn" onclick="closePanel()" id="pClose">Закрити</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ════════════════ ДАННЫЕ ════════════════ */
+
+const LANG = {
+ua:{
+  hardV:"АОУЕИІ", softV:"ЯЮЄ", allV:"АОУЕИІЇЄЮЯ",
+  cons:"БВГДЖЗКЛМНПРСТФХЧШ", softC:"БВДЗЛМНПРСТ",
+  famVowels:["А","О","У","И","І"],
+  g1:["КІТ","ДІМ","СОМ","СУП","НІС","ЛІС","МАК","ЛУК","СИН","ДИМ",
+      "СІК","СИР","РАК","ЖУК","СОН","ДУБ","МЕД","ЛЕВ","КИТ","РОТ",
+      "ЗУБ","ВУС","ОКО","ОСА","ПЕС","ЛИС","ВІЗ","ДІД","РІК","ГАЙ",
+      "ЧАЙ","ДАХ","БІК","МИР","ШУМ","ЛАК","ЛОБ","ПУХ","БАК"],
+  g2:["МАМА","ТАТО","РАМА","ЛАПА","КАША","СОВА","ВОДА","РИБА",
+      "НОГА","РУКА","ЗИМА","ЛІТО","НЕБО","МОРЕ","МИЛО","САНИ",
+      "КОЗА","ЛУНА","ГОРА","РОСА","ЖАБА","МУХА","ПЕРО","СЕЛО",
+      "ПОЛЕ","ХАТА","ЛИПА","ВАЗА","МАПА","ВУХО","ДИВО","ТІЛО",
+      "БАНАН","ЛИМОН"],
+  g3:["СОБАКА","МОЛОКО","МАШИНА","КАЛИНА","МАЛИНА","КОРОВА",
+      "ЛОПАТА","РАКЕТА","ГАЗЕТА","ГІТАРА","ЛЕЛЕКА"],
+  g4:["ДЕНЬ","СІЛЬ","ТІНЬ","КІНЬ","ПЕНЬ","ЛЬОН","ОСІНЬ","ОЛЕНЬ",
+      "ОКУНЬ","ВОГОНЬ","НЯНЯ","ДЯДЯ","ЗОРЯ","ЛЮК","ЛЮДИ","ДИНЯ",
+      "ГУСЬ","ЛОСЬ","МІДЬ",
+      "М'ЯЧ","М'ЯТА","ІМ'Я","СІМ'Я","П'ЯТЬ","Б'Є","П'Є","В'ЮН",
+      "ПІР'Я","БУР'ЯН","ДЕВ'ЯТЬ"],
+  families:[["МАК","РАК","ЛАК","БАК"],["КІТ","КИТ","КУТ"],
+      ["СОН","СОК","СОМ"],["МАМА","РАМА","САМА"],
+      ["ГОРА","КОРА","НОРА","ПОРА"],["ЛІС","НІС","РІС"],
+      ["СИР","МИР","ВИР"],["ДИМ","ДІМ"]],
+  emoji:{"КІТ":"🐱","ПЕС":"🐶","СОБАКА":"🐶","ДІМ":"🏠","СУП":"🍲","РИБА":"🐟",
+      "СОМ":"🐟","М'ЯЧ":"⚽","ЛУК":"🧅","ЛІС":"🌲","НІС":"👃","ВОДА":"💧",
+      "КАША":"🥣","ЖУК":"🪲","СИР":"🧀","РАК":"🦞","СОН":"😴","ДУБ":"🌳",
+      "МЕД":"🍯","ЛЕВ":"🦁","КИТ":"🐋","РОТ":"👄","ЗУБ":"🦷","ОКО":"👁️",
+      "ОСА":"🐝","ЛИС":"🦊","ДІД":"👴","ЧАЙ":"🍵","МАМА":"👩","ТАТО":"👨",
+      "ЛАПА":"🐾","СОВА":"🦉","ЗИМА":"❄️","ЛІТО":"☀️","МОРЕ":"🌊","МИЛО":"🧼",
+      "КОЗА":"🐐","ГОРА":"⛰️","ЖАБА":"🐸","МУХА":"🪰","ПЕРО":"🪶","ВУХО":"👂",
+      "МОЛОКО":"🥛","БАНАН":"🍌","ЛИМОН":"🍋","МАШИНА":"🚗","ГІТАРА":"🎸",
+      "РАКЕТА":"🚀","КОРОВА":"🐄","КІНЬ":"🐴","СІЛЬ":"🧂","ОЛЕНЬ":"🦌",
+      "ГУСЬ":"🪿","ЛОСЬ":"🫎","ДИНЯ":"🍈","СІМ'Я":"👨‍👩‍👧","П'ЯТЬ":"5️⃣",
+      "СИН":"👦","ДИМ":"💨","СІК":"🧃","ЛИПА":"🌳","ВАЗА":"🏺","СЕЛО":"🏡",
+      "НЕБО":"☁️","РУКА":"✋","НОГА":"🦵","ЛЕЛЕКА":"🦩"},
+  ui:{modes:["Склади","Слова","Знайди слово","Сім'ї слів","Швидкий показ","Псевдо"],
+      syllTypes:["Відкриті","М'які","Обернені","Закриті"],
+      groups:["3 букви","2 склади","3 склади","Ь та апостроф"],
+      order:["Випадково","Сім'ями"],
+      flash:["2 сек","1.5 сек","1 сек"],
+      praise:["Молодець!","Супер!","Так!","Вірно!","Клас!","Чудово!"],
+      tap:"Прочитай і торкнись 👆",
+      whatIs:"Що це?", findWord:"Де це слово?",
+      tryAgain:"Спробуй ще 🙂",
+      again:"👀 ще раз", next:"✔ далі",
+      pseudoHint:"Це вигадані слова — просто прочитай їх 😉",
+      flashHint:"Запам'ятай слово, поки воно не сховалось!",
+      counter:"прочитано", milestone:n=>`Вже ${n}! Ти молодець! 🎉`,
+      parent:{title:"Для дорослих", today:"Карток сьогодні", session:"За цю сесію",
+        best:"Найкраща сесія", streak:"Днів поспіль", avg:"Середній час на картку",
+        errs:"Помилки у «Знайди слово»", noErrs:"Помилок поки немає 👍",
+        reset:"Скинути прогрес", close:"Закрити", confirm:"Точно скинути весь прогрес?"}}
+},
+ru:{
+  hardV:"АОУЭЫИ", softV:"ЯЮЁЕ", allV:"АОУЭЫИЕЁЮЯ",
+  cons:"БВГДЖЗКЛМНПРСТФХЧШ", softC:"БВДЗЛМНПРСТ",
+  famVowels:["А","О","У","Ы","И"],
+  g1:["КОТ","ДОМ","СОМ","СУП","НОС","ЛЕС","МАК","ЛУК","СЫН","ДЫМ",
+      "СОК","СЫР","РАК","ЖУК","СОН","ДУБ","ЛЕВ","КИТ","РОТ","ЗУБ",
+      "ШАР","МИР","УХО","ОСА","ЛИС","ДЕД","ГОД","ЧАЙ","МАЙ","ПАР",
+      "ЖАР","БОК","ДАР","ЗАЛ","ШУМ","ЛАК","ПУХ","БАК","ВЕК"],
+  g2:["МАМА","ПАПА","РАМА","ЛАПА","КАША","СОВА","ВОДА","РЫБА",
+      "ЛУНА","НОГА","РУКА","ЗИМА","ЛЕТО","НЕБО","МОРЕ","ЛИСА",
+      "МЫЛО","САНИ","КОЗА","ГОРА","РОСА","ЖАБА","МУХА","ПЕРО",
+      "ХАТА","ЛИПА","ВАЗА","ШУБА","МУКА","РЕКА","ПИЛА","СЕНО",
+      "БАНАН","ЛИМОН"],
+  g3:["СОБАКА","МОЛОКО","МАШИНА","КАЛИНА","МАЛИНА","КОРОВА",
+      "ЛОПАТА","РАКЕТА","ГАЗЕТА","ГИТАРА"],
+  g4:["КОНЬ","ДЕНЬ","МЯЧ","ЛЁД","СОЛЬ","ТЕНЬ","ПЕНЬ","ЛОСЬ","ГУСЬ",
+      "ОСЕНЬ","ОЛЕНЬ","ОКУНЬ","ОГОНЬ","МЕДЬ","МЯТА","НЯНЯ","ДЯДЯ",
+      "ЗАРЯ","ЛЮК","ЛЮДИ","ЮЛА","ЯМА","ЯГОДА","ТЁТЯ","ДЫНЯ",
+      "ЁЖ","МЁД","ПЁС","СЕМЬЯ","ВЬЮН","ПЬЁТ","БЬЁТ"],
+  families:[["ДОМ","ТОМ","СОМ","КОМ","ЛОМ"],["МАК","РАК","ЛАК","БАК"],
+      ["КОТ","РОТ","ПОТ"],["МАМА","РАМА","САМА","ДАМА"],
+      ["ГОРА","КОРА","НОРА","ПОРА"],["СОН","СОК","СОМ","СОР"],
+      ["ДЫМ","ДОМ","ДАМ"],["КИТ","КОТ","КУТ"]],
+  emoji:{"КОТ":"🐱","ПЁС":"🐶","СОБАКА":"🐶","ДОМ":"🏠","СУП":"🍲","РЫБА":"🐟",
+      "СОМ":"🐟","МЯЧ":"⚽","ЛУК":"🧅","ЛЕС":"🌲","НОС":"👃","ВОДА":"💧",
+      "КАША":"🥣","ЖУК":"🪲","СЫР":"🧀","РАК":"🦞","СОН":"😴","ДУБ":"🌳",
+      "МЁД":"🍯","ЛЕВ":"🦁","КИТ":"🐋","РОТ":"👄","ЗУБ":"🦷","УХО":"👂",
+      "ОСА":"🐝","ЛИС":"🦊","ЛИСА":"🦊","ДЕД":"👴","ЧАЙ":"🍵","МАМА":"👩",
+      "ПАПА":"👨","ЛАПА":"🐾","СОВА":"🦉","ЗИМА":"❄️","ЛЕТО":"☀️","МОРЕ":"🌊",
+      "МЫЛО":"🧼","КОЗА":"🐐","ГОРА":"⛰️","ЖАБА":"🐸","МУХА":"🪰","ПЕРО":"🪶",
+      "МОЛОКО":"🥛","БАНАН":"🍌","ЛИМОН":"🍋","МАШИНА":"🚗","ГИТАРА":"🎸",
+      "РАКЕТА":"🚀","КОРОВА":"🐄","КОНЬ":"🐴","СОЛЬ":"🧂","ОЛЕНЬ":"🦌",
+      "ГУСЬ":"🪿","ЛОСЬ":"🫎","ДЫНЯ":"🍈","СЕМЬЯ":"👨‍👩‍👧","ЁЖ":"🦔",
+      "ЛЁД":"🧊","ЮЛА":"🪀","ЯМА":"🕳️","ЯГОДА":"🍓","СЫН":"👦","ДЫМ":"💨",
+      "СОК":"🧃","ШАР":"🎈","РЕКА":"🏞️","ПИЛА":"🪚","РУКА":"✋","НОГА":"🦵",
+      "НЕБО":"☁️","ШУБА":"🧥"},
+  ui:{modes:["Слоги","Слова","Найди слово","Семьи слов","Быстрый показ","Псевдо"],
+      syllTypes:["Открытые","Мягкие","Обратные","Закрытые"],
+      groups:["3 буквы","2 слога","3 слога","Ь · Я · Ю · Ё"],
+      order:["Случайно","Семьями"],
+      flash:["2 сек","1.5 сек","1 сек"],
+      praise:["Молодец!","Супер!","Да!","Верно!","Класс!","Здорово!"],
+      tap:"Прочитай и коснись 👆",
+      whatIs:"Что это?", findWord:"Где это слово?",
+      tryAgain:"Попробуй ещё 🙂",
+      again:"👀 ещё раз", next:"✔ дальше",
+      pseudoHint:"Это выдуманные слова — просто прочитай их 😉",
+      flashHint:"Запомни слово, пока оно не спряталось!",
+      counter:"прочитано", milestone:n=>`Уже ${n}! Ты молодец! 🎉`,
+      parent:{title:"Для взрослых", today:"Карточек сегодня", session:"За эту сессию",
+        best:"Лучшая сессия", streak:"Дней подряд", avg:"Среднее время на карточку",
+        errs:"Ошибки в «Найди слово»", noErrs:"Ошибок пока нет 👍",
+        reset:"Сбросить прогресс", close:"Закрыть", confirm:"Точно сбросить весь прогресс?"}}
+}
+};
+
+/* ════════════════ ХРАНИЛИЩЕ (localStorage с фолбэком) ════════════════ */
+
+const store = (()=>{ 
+  try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); return localStorage; }
+  catch(e){ const m={}; return {getItem:k=>(k in m?m[k]:null), setItem:(k,v)=>{m[k]=String(v);}, removeItem:k=>{delete m[k];}}; }
+})();
+function sGet(k,d){ try{ const v=store.getItem("chit_"+k); return v===null?d:JSON.parse(v); }catch(e){ return d; } }
+function sSet(k,v){ try{ store.setItem("chit_"+k, JSON.stringify(v)); }catch(e){} }
+
+/* ════════════════ СОСТОЯНИЕ ════════════════ */
+
+const today = new Date().toISOString().slice(0,10);
+let S = {
+  lang: sGet("lang","ua"),
+  mode: sGet("mode",0),          // 0 слоги, 1 слова, 2 найди, 3 семьи, 4 флэш, 5 псевдо
+  syllType: sGet("syllType",0),  // 0 откр, 1 мягк, 2 обратн, 3 закр
+  syllOrder: sGet("syllOrder",0),// 0 случайно, 1 семьями
+  group: sGet("group",0),        // группа слов
+  flashMs: sGet("flashMs",2000),
+  count: 0,                      // за сессию
+  todayCount: 0,
+  sinceCheck: 0, checkAt: 5+Math.floor(Math.random()*3),
+  times: [], lastT: Date.now(),
+  findStreak: sGet("findStreak",0), // правильных подряд в «найди слово» — для усложнения
+  errors: sGet("errors",{}),
+  current: null, busy:false,
+};
+// сегодняшний счётчик + streak
+(function initDaily(){
+  const d = sGet("daily",{date:today,count:0});
+  S.todayCount = (d.date===today)? d.count : 0;
+  const st = sGet("streak",{last:null,n:0});
+  if (st.last!==today){
+    const y = new Date(Date.now()-864e5).toISOString().slice(0,10);
+    st.n = (st.last===y)? st.n+1 : 1;
+    st.last = today; sSet("streak",st);
+  }
+})();
+
+/* ════════════════ КОЛОДЫ ════════════════ */
+
+const decks = {};
+function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function realWords(lg){
+  const L=LANG[lg];
+  return new Set([...L.g1,...L.g2,...L.g3,...L.g4]);
+}
+
+function buildSyll(lg, type){
+  const L=LANG[lg], out=[];
+  if (type===0){ // открытые CV
+    for(const c of L.cons) for(const v of L.hardV){const s=c+v; if(!isBad(s,lg)) out.push(s);}
+  } else if (type===1){ // мягкие
+    for(const c of L.softC) for(const v of L.softV){const s=c+v; if(!isBad(s,lg)) out.push(s);}
+  } else if (type===2){ // обратные VC
+    for(const v of L.hardV) for(const c of L.cons) out.push(v+c);
+  } else { // закрытые CVC — берём слова из 3 букв (реальные, со смыслом)
+    return [...L.g1];
+  }
+  return out;
+}
+function isBad(s, lg){
+  if (lg==="ru") return ["ЖЫ","ШЫ","ЧЫ","ЩЫ","ЧЯ","ЩЯ","ЧЮ","ЩЮ","ЖЯ","ШЯ","ЖЮ","ШЮ"].includes(s);
+  return false; // укр: ЖИ/ШИ/ЧИ валидны, мягкие только с парными — уже отфильтровано softC
+}
+
+function buildPseudo(lg){
+  const L=LANG[lg], real=realWords(lg), out=new Set();
+  let guard=0;
+  while(out.size<60 && guard<3000){
+    guard++;
+    const c1=L.cons[Math.floor(Math.random()*L.cons.length)];
+    const v=L.hardV[Math.floor(Math.random()*L.hardV.length)];
+    const c2=L.cons[Math.floor(Math.random()*L.cons.length)];
+    const s=c1+v+c2;
+    if(!isBad(c1+v,lg) && !real.has(s)) out.add(s);
+  }
+  return [...out];
+}
+
+function deckKey(){ 
+  if (S.mode===0) return `${S.lang}-s${S.syllType}-${S.syllOrder}`;
+  if (S.mode===1) return `${S.lang}-w${S.group}`;
+  if (S.mode===2) return `${S.lang}-find`;
+  if (S.mode===3) return `${S.lang}-fam`;
+  if (S.mode===4) return `${S.lang}-flash`;
+  return `${S.lang}-pseudo`;
+}
+function buildCurrentDeck(){
+  const L=LANG[S.lang];
+  if (S.mode===0){
+    if (S.syllOrder===1 && S.syllType===0){
+      // семьями: МА МО МУ МЫ МИ → ЛА ЛО ЛУ...
+      const out=[];
+      for(const c of shuffle([...L.cons])){
+        for(const v of L.famVowels){const s=c+v; if(!isBad(s,S.lang)) out.push(s);}
+      }
+      return out; // порядок уже задан — не перемешиваем
+    }
+    return shuffle(buildSyll(S.lang,S.syllType));
+  }
+  if (S.mode===1) return shuffle([...L["g"+(S.group+1)]]);
+  if (S.mode===2) return shuffle(Object.keys(L.emoji));
+  if (S.mode===3) return shuffle(L.families.map((f,i)=>i));
+  if (S.mode===4) return shuffle([...L.g1,...L.g2.slice(0,16)]); // только короткие знакомые
+  return shuffle(buildPseudo(S.lang));
+}
+function draw(){
+  const k=deckKey();
+  let d=decks[k];
+  if(!d){ d={cards:buildCurrentDeck(), idx:0}; decks[k]=d; }
+  if(d.idx>=d.cards.length){
+    let r=buildCurrentDeck();
+    if(r.length>1 && r[0]===S.current) [r[0],r[1]]=[r[1],r[0]];
+    d.cards=r; d.idx=0;
+  }
+  return d.cards[d.idx++];
+}
+
+/* ════════════════ РЕНДЕР ════════════════ */
+
+const $=id=>document.getElementById(id);
+function colorize(w){
+  const L=LANG[S.lang];
+  return [...String(w)].map(ch=>{
+    if(ch==="Ь"||ch==="'"||ch==="’") return `<span class="s">${ch}</span>`;
+    if(L.allV.includes(ch)) return `<span class="v">${ch}</span>`;
+    return `<span class="c">${ch}</span>`;
+  }).join("");
+}
+function sizeClass(w){ const n=String(w).length; return n>6?"sz-small":n>4?"sz-mid":"sz-big"; }
+function praiseWord(){ const p=LANG[S.lang].ui.praise; return p[Math.floor(Math.random()*p.length)]; }
+
+function renderTop(){
+  $("langUa").className="pill"+(S.lang==="ua"?" on":"");
+  $("langRu").className="pill"+(S.lang==="ru"?" on":"");
+  $("cnt").textContent=S.todayCount;
+  $("cntLbl").textContent=LANG[S.lang].ui.counter;
+  const ui=LANG[S.lang].ui;
+  $("modes").innerHTML=ui.modes.map((m,i)=>
+    `<button class="mode${i===S.mode?" on":""}" onclick="setMode(${i})">${m}</button>`).join("");
+  let sub="";
+  if(S.mode===0){
+    sub=ui.syllTypes.map((t,i)=>`<button class="chip${i===S.syllType?" on":""}" onclick="setSyllType(${i})">${t}</button>`).join("");
+    if(S.syllType===0)
+      sub+=`<span style="width:8px"></span>`+ui.order.map((o,i)=>`<button class="chip${i===S.syllOrder?" on":""}" onclick="setSyllOrder(${i})">${o}</button>`).join("");
+  } else if(S.mode===1){
+    sub=ui.groups.map((g,i)=>`<button class="chip${i===S.group?" on":""}" onclick="setGroup(${i})">${g}</button>`).join("");
+  } else if(S.mode===4){
+    const opts=[2000,1500,1000];
+    sub=ui.flash.map((f,i)=>`<button class="chip${opts[i]===S.flashMs?" on":""}" onclick="setFlash(${opts[i]})">${f}</button>`).join("");
+  }
+  $("subbar").innerHTML=sub;
+  renderPaws();
+}
+function renderPaws(){
+  const n = S.todayCount===0?0:(S.todayCount%10===0?10:S.todayCount%10);
+  $("paws").innerHTML=Array.from({length:10},(_,i)=>
+    `<span class="paw${i<n?" on":""}">🐾</span>`).join("");
+}
+
+/* ── основная карточка (слоги/слова/псевдо/семьи) ── */
+function renderCard(){
+  const ui=LANG[S.lang].ui;
+  let hintExtra = S.mode===5? `<div class="hint">${ui.pseudoHint}</div>` : "";
+  let famHtml="";
+  if (S.mode===3){
+    const fam=LANG[S.lang].families[S.famIdx];
+    famHtml=`<div class="famRow">`+fam.map((w,i)=>
+      `<span class="famItem${i===S.famPos?" cur":i<S.famPos?" done":""}">${w}</span>`).join("")+`</div>`;
+  }
+  $("stage").innerHTML=`
+    <button class="card appear" id="card" onclick="onRead()">
+      <div class="word ${sizeClass(S.current)}">${colorize(S.current)}</div>
+    </button>
+    ${famHtml}
+    <div class="hint">${ui.tap}</div>
+    ${hintExtra}`;
+}
+
+/* ── быстрый показ ── */
+let flashTimer=null;
+function renderFlash(){
+  const ui=LANG[S.lang].ui;
+  $("stage").innerHTML=`
+    <div class="card appear" id="card">
+      <div class="word ${sizeClass(S.current)}" id="flashWord">${colorize(S.current)}</div>
+    </div>
+    <div class="flashBtns" id="flashBtns" style="visibility:hidden">
+      <button class="fbtn" onclick="flashAgain()">${ui.again}</button>
+      <button class="fbtn main" onclick="flashNext()">${ui.next}</button>
+    </div>
+    <div class="hint">${ui.flashHint}</div>`;
+  clearTimeout(flashTimer);
+  flashTimer=setTimeout(()=>{
+    const w=$("flashWord");
+    if(w){ w.innerHTML=[...String(S.current)].map(()=>"•").join(""); w.classList.add("hidden-word"); }
+    const b=$("flashBtns"); if(b) b.style.visibility="visible";
+  }, S.flashMs);
+}
+function flashAgain(){
+  const w=$("flashWord");
+  if(w){ w.innerHTML=colorize(S.current); w.classList.remove("hidden-word"); }
+  $("flashBtns").style.visibility="hidden";
+  clearTimeout(flashTimer);
+  flashTimer=setTimeout(()=>{
+    const w2=$("flashWord");
+    if(w2){ w2.innerHTML=[...String(S.current)].map(()=>"•").join(""); w2.classList.add("hidden-word"); }
+    $("flashBtns").style.visibility="visible";
+  }, S.flashMs);
+}
+function flashNext(){ advance(); }
+
+/* ── найди слово ── */
+function pickDistractors(word){
+  const L=LANG[S.lang];
+  const pool=[...new Set([...L.g1,...L.g2,...L.g3,...L.g4])].filter(w=>w!==word);
+  const hard = S.findStreak>=8; // после 8 правильных подряд — похожие
+  let cands;
+  if(hard){
+    cands=pool.filter(w=>w.length===word.length &&
+      (w[0]===word[0] || sharedLetters(w,word)>=Math.ceil(word.length*0.5)));
+    if(cands.length<2) cands=pool.filter(w=>Math.abs(w.length-word.length)<=1);
+  } else {
+    cands=pool.filter(w=>Math.abs(w.length-word.length)<=2 && w[0]!==word[0]);
+  }
+  return shuffle(cands).slice(0,2);
+}
+function sharedLetters(a,b){ let n=0; const sb=new Set(b); for(const ch of new Set(a)) if(sb.has(ch)) n++; return n; }
+
+function renderFind(){
+  const ui=LANG[S.lang].ui, L=LANG[S.lang];
+  const word=S.current, em=L.emoji[word];
+  const opts=shuffle([word, ...pickDistractors(word)]);
+  $("stage").innerHTML=`
+    <div class="qTitle">${ui.findWord}</div>
+    <div class="bigEmoji">${em}</div>
+    <div class="opts">`+opts.map(w=>
+      `<button class="optW" onclick="findAnswer(this,'${w.replace(/'/g,"\\'")}')">${colorize(w)}</button>`).join("")+`</div>`;
+}
+function findAnswer(btn, w){
+  if(S.busy) return;
+  if(w===S.current){
+    S.busy=true; btn.classList.add("opt-ok");
+    S.findStreak++; sSet("findStreak",S.findStreak);
+    showPraise();
+    setTimeout(()=>{S.busy=false; advance();},650);
+  } else {
+    btn.classList.add("opt-bad"); btn.disabled=true;
+    S.findStreak=0; sSet("findStreak",0);
+    S.errors[S.current]=(S.errors[S.current]||0)+1; sSet("errors",S.errors);
+    setTimeout(()=>btn.classList.remove("opt-bad"),450);
+  }
+}
+
+/* ── проверка смысла (в режиме «Слова») ── */
+function renderMeaningCheck(word){
+  const ui=LANG[S.lang].ui, L=LANG[S.lang];
+  const correct=L.emoji[word];
+  const others=shuffle(Object.values(L.emoji).filter(e=>e!==correct)).slice(0,2);
+  const opts=shuffle([correct,...others]);
+  $("stage").innerHTML=`
+    <div class="qTitle">${ui.whatIs}</div>
+    <div class="word sz-mid" style="margin-bottom:18px">${colorize(word)}</div>
+    <div class="opts">`+opts.map(e=>
+      `<button class="optE" onclick="meaningAnswer(this,'${e}','${correct}')">${e}</button>`).join("")+`</div>`;
+}
+function meaningAnswer(btn, e, correct){
+  if(S.busy) return;
+  if(e===correct){
+    S.busy=true; btn.classList.add("opt-ok");
+    showPraise();
+    setTimeout(()=>{S.busy=false; S.pendingCheck=null; nextCard();},650);
+  } else {
+    btn.classList.add("opt-bad"); btn.disabled=true;
+    setTimeout(()=>btn.classList.remove("opt-bad"),450);
+  }
+}
+
+/* ════════════════ ЛОГИКА ПЕРЕХОДОВ ════════════════ */
+
+function showPraise(){
+  const p=document.createElement("div");
+  p.className="praise"; p.textContent=praiseWord();
+  $("stage").appendChild(p);
+  setTimeout(()=>p.remove(),700);
+}
+function showMilestone(){
+  const m=document.createElement("div");
+  m.className="milestone"; m.textContent=LANG[S.lang].ui.milestone(S.todayCount);
+  $("stage").appendChild(m);
+  setTimeout(()=>m.remove(),2600);
+}
+
+function bumpCount(){
+  S.count++; S.todayCount++;
+  sSet("daily",{date:today,count:S.todayCount});
+  const best=sGet("best",0);
+  if(S.count>best) sSet("best",S.count);
+  const dt=(Date.now()-S.lastT)/1000; S.lastT=Date.now();
+  if(dt<60) S.times.push(dt);
+  $("cnt").textContent=S.todayCount;
+  renderPaws();
+}
+
+function onRead(){ // тап по обычной карточке
+  if(S.busy) return;
+  S.busy=true;
+  const card=$("card");
+  card.classList.remove("appear"); card.classList.add("pop");
+  showPraise();
+  setTimeout(()=>{ S.busy=false; advance(); },300);
+}
+
+function advance(){
+  bumpCount();
+  if(S.todayCount%10===0) setTimeout(showMilestone,350);
+  // проверка смысла — только в режиме «Слова»
+  if(S.mode===1){
+    S.sinceCheck++;
+    const em=LANG[S.lang].emoji[S.current];
+    if(em && S.sinceCheck>=S.checkAt){
+      S.sinceCheck=0; S.checkAt=5+Math.floor(Math.random()*3);
+      renderMeaningCheck(S.current);
+      return;
+    }
+  }
+  nextCard();
+}
+
+function nextCard(){
+  if(S.mode===3){ // семьи: внутри семьи по порядку
+    const fams=LANG[S.lang].families;
+    if(S.famIdx===undefined || S.famPos>=fams[S.famIdx].length-1){
+      S.famIdx=draw(); S.famPos=0;
+    } else S.famPos++;
+    S.current=fams[S.famIdx][S.famPos];
+    renderCard(); return;
+  }
+  S.current=draw();
+  if(S.mode===2) renderFind();
+  else if(S.mode===4) renderFlash();
+  else renderCard();
+}
+
+/* ════════════════ ПЕРЕКЛЮЧАТЕЛИ ════════════════ */
+
+function fresh(){
+  S.famIdx=undefined; S.famPos=0; S.sinceCheck=0; S.busy=false;
+  clearTimeout(flashTimer);
+  renderTop();
+  if(S.mode===3){ S.famIdx=draw(); S.famPos=0; S.current=LANG[S.lang].families[S.famIdx][0]; renderCard(); }
+  else { S.current=draw(); if(S.mode===2) renderFind(); else if(S.mode===4) renderFlash(); else renderCard(); }
+}
+function setLang(l){ if(l===S.lang)return; S.lang=l; sSet("lang",l); fresh(); }
+function setMode(m){ if(m===S.mode)return; S.mode=m; sSet("mode",m); fresh(); }
+function setSyllType(t){ if(t===S.syllType)return; S.syllType=t; sSet("syllType",t); fresh(); }
+function setSyllOrder(o){ if(o===S.syllOrder)return; S.syllOrder=o; sSet("syllOrder",o); delete decks[deckKey()]; fresh(); }
+function setGroup(g){ if(g===S.group)return; S.group=g; sSet("group",g); fresh(); }
+function setFlash(ms){ S.flashMs=ms; sSet("flashMs",ms); renderTop(); renderFlash(); }
+
+/* ════════════════ РОДИТЕЛЬСКАЯ ПАНЕЛЬ ════════════════ */
+
+function openPanel(){
+  const ui=LANG[S.lang].ui.parent;
+  const avg=S.times.length? (S.times.reduce((a,b)=>a+b,0)/S.times.length).toFixed(1)+" c" : "—";
+  const st=sGet("streak",{n:1});
+  $("pTitle").textContent=ui.title;
+  $("pReset").textContent=ui.reset;
+  $("pClose").textContent=ui.close;
+  $("pStats").innerHTML=`
+    <div class="stat"><span>${ui.today}</span><b>${S.todayCount}</b></div>
+    <div class="stat"><span>${ui.session}</span><b>${S.count}</b></div>
+    <div class="stat"><span>${ui.best}</span><b>${sGet("best",0)}</b></div>
+    <div class="stat"><span>${ui.streak}</span><b>${st.n}</b></div>
+    <div class="stat"><span>${ui.avg}</span><b>${avg}</b></div>`;
+  const errs=Object.entries(S.errors).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  $("pErrs").innerHTML= errs.length?
+    `<b>${ui.errs}:</b><br>`+errs.map(([w,n])=>`${w} — ${n}`).join(" · ") :
+    ui.noErrs;
+  $("overlay").classList.add("show");
+}
+function closePanel(){ $("overlay").classList.remove("show"); }
+function resetProgress(){
+  if(!confirm(LANG[S.lang].ui.parent.confirm)) return;
+  ["daily","best","streak","errors","findStreak"].forEach(k=>store.removeItem("chit_"+k));
+  S.todayCount=0; S.count=0; S.errors={}; S.findStreak=0; S.times=[];
+  sSet("streak",{last:today,n:1});
+  closePanel(); renderTop();
+}
+
+/* ════════════════ СТАРТ ════════════════ */
+fresh();
+</script>
+</body>
+</html>
