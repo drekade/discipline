@@ -354,7 +354,7 @@ textarea.f{resize:none;line-height:1.6}
     <nav class="nav">
       <button class="nb active" onclick="showPage('home',this)"><span class="icon">🏠</span>Главная</button>
       <button class="nb" onclick="showPage('all-cal',this)"><span class="icon">🗓️</span>Общий</button>
-      <button class="nb" onclick="showPage('shoots-cal',this)"><span class="icon">📅</span>Съёмки</button>
+      <button class="nb" onclick="showPage('shoots-cal',this)"><span class="icon">📅</span>Работа</button>
       <button class="nb" onclick="showPage('life-cal',this)"><span class="icon">🏡</span>Жизнь</button>
       <button class="nb" onclick="showPage('projects',this)"><span class="icon">🎬</span>Проекты</button>
       <button class="nb" onclick="showPage('ideas',this)"><span class="icon">💡</span>Идеи</button>
@@ -379,7 +379,7 @@ textarea.f{resize:none;line-height:1.6}
     <div class="mob-nav">
       <button class="mob-nb active" onclick="showPage('home',this,true)">🏠 Главная</button>
       <button class="mob-nb" onclick="showPage('all-cal',this,true)">🗓️ Общий</button>
-      <button class="mob-nb" onclick="showPage('shoots-cal',this,true)">📅 Съёмки</button>
+      <button class="mob-nb" onclick="showPage('shoots-cal',this,true)">📅 Работа</button>
       <button class="mob-nb" onclick="showPage('life-cal',this,true)">🏡 Жизнь</button>
       <button class="mob-nb" onclick="showPage('projects',this,true)">🎬 Проекты</button>
       <button class="mob-nb" onclick="showPage('ideas',this,true)">💡 Идеи</button>
@@ -457,10 +457,8 @@ textarea.f{resize:none;line-height:1.6}
         </div>
         <div class="cal-grid" id="ac-grid"></div>
         <div style="display:flex;gap:14px;margin-top:14px;font-size:11px;color:var(--t2);flex-wrap:wrap">
-          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:var(--a);border-radius:2px"></span>съёмка</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:#C4552A;border-radius:2px"></span>съёмка</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:var(--purple);border-radius:2px"></span>событие</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:#3A6E4A;border-radius:2px"></span>задача</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:#C47A0A;border-radius:2px"></span>дизайн</span>
         </div>
       </div>
       <div id="ac-day-detail"></div>
@@ -468,8 +466,8 @@ textarea.f{resize:none;line-height:1.6}
 
     <!-- SHOOTS CAL -->
     <div class="page" id="page-shoots-cal">
-      <div class="page-title">Съёмки</div>
-      <div class="page-sub">Календарь и список всех съёмок</div>
+      <div class="page-title">Работа</div>
+      <div class="page-sub">Съёмки, задачи и дизайн в одном календаре</div>
       <div class="cal-wrap">
         <div class="cal-row">
           <div class="cal-month" id="sc-title"></div>
@@ -482,6 +480,11 @@ textarea.f{resize:none;line-height:1.6}
           <span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span>
         </div>
         <div class="cal-grid" id="sc-grid"></div>
+        <div style="display:flex;gap:14px;margin-top:14px;font-size:11px;color:var(--t2);flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:#C4552A;border-radius:2px"></span>съёмка</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:#5D3A8E;border-radius:2px"></span>дизайн</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:#3A6E4A;border-radius:2px"></span>задача</span>
+        </div>
       </div>
       <div id="sc-day-detail"></div>
       <div class="sec-row">
@@ -925,8 +928,17 @@ function renderShootsCal(){
     if(parseInt(sy)===scY&&parseInt(sm)-1===scM){
       const k=parseInt(sd);
       if(!evMap[k])evMap[k]=[];
-      const pi=DB.projects.findIndex(p=>p.name===s.project);
-      evMap[k].push(PC[pi>=0?pi%5:0]);
+      evMap[k].push('#C4552A');
+    }
+  });
+  DB.tasks.forEach(t=>{
+    const d=(t.status==='готово')?(t.done_date||t.date):t.date;
+    if(!d)return;
+    const[ty,tm,td]=d.split('-');
+    if(parseInt(ty)===scY&&parseInt(tm)-1===scM){
+      const k=parseInt(td);
+      if(!evMap[k])evMap[k]=[];
+      evMap[k].push(t.kind==='дизайн'?'#5D3A8E':'#3A6E4A');
     }
   });
   renderCalGrid('sc-grid','sc-title',scY,scM,evMap,null,scSelDay,'selectShootDay');
@@ -941,7 +953,8 @@ function renderShootDayDetail(){
   if(!scSelDay){el.innerHTML='';return;}
   const ds=`${scY}-${String(scM+1).padStart(2,'0')}-${String(scSelDay).padStart(2,'0')}`;
   const items=DB.shoots.filter(s=>s.date===ds);
-  if(!items.length){el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${scSelDay} — съёмок нет</div></div>`;return;}
+  const dayTasks=DB.tasks.filter(t=>{const d=(t.status==='готово')?(t.done_date||t.date):t.date;return d===ds;});
+  if(!items.length&&!dayTasks.length){el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${scSelDay} — ничего нет</div></div>`;return;}
   const html=items.map(s=>{
     const pi=DB.projects.findIndex(p=>p.name===s.project);
     const clr=PC[pi>=0?pi%5:0];
@@ -962,7 +975,17 @@ function renderShootDayDetail(){
       </div>`}
     </div>`;
   }).join('');
-  el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${scSelDay} — ${items.length} ${items.length===1?'съёмка':'съёмок'}</div><div style="margin-top:10px">${html}</div></div>`;
+  const taskHtml=dayTasks.map(t=>{
+    const ic=t.kind==='дизайн'?'🎨':'📋';
+    const clr=t.kind==='дизайн'?'#5D3A8E':'#3A6E4A';
+    const st=t.status==='готово'?'✓ готово':(t.status==='в работе'?'в работе':'не начато');
+    return`<div class="shoot-card" style="border-top:4px solid ${clr};border-left:none;margin-bottom:10px" onclick="goToPage('projects')">
+      <div class="shoot-header"><div class="shoot-title">${ic} ${t.title||'задача'}</div></div>
+      <div class="shoot-meta">${st}${t.assigned_by?' · от '+t.assigned_by:''}${t.date?' · до '+fmtShort(t.date):''}</div>
+    </div>`;
+  }).join('');
+  const total=items.length+dayTasks.length;
+  el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${scSelDay} — ${total} ${total===1?'запись':'записей'}</div><div style="margin-top:10px">${html}${taskHtml}</div></div>`;
 }
 
 function renderLifeCal(){
@@ -1019,16 +1042,6 @@ function renderAllCal(){
       evMap[k].push('#4A42B5');
     }
   });
-  DB.tasks.forEach(t=>{
-    const d=(t.status==='готово')?(t.done_date||t.date):t.date;
-    if(!d)return;
-    const[ty,tm,td]=d.split('-');
-    if(parseInt(ty)===acY&&parseInt(tm)-1===acM){
-      const k=parseInt(td);
-      if(!evMap[k])evMap[k]=[];
-      evMap[k].push(t.kind==='дизайн'?'#C47A0A':'#3A6E4A');
-    }
-  });
   renderCalGrid('ac-grid','ac-title',acY,acM,evMap,null,acSelDay,'selectAllDay');
   renderAllDayDetail();
 }
@@ -1042,11 +1055,7 @@ function renderAllDayDetail(){
   const ds=`${acY}-${String(acM+1).padStart(2,'0')}-${String(acSelDay).padStart(2,'0')}`;
   const shoots=DB.shoots.filter(s=>s.date===ds);
   const events=DB.events.filter(e=>e.date===ds);
-  const tasksOnDay=DB.tasks.filter(t=>{
-    const d=(t.status==='готово')?(t.done_date||t.date):t.date;
-    return d===ds;
-  });
-  const total=shoots.length+events.length+tasksOnDay.length;
+  const total=shoots.length+events.length;
   if(!total){el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${acSelDay} — пусто</div></div>`;return;}
   let html='';
   shoots.forEach(s=>{
@@ -1064,17 +1073,6 @@ function renderAllDayDetail(){
         <div style="font-size:14px;font-weight:600">📍 ${e.title||''}</div>
         <div style="font-size:12px;color:var(--t3)">${e.time||''}${e.category?' · '+e.category:''}</div>
         ${e.notes?`<div style="font-size:12px;color:var(--t2);margin-top:4px">${e.notes}</div>`:''}
-      </div>
-    </div>`;
-  });
-  tasksOnDay.forEach(t=>{
-    const ic=t.kind==='дизайн'?'🎨':'📋';
-    const clr=t.kind==='дизайн'?'#C47A0A':'#3A6E4A';
-    const st=t.status==='готово'?'✓ готово':(t.status==='в работе'?'в работе':'не начато');
-    html+=`<div class="day-shoot-item" style="border-left-color:${clr}">
-      <div style="flex:1">
-        <div style="font-size:14px;font-weight:600">${ic} ${t.title||'задача'}</div>
-        <div style="font-size:12px;color:var(--t3)">${st}${t.assigned_by?' · от '+t.assigned_by:''}</div>
       </div>
     </div>`;
   });
