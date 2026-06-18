@@ -459,6 +459,8 @@ textarea.f{resize:none;line-height:1.6}
         <div style="display:flex;gap:14px;margin-top:14px;font-size:11px;color:var(--t2);flex-wrap:wrap">
           <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:var(--a);border-radius:2px"></span>съёмка</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:var(--purple);border-radius:2px"></span>событие</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:#3A6E4A;border-radius:2px"></span>задача</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:#C47A0A;border-radius:2px"></span>дизайн</span>
         </div>
       </div>
       <div id="ac-day-detail"></div>
@@ -518,6 +520,15 @@ textarea.f{resize:none;line-height:1.6}
     <div class="page" id="page-projects">
       <div class="page-title">Проекты</div>
       <div class="page-sub">Все рабочие проекты и задачи</div>
+      <div class="sec-row">
+        <div class="sec-title">📋 Задачи и дизайн</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-ghost" onclick="openAddStandaloneTask('задача')">+ Задача</button>
+          <button class="btn-ghost" onclick="openAddStandaloneTask('дизайн')">+ Дизайн</button>
+        </div>
+      </div>
+      <div id="standalone-tasks" style="margin-bottom:18px"></div>
+      <div class="sec-row"><div class="sec-title">Проекты</div></div>
       <div class="proj-grid" id="projects-list"></div>
     </div>
 
@@ -675,6 +686,8 @@ textarea.f{resize:none;line-height:1.6}
     <div class="modal-head"><span class="modal-title">Добавить</span><button class="modal-close" onclick="hideModal('modal-add')">✕</button></div>
     <div style="display:flex;flex-direction:column;gap:10px">
       <button class="btn-primary" style="background:var(--pc0)" onclick="hideModal('modal-add');showModal('modal-shoot')">📅 Съёмка</button>
+      <button class="btn-primary" style="background:#3A6E4A" onclick="hideModal('modal-add');openAddStandaloneTask('задача')">📋 Задача</button>
+      <button class="btn-primary" style="background:#C47A0A" onclick="hideModal('modal-add');openAddStandaloneTask('дизайн')">🎨 Дизайн</button>
       <button class="btn-primary" style="background:var(--purple)" onclick="hideModal('modal-add');showModal('modal-event')">🗓 Личное событие</button>
       <button class="btn-primary" style="background:var(--pc1)" onclick="hideModal('modal-add');showModal('modal-project')">🎬 Проект</button>
       <button class="btn-primary" style="background:var(--pc2)" onclick="hideModal('modal-add');showModal('modal-idea')">💡 Идея</button>
@@ -723,10 +736,12 @@ textarea.f{resize:none;line-height:1.6}
 
 <div class="modal-bg hidden" id="modal-task">
   <div class="modal">
-    <div class="modal-head"><span class="modal-title">Новая задача</span><button class="modal-close" onclick="hideModal('modal-task')">✕</button></div>
+    <div class="modal-head"><span class="modal-title" id="task-modal-title">Новая задача</span><button class="modal-close" onclick="hideModal('modal-task')">✕</button></div>
     <input type="hidden" id="task-proj-id">
+    <input type="hidden" id="task-kind">
     <div class="form-row"><label class="field-label">Задача</label><input type="text" id="task-title" placeholder="Что нужно сделать?"></div>
-    <div class="form-row"><label class="field-label">Дата</label><input type="date" id="task-date"></div>
+    <div class="form-row"><label class="field-label">От кого (поручил)</label><input type="text" id="task-assigned" placeholder="Денис, Марго, Таня…"></div>
+    <div class="form-row"><label class="field-label">Срок (необязательно)</label><input type="date" id="task-date"></div>
     <div class="form-row"><label class="field-label">Статус</label>
       <select id="task-status"><option value="не начато">Не начато</option><option value="в работе">В работе</option><option value="готово">Готово</option></select>
     </div>
@@ -862,7 +877,7 @@ function setSyncOk(ok){
 
 function renderAll(){
   renderHome();renderAllCal();renderShootsCal();renderLifeCal();renderShoots();renderEvents();
-  renderProjects();renderIdeas();renderDiary();renderFamily();renderWeek();renderScripts();updateSelects();
+  renderProjects();renderStandaloneTasks();renderIdeas();renderDiary();renderFamily();renderWeek();renderScripts();updateSelects();
 }
 
 function fmtShort(d){
@@ -1004,6 +1019,16 @@ function renderAllCal(){
       evMap[k].push('#4A42B5');
     }
   });
+  DB.tasks.forEach(t=>{
+    const d=(t.status==='готово')?(t.done_date||t.date):t.date;
+    if(!d)return;
+    const[ty,tm,td]=d.split('-');
+    if(parseInt(ty)===acY&&parseInt(tm)-1===acM){
+      const k=parseInt(td);
+      if(!evMap[k])evMap[k]=[];
+      evMap[k].push(t.kind==='дизайн'?'#C47A0A':'#3A6E4A');
+    }
+  });
   renderCalGrid('ac-grid','ac-title',acY,acM,evMap,null,acSelDay,'selectAllDay');
   renderAllDayDetail();
 }
@@ -1017,7 +1042,11 @@ function renderAllDayDetail(){
   const ds=`${acY}-${String(acM+1).padStart(2,'0')}-${String(acSelDay).padStart(2,'0')}`;
   const shoots=DB.shoots.filter(s=>s.date===ds);
   const events=DB.events.filter(e=>e.date===ds);
-  const total=shoots.length+events.length;
+  const tasksOnDay=DB.tasks.filter(t=>{
+    const d=(t.status==='готово')?(t.done_date||t.date):t.date;
+    return d===ds;
+  });
+  const total=shoots.length+events.length+tasksOnDay.length;
   if(!total){el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${acSelDay} — пусто</div></div>`;return;}
   let html='';
   shoots.forEach(s=>{
@@ -1035,6 +1064,17 @@ function renderAllDayDetail(){
         <div style="font-size:14px;font-weight:600">📍 ${e.title||''}</div>
         <div style="font-size:12px;color:var(--t3)">${e.time||''}${e.category?' · '+e.category:''}</div>
         ${e.notes?`<div style="font-size:12px;color:var(--t2);margin-top:4px">${e.notes}</div>`:''}
+      </div>
+    </div>`;
+  });
+  tasksOnDay.forEach(t=>{
+    const ic=t.kind==='дизайн'?'🎨':'📋';
+    const clr=t.kind==='дизайн'?'#C47A0A':'#3A6E4A';
+    const st=t.status==='готово'?'✓ готово':(t.status==='в работе'?'в работе':'не начато');
+    html+=`<div class="day-shoot-item" style="border-left-color:${clr}">
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600">${ic} ${t.title||'задача'}</div>
+        <div style="font-size:12px;color:var(--t3)">${st}${t.assigned_by?' · от '+t.assigned_by:''}</div>
       </div>
     </div>`;
   });
@@ -1432,10 +1472,13 @@ function renderProjects(){
     const taskHtml=tasks.map(t=>{
       const icon=t.status==='готово'?'✓':t.status==='в работе'?'→':'';
       const cls=t.status==='готово'?'done':t.status==='в работе'?'progress':'';
+      const badge=t.kind==='дизайн'?'<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fff;background:#C47A0A;padding:1px 6px;border-radius:10px;margin-right:6px">дизайн</span>':'';
+      const who=t.assigned_by?`<span class="task-date">от ${t.assigned_by}</span>`:'';
+      const dd=t.status==='готово'?(t.done_date||t.date):t.date;
       return`<div class="task-item" onclick="cycleTask(${t.id},'${t.status}')">
         <div class="task-check ${cls}">${icon}</div>
-        <span class="task-text ${t.status==='готово'?'done':''}">${t.title||''}</span>
-        ${t.date?`<span class="task-date">${fmtShort(t.date)}</span>`:''}
+        <span class="task-text ${t.status==='готово'?'done':''}">${badge}${t.title||''}</span>
+        ${who}${dd?`<span class="task-date">${fmtShort(dd)}</span>`:''}
       </div>`;
     }).join('');
     // съёмки этого проекта
@@ -1482,21 +1525,77 @@ function renderProjects(){
 
 async function cycleTask(id,cur){
   const next=cur==='не начато'?'в работе':cur==='в работе'?'готово':'не начато';
-  await dbPatch('tasks',id,{status:next});await load();
+  const patch={status:next,done_date:next==='готово'?localDateStr(new Date()):null};
+  await dbPatch('tasks',id,patch);await load();
 }
 function openAddTask(projId){
   document.getElementById('task-proj-id').value=projId;
+  document.getElementById('task-kind').value='задача';
   document.getElementById('task-title').value='';
+  document.getElementById('task-assigned').value='';
   document.getElementById('task-date').value='';
   document.getElementById('task-status').value='не начато';
+  document.getElementById('task-modal-title').textContent='Новая задача проекта';
+  showModal('modal-task');
+}
+function openAddStandaloneTask(kind){
+  document.getElementById('task-proj-id').value='';
+  document.getElementById('task-kind').value=kind||'задача';
+  document.getElementById('task-title').value='';
+  document.getElementById('task-assigned').value='';
+  document.getElementById('task-date').value='';
+  document.getElementById('task-status').value='не начато';
+  document.getElementById('task-modal-title').textContent=kind==='дизайн'?'Новый дизайн':'Новая задача';
   showModal('modal-task');
 }
 async function saveTask(){
-  const projId=parseInt(document.getElementById('task-proj-id').value);
+  const projRaw=document.getElementById('task-proj-id').value;
+  const projId=parseInt(projRaw);
   const title=document.getElementById('task-title').value.trim();
   if(!title){alert('Введи название задачи');return;}
-  await dbPost('tasks',{project_id:projId,title,date:document.getElementById('task-date').value||null,status:document.getElementById('task-status').value});
+  const status=document.getElementById('task-status').value;
+  const assigned=document.getElementById('task-assigned').value.trim();
+  const row={
+    project_id:isNaN(projId)?null:projId,
+    title,
+    kind:document.getElementById('task-kind').value||'задача',
+    assigned_by:assigned||null,
+    date:document.getElementById('task-date').value||null,
+    status,
+    done_date:status==='готово'?localDateStr(new Date()):null
+  };
+  await dbPost('tasks',row);
   hideModal('modal-task');await load();
+}
+async function deleteTask(id){
+  if(!confirm('Удалить задачу?'))return;
+  await dbDelete('tasks',id);await load();
+}
+function renderStandaloneTasks(){
+  const el=document.getElementById('standalone-tasks');
+  if(!el)return;
+  const tasks=(DB.tasks||[]).filter(t=>t.project_id==null);
+  if(!tasks.length){el.innerHTML='<div style="font-size:13px;color:var(--t3);font-style:italic;padding:4px 2px">Пока нет отдельных задач. Жми «+ Задача» / «+ Дизайн» или напиши боту «задача: …»</div>';return;}
+  const order={'не начато':0,'в работе':1,'готово':2};
+  const sorted=tasks.slice().sort((a,b)=>{
+    const sa=order[a.status]??0,sb=order[b.status]??0;
+    if(sa!==sb)return sa-sb;
+    return (a.date||'9999').localeCompare(b.date||'9999');
+  });
+  el.innerHTML='<div class="task-list">'+sorted.map(t=>{
+    const icon=t.status==='готово'?'✓':t.status==='в работе'?'→':'';
+    const cls=t.status==='готово'?'done':t.status==='в работе'?'progress':'';
+    const badge=t.kind==='дизайн'?'<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fff;background:#C47A0A;padding:1px 6px;border-radius:10px;margin-right:6px">дизайн</span>':'';
+    const who=t.assigned_by?`<span class="task-date">от ${t.assigned_by}</span>`:'';
+    const dd=t.status==='готово'?(t.done_date||t.date):t.date;
+    const datestr=dd?`<span class="task-date">${fmtShort(dd)}</span>`:'';
+    return`<div class="task-item">
+      <div class="task-check ${cls}" onclick="cycleTask(${t.id},'${t.status}')">${icon}</div>
+      <span class="task-text ${t.status==='готово'?'done':''}" onclick="cycleTask(${t.id},'${t.status}')">${badge}${t.title||''}</span>
+      ${who}${datestr}
+      <span onclick="deleteTask(${t.id})" style="cursor:pointer;color:var(--t3);font-size:13px;padding:0 4px" title="удалить">✕</span>
+    </div>`;
+  }).join('')+'</div>';
 }
 async function toggleProject(id,cur){await dbPatch('projects',id,{status:cur==='готово'?'в работе':'готово'});await load();}
 
@@ -1874,6 +1973,18 @@ function renderHome(){
     todayHtml+=`<div class="home-today-item home-today-item-event" onclick="goToPage('life-cal')">
       <div class="home-today-info"><div class="home-today-title">${e.title||'событие'}</div>${e.category?`<div class="home-today-sub">${e.category}</div>`:''}</div>
       ${e.time?`<div class="home-today-time">${e.time}</div>`:''}
+    </div>`;
+  });
+  const todayTasks=(DB.tasks||[]).filter(t=>{
+    if((t.status||'')==='готово')return false;
+    const d=t.date;
+    return !d||d<=todayStr;
+  }).slice(0,6);
+  todayTasks.forEach(t=>{
+    const ic=t.kind==='дизайн'?'🎨':'📋';
+    const sub=(t.assigned_by?'от '+t.assigned_by:'')+(t.date?(t.assigned_by?' · ':'')+'до '+fmtShort(t.date):'');
+    todayHtml+=`<div class="home-today-item" onclick="goToPage('projects')">
+      <div class="home-today-info"><div class="home-today-title">${ic} ${t.title||'задача'}</div>${sub?`<div class="home-today-sub">${sub}</div>`:''}</div>
     </div>`;
   });
   if(!todayHtml)todayHtml='<div class="home-today-empty">сегодня свободно ✦</div>';

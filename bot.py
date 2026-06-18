@@ -43,9 +43,16 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 
 15. РАЗГОВОР (action: none) — только короткие междометия и прямые вопросы.
 
+16. ЗАДАЧА / ДИЗАЙН БЕЗ СЪЁМКИ (action: add_tasks) — ТОЛЬКО если сообщение начинается с "задача:" или "дизайн:".
+    "задача: ..." → kind="задача". "дизайн: ..." → kind="дизайн".
+    Раздели перечисление (запятые, новые строки, " и ") на ОТДЕЛЬНЫЕ пункты — массив tasks[].
+    Из текста вытащи assigned_by (кто поручил: "от Дениса", "поручила Марго", "Таня просила", "для Тани") — без слова "поручил", только имя.
+    due — срок сдачи в формате YYYY-MM-DD, ТОЛЬКО если дата названа явно. Если срока нет — due="".
+    НЕ выдумывай дату. НЕ создавай add_tasks, если сообщение НЕ начинается с "задача:" или "дизайн:".
+
 ХАРАКТЕР: отвечай на том же языке что Катерина. Поддержи если тяжело.
 ФОРМАТ — только JSON без markdown:
-{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|cancel_shoot|clarify|clarify_reply|clear_field|complete_project|add_idea|add_diary|add_event|add_project|add_script|update_topic|query","data":{{}}}}
+{{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|cancel_shoot|clarify|clarify_reply|clear_field|complete_project|add_idea|add_diary|add_event|add_project|add_script|update_topic|add_tasks|query","data":{{}}}}
 data для add_multiple_shoots: {{"shoots":[{{"date":"YYYY-MM-DD","time":"HH:MM","location":"","project":"","people":"","notes":""}}]}}
 data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
 data для add_event: title, date(YYYY-MM-DD), time, category, notes
@@ -58,6 +65,7 @@ data для add_idea: title, description, category
 data для add_script: url, title, project
 data для update_topic: topic, project, stage
 data для cancel_shoot: date, location, reason
+data для add_tasks: {{"kind":"задача"|"дизайн","tasks":[{{"title":"что сделать","assigned_by":"кто поручил или пусто","due":"YYYY-MM-DD или пусто"}}]}}
 ОБЯЗАТЕЛЬНО: твой ответ — это ВАЛИДНЫЙ JSON в одну строку.
 ПРИМЕР минимального ответа: {{"reply":"Окей","action":"none","data":{{}}}}
 ПРИМЕР для дневника: {{"reply":"Записала. Как настроение?","action":"add_diary","data":{{"mood":"нейтрально","events":"работала с 12 до 16","thoughts":""}}}}"""
@@ -454,6 +462,34 @@ async def apply_action(action, data):
             return await supa_update("topics","id",topic["id"],{"stages":stages})
         return False
 
+    elif action == "add_tasks":
+        kind = (data.get("kind") or "задача").strip().lower()
+        if kind not in ("задача", "дизайн"):
+            kind = "задача"
+        items = data.get("tasks") or []
+        if not isinstance(items, list):
+            items = []
+        saved = 0
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            title = (it.get("title") or it.get("name") or "").strip()
+            if not title:
+                continue
+            assigned = (it.get("assigned_by") or it.get("from") or "").strip()
+            due = (it.get("due") or it.get("date") or "").strip()
+            if due.lower() in ("не указано", "none", "null", "—", "-", ""):
+                due = ""
+            row = {
+                "title": title, "kind": kind, "status": "не начато",
+                "project_id": None, "assigned_by": assigned or None,
+                "date": due or None, "done_date": None
+            }
+            ok = await supa_insert("tasks", row)
+            if ok:
+                saved += 1
+        return saved
+
     return False
 
 
@@ -474,6 +510,25 @@ def append_log(old_text, new_text):
     if not old_text:
         return new_block
     return f"{new_block}\n\n{old_text}"
+
+
+def open_tasks_lines(tasks):
+    open_t = [t for t in (tasks or []) if (t.get("status") or "") != "готово"]
+    if not open_t:
+        return []
+    open_t.sort(key=lambda t: t.get("date") or "9999-12-31")
+    out = ["\n📋 Задачи:"]
+    for t in open_t[:10]:
+        icon = "🎨" if (t.get("kind") or "") == "дизайн" else "📋"
+        title = (t.get("title") or "").strip() or "задача"
+        bits = []
+        if t.get("date"):
+            bits.append("до " + fmt_date(t["date"]))
+        if t.get("assigned_by"):
+            bits.append("от " + str(t["assigned_by"]))
+        suffix = "  (" + ", ".join(bits) + ")" if bits else ""
+        out.append(f"{icon} {title}{suffix}")
+    return out
 
 
 def main_kbd():
@@ -604,10 +659,12 @@ async def cmd_today_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         today_str = datetime.now().strftime("%Y-%m-%d")
         shoots = await supa_get("shoots", 100)
         events = await supa_get("events", 100)
+        tasks = await supa_get("tasks", 200)
         today_shoots = [s for s in (shoots or []) if s.get("date") == today_str and s.get("status") != "отменена"]
         today_events = [e for e in (events or []) if e.get("date") == today_str]
+        task_lines = open_tasks_lines(tasks)
         lines = [f"📅 Сегодня — {datetime.now().strftime('%d.%m.%Y')}\n"]
-        if not today_shoots and not today_events:
+        if not today_shoots and not today_events and not task_lines:
             lines.append("Сегодня свободно ✦")
         for s in today_shoots:
             what = s.get("project") or s.get("location") or "съёмка"
@@ -615,6 +672,7 @@ async def cmd_today_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             lines.append(f"{done} {(s.get('time') or '')} — {what}")
         for e in today_events:
             lines.append(f"🗓 {e.get('time','')} — {e.get('title','')}")
+        lines += task_lines
         await update.message.reply_text("\n".join(lines), reply_markup=reply_kbd())
     except Exception as e:
         print(f"TODAY ERROR: {e}")
@@ -629,6 +687,9 @@ async def cmd_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "• идеи (начни с «идея:»)\n"
         "• события (врач, школа)\n"
         "• дневник (рассказ про день)\n\n"
+        "📋 Задачи без съёмки (типография, дизайн):\n"
+        "• «задача: сделать баннер, поправить упаковку»\n"
+        "• «дизайн: исправить текст в логотипе от Дениса»\n\n"
         "🔗 Префиксы для ссылок:\n"
         "• «сценарий: <ссылка>» — создаст запись в архиве\n"
         "• «референс: <ссылка>» — добавит к последней съёмке\n"
@@ -664,10 +725,12 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 today_str = datetime.now().strftime("%Y-%m-%d")
                 shoots = await supa_get("shoots", 100)
                 events = await supa_get("events", 100)
+                tasks = await supa_get("tasks", 200)
                 today_shoots = [s for s in (shoots or []) if s.get("date") == today_str]
                 today_events = [e for e in (events or []) if e.get("date") == today_str]
+                task_lines = open_tasks_lines(tasks)
                 lines = [f"📅 Сегодня — {datetime.now().strftime('%d.%m.%Y')}\n"]
-                if not today_shoots and not today_events:
+                if not today_shoots and not today_events and not task_lines:
                     lines.append("Сегодня свободно ✦")
                 for s in today_shoots:
                     what = s.get("project") or s.get("location") or "съёмка"
@@ -675,6 +738,7 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                     lines.append(f"{done} {(s.get('time') or '')} — {what}")
                 for e in today_events:
                     lines.append(f"🗓 {e.get('time','')} — {e.get('title','')}")
+                lines += task_lines
                 await msg.reply_text("\n".join(lines), reply_markup=reply_kbd())
             except Exception as e:
                 print(f"TODAY ERROR: {e}")
@@ -739,6 +803,7 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 projects = await supa_get("projects", 50)
                 ideas = await supa_get("ideas", 100)
                 diary = await supa_get("diary", 100)
+                tasks = await supa_get("tasks", 200)
                 week_ago = datetime.now() - timedelta(days=7)
                 week_shoots = 0
                 done_shoots = 0
@@ -752,11 +817,16 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                     except:
                         pass
                 active_proj = sum(1 for p in (projects or []) if p.get("status") != "готово")
+                open_tasks = sum(1 for t in (tasks or []) if (t.get("status") or "") != "готово")
+                week_ago_str = week_ago.strftime("%Y-%m-%d")
+                done_tasks = sum(1 for t in (tasks or []) if (t.get("done_date") or "") >= week_ago_str)
                 await msg.reply_text(
                     f"📊 Итоги за неделю\n\n"
                     f"📅 Съёмок добавлено: {week_shoots}\n"
                     f"✅ Съёмок проведено: {done_shoots}\n"
                     f"🎬 Активных проектов: {active_proj}\n"
+                    f"📋 Задач открыто: {open_tasks}\n"
+                    f"✔️ Задач закрыто за неделю: {done_tasks}\n"
                     f"💡 Идей всего: {len(ideas or [])}\n"
                     f"📓 Записей в дневнике: {len(diary or [])}",
                     reply_markup=reply_kbd()
@@ -972,6 +1042,19 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             if details: reply += "\n\n" + "\n".join(details)
         elif action == "add_multiple_shoots" and saved:
             reply += f"\nЗаписала {saved} съёмок ✓"
+        elif action == "add_tasks":
+            kind = (data.get("kind") or "задача").strip().lower()
+            label = "🎨 Дизайн" if kind == "дизайн" else "📋 Задача"
+            if saved:
+                titles = [(t.get("title") or "").strip()
+                          for t in (data.get("tasks") or [])
+                          if isinstance(t, dict) and (t.get("title") or "").strip()]
+                lines2 = [f"{label}: записала {saved} ✓"]
+                for t in titles[:8]:
+                    lines2.append(f"• {t}")
+                reply = (reply + "\n\n" if reply else "") + "\n".join(lines2)
+            else:
+                reply = reply or "Не разобрала задачи. Напиши: задача: ... или дизайн: ..."
 
         show_kbd = action not in ("none","clarify")
         await msg.reply_text(reply, reply_markup=main_kbd() if show_kbd else None)
@@ -1232,14 +1315,19 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         ideas = await supa_get("ideas",200)
         diary = await supa_get("diary",200)
         projects = await supa_get("projects",200)
+        tasks = await supa_get("tasks",200)
         ns = len([s for s in shoots if s.get("created_at","")>week_ago])
         ds = len([s for s in shoots if s.get("status")=="снято" and s.get("created_at","")>week_ago])
         ni = len([i for i in ideas if i.get("created_at","")>week_ago])
         nd = len([d for d in diary if d.get("created_at","")>week_ago])
         ap = len([p for p in projects if p.get("status")!="готово"])
+        ot = len([t for t in tasks if (t.get("status") or "")!="готово"])
+        week_ago_str = (datetime.now()-timedelta(days=7)).strftime("%Y-%m-%d")
+        dt = len([t for t in tasks if (t.get("done_date") or "")>=week_ago_str])
         text = (
             f"📊 Итоги недели:\n\n"
             f"📅 Съёмок добавлено: {ns}\n✅ Съёмок проведено: {ds}\n"
+            f"📋 Задач открыто: {ot}\n✔️ Задач закрыто: {dt}\n"
             f"💡 Идей: {ni}\n📓 Записей в дневнике: {nd}\n🔸 Активных проектов: {ap}"
         )
         await q.edit_message_text(text,
@@ -1273,7 +1361,7 @@ def main():
             print(f"menu button: {e}")
 
     app.post_init = post_init
-    print("🦀 Rak bot v26 started!")
+    print("🦀 Rak bot v27 started!")
     app.run_polling(drop_pending_updates=True)
 
 
