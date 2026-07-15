@@ -481,7 +481,7 @@ async def apply_action(action, data):
             if due.lower() in ("не указано", "none", "null", "—", "-", ""):
                 due = ""
             row = {
-                "title": title, "kind": kind, "status": "не начато",
+                "title": title, "kind": kind, "status": "в работе",
                 "project_id": None, "assigned_by": assigned or None,
                 "date": due or None, "done_date": None
             }
@@ -568,7 +568,8 @@ def shoot_detail_kbd(shoot_id, status):
         [InlineKeyboardButton(toggle_label, callback_data=f"toggle_{shoot_id}")],
         [InlineKeyboardButton("🔗 Добавить ссылку", callback_data=f"addlink_shoot_{shoot_id}"),
          InlineKeyboardButton("📝 Добавить заметку", callback_data=f"addnote_shoot_{shoot_id}")],
-        [InlineKeyboardButton("🗑 Удалить", callback_data=f"del_shoot_{shoot_id}")],
+        [InlineKeyboardButton("📄 Файлы", callback_data=f"files_{shoot_id}"),
+         InlineKeyboardButton("🗑 Удалить", callback_data=f"del_shoot_{shoot_id}")],
         [InlineKeyboardButton("◀️ К съёмкам", callback_data="shoots")]
     ])
 
@@ -690,6 +691,11 @@ async def cmd_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "📋 Задачи без съёмки (типография, дизайн):\n"
         "• «задача: сделать баннер, поправить упаковку»\n"
         "• «дизайн: исправить текст в логотипе от Дениса»\n\n"
+        "📄 Файлы:\n"
+        "• пришли/перешли документ (PDF и любой другой) — предложу\n"
+        "  прицепить к съёмке или в архив сценариев\n"
+        "• в карточке съёмки кнопка «📄 Файлы» — пришлю обратно\n"
+        "• напиши «файлы» — пришлю последние из архива\n\n"
         "🔗 Префиксы для ссылок:\n"
         "• «сценарий: <ссылка>» — создаст запись в архиве\n"
         "• «референс: <ссылка>» — добавит к последней съёмке\n"
@@ -713,6 +719,21 @@ async def cmd_clear(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     uid = update.effective_user.id
+
+    if msg.document:
+        doc = msg.document
+        fname = doc.file_name or "файл"
+        pending[uid] = {"type": "file_attach", "file_id": doc.file_id,
+                        "file_name": fname, "caption": (msg.caption or "").strip()}
+        buttons = [
+            [InlineKeyboardButton("📎 К съёмке", callback_data="fileto_shoot")],
+            [InlineKeyboardButton("🗂 В архив сценариев", callback_data="fileto_archive")],
+            [InlineKeyboardButton("✖️ Отмена", callback_data="fileto_cancel")]
+        ]
+        await msg.reply_text(f"📄 Поймала файл «{fname}». Куда его?",
+                             reply_markup=InlineKeyboardMarkup(buttons))
+        return
+
     text = msg.text or msg.caption or ""
     if not text:
         await msg.reply_text("Напиши что-нибудь 😊")
@@ -896,6 +917,22 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 return
 
     text_low = text.lower().strip()
+
+    if text_low in ("файлы", "файли"):
+        scripts = await supa_get("scripts", 200)
+        files = [sc for sc in scripts if sc.get("tg_file_id") and not sc.get("shoot_id")]
+        if not files:
+            await msg.reply_text("🗂 В архиве пока нет файлов. Пришли документ и выбери «в архив».", reply_markup=reply_kbd())
+            return
+        await msg.reply_text(f"🗂 Последние файлы из архива ({min(len(files),5)}):", reply_markup=reply_kbd())
+        for f in files[:5]:
+            try:
+                await msg.reply_document(f["tg_file_id"])
+            except Exception as e:
+                print(f"SEND FILE ERROR: {e}")
+                await msg.reply_text(f"Не получилось отправить «{f.get('tg_file_name','файл')}» 😔")
+        return
+
     prefix_match = None
     for prefix in ("сценарій:", "сценарий:", "сценарій ", "сценарий "):
         if text_low.startswith(prefix):
@@ -1076,6 +1113,90 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     if cb == "noop":
+        return
+
+    if cb == "fileto_cancel":
+        pending.pop(uid, None)
+        await q.edit_message_text("Окей, файл не сохраняю ✓")
+        return
+
+    if cb == "fileto_shoot":
+        p = pending.get(uid)
+        if not p or p.get("type") != "file_attach":
+            await q.edit_message_text("Файл потерялся 😔 Пришли его ещё раз.")
+            return
+        from datetime import date, timedelta
+        all_shoots = await supa_get("shoots", 100, order="date.desc")
+        today_str = date.today().isoformat()
+        cutoff = (date.today() - timedelta(days=45)).isoformat()
+        active = [s for s in all_shoots
+                  if s.get("status") != "отменена"
+                  and (not s.get("date") or (s.get("date") or "") >= cutoff)]
+        upcoming = sorted([s for s in active if (s.get("date") or "") >= today_str],
+                          key=lambda s: (s.get("date",""), s.get("time","") or ""))
+        recent = sorted([s for s in active if (s.get("date") or "") < today_str],
+                        key=lambda s: s.get("date",""), reverse=True)[:5]
+        pick = upcoming[:8] + recent
+        if not pick:
+            await q.edit_message_text("Съёмок не нашла 😔 Добавь съёмку или сохрани файл в архив.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🗂 В архив", callback_data="fileto_archive")],
+                                                   [InlineKeyboardButton("✖️ Отмена", callback_data="fileto_cancel")]]))
+            return
+        buttons = []
+        for s in pick:
+            label = f"{s.get('date') or '??'} — {s.get('project') or s.get('location') or 'съёмка'}"
+            buttons.append([InlineKeyboardButton(label[:60], callback_data=f"fileat_{s['id']}")])
+        buttons.append([InlineKeyboardButton("✖️ Отмена", callback_data="fileto_cancel")])
+        await q.edit_message_text(f"📎 К какой съёмке прицепить «{p['file_name']}»?",
+                                  reply_markup=InlineKeyboardMarkup(buttons))
+        return
+
+    if cb.startswith("fileat_"):
+        shoot_id = int(cb.split("_")[1])
+        p = pending.pop(uid, None)
+        if not p or p.get("type") != "file_attach":
+            await q.edit_message_text("Файл потерялся 😔 Пришли его ещё раз.")
+            return
+        title = p.get("caption") or p["file_name"]
+        await supa_insert("scripts", {"title": title, "link": None, "tag": "другое",
+                                      "tg_file_id": p["file_id"], "tg_file_name": p["file_name"],
+                                      "shoot_id": shoot_id})
+        shoots = await supa_get("shoots", 100)
+        s = next((x for x in shoots if x.get("id") == shoot_id), None)
+        if s:
+            merged = append_log(s.get("notes", ""), f"📄 файл: {p['file_name']} (в ТГ)")
+            await supa_update("shoots", "id", shoot_id, {"notes": merged})
+        what = (s.get("project") or s.get("location") or "съёмке") if s else "съёмке"
+        await q.edit_message_text(f"📎 Прицепила «{p['file_name']}» к «{what}» ✓\n"
+                                  "В карточке съёмки есть кнопка «📄 Файлы» — пришлю обратно в любой момент.")
+        return
+
+    if cb == "fileto_archive":
+        p = pending.pop(uid, None)
+        if not p or p.get("type") != "file_attach":
+            await q.edit_message_text("Файл потерялся 😔 Пришли его ещё раз.")
+            return
+        title = p.get("caption") or p["file_name"]
+        await supa_insert("scripts", {"title": title, "link": None, "tag": "другое",
+                                      "tg_file_id": p["file_id"], "tg_file_name": p["file_name"],
+                                      "shoot_id": None})
+        await q.edit_message_text(f"🗂 «{p['file_name']}» в архиве сценариев ✓\n"
+                                  "Напиши «файлы» — пришлю последние из архива.")
+        return
+
+    if cb.startswith("files_"):
+        shoot_id = int(cb.split("_")[1])
+        scripts = await supa_get("scripts", 200)
+        files = [sc for sc in scripts if sc.get("shoot_id") == shoot_id and sc.get("tg_file_id")]
+        if not files:
+            await q.message.reply_text("📄 К этой съёмке файлов пока нет. Пришли документ и выбери «к съёмке».")
+            return
+        for f in files[:10]:
+            try:
+                await q.message.reply_document(f["tg_file_id"])
+            except Exception as e:
+                print(f"SEND FILE ERROR: {e}")
+                await q.message.reply_text(f"Не получилось отправить «{f.get('tg_file_name','файл')}» 😔")
         return
 
     if cb.startswith("stag_"):
@@ -1345,7 +1466,7 @@ def main():
     app.add_handler(CommandHandler("today", cmd_today_handler))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("clear", cmd_clear))
-    app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION | filters.FORWARDED, handle_message))
+    app.add_handler(MessageHandler(filters.TEXT | filters.CAPTION | filters.FORWARDED | filters.Document.ALL, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
 
     async def post_init(application):
@@ -1361,7 +1482,7 @@ def main():
             print(f"menu button: {e}")
 
     app.post_init = post_init
-    print("🦀 Rak bot v27 started!")
+    print("🦀 Rak bot v28 started!")
     app.run_polling(drop_pending_updates=True)
 
 

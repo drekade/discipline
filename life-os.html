@@ -481,9 +481,10 @@ textarea.f{resize:none;line-height:1.6}
         </div>
         <div class="cal-grid" id="sc-grid"></div>
         <div style="display:flex;gap:14px;margin-top:14px;font-size:11px;color:var(--t2);flex-wrap:wrap">
-          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:#C4552A;border-radius:2px"></span>съёмка</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:#5D3A8E;border-radius:2px"></span>дизайн</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:3px;background:#3A6E4A;border-radius:2px"></span>задача</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;background:#3A5F8E;border-radius:50%"></span><span style="width:6px;height:6px;background:#5D3A8E;border-radius:50%;margin-left:-2px"></span><span style="width:6px;height:6px;background:#C47A0A;border-radius:50%;margin-left:-2px"></span>съёмка — цвет проекта</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;background:#FE702D;border-radius:2px"></span>дизайн</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;background:#3A6E4A;border-radius:2px"></span>задача</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;background:#C4552A;opacity:.28;border-radius:50%"></span>отменена</span>
         </div>
       </div>
       <div id="sc-day-detail"></div>
@@ -690,7 +691,7 @@ textarea.f{resize:none;line-height:1.6}
     <div style="display:flex;flex-direction:column;gap:10px">
       <button class="btn-primary" style="background:var(--pc0)" onclick="hideModal('modal-add');showModal('modal-shoot')">📅 Съёмка</button>
       <button class="btn-primary" style="background:#3A6E4A" onclick="hideModal('modal-add');openAddStandaloneTask('задача')">📋 Задача</button>
-      <button class="btn-primary" style="background:#C47A0A" onclick="hideModal('modal-add');openAddStandaloneTask('дизайн')">🎨 Дизайн</button>
+      <button class="btn-primary" style="background:#FE702D" onclick="hideModal('modal-add');openAddStandaloneTask('дизайн')">🎨 Дизайн</button>
       <button class="btn-primary" style="background:var(--purple)" onclick="hideModal('modal-add');showModal('modal-event')">🗓 Личное событие</button>
       <button class="btn-primary" style="background:var(--pc1)" onclick="hideModal('modal-add');showModal('modal-project')">🎬 Проект</button>
       <button class="btn-primary" style="background:var(--pc2)" onclick="hideModal('modal-add');showModal('modal-idea')">💡 Идея</button>
@@ -745,9 +746,6 @@ textarea.f{resize:none;line-height:1.6}
     <div class="form-row"><label class="field-label">Задача</label><input type="text" id="task-title" placeholder="Что нужно сделать?"></div>
     <div class="form-row"><label class="field-label">От кого (поручил)</label><input type="text" id="task-assigned" placeholder="Денис, Марго, Таня…"></div>
     <div class="form-row"><label class="field-label">Срок (необязательно)</label><input type="date" id="task-date"></div>
-    <div class="form-row"><label class="field-label">Статус</label>
-      <select id="task-status"><option value="не начато">Не начато</option><option value="в работе">В работе</option><option value="готово">Готово</option></select>
-    </div>
     <button class="btn-primary full" onclick="saveTask()">Сохранить</button>
   </div>
 </div>
@@ -928,7 +926,9 @@ function renderShootsCal(){
     if(parseInt(sy)===scY&&parseInt(sm)-1===scM){
       const k=parseInt(sd);
       if(!evMap[k])evMap[k]=[];
-      evMap[k].push('#C4552A');
+      const pi=DB.projects.findIndex(p=>p.name===s.project);
+      const base=PC[pi>=0?pi%5:0];
+      evMap[k].push(s.status==='отменена'?base+';opacity:.28':base);
     }
   });
   DB.tasks.forEach(t=>{
@@ -938,7 +938,7 @@ function renderShootsCal(){
     if(parseInt(ty)===scY&&parseInt(tm)-1===scM){
       const k=parseInt(td);
       if(!evMap[k])evMap[k]=[];
-      evMap[k].push(t.kind==='дизайн'?'#5D3A8E':'#3A6E4A');
+      evMap[k].push((t.kind==='дизайн'?'#FE702D':'#3A6E4A')+';border-radius:2px');
     }
   });
   renderCalGrid('sc-grid','sc-title',scY,scM,evMap,null,scSelDay,'selectShootDay');
@@ -977,7 +977,7 @@ function renderShootDayDetail(){
   }).join('');
   const taskHtml=dayTasks.map(t=>{
     const ic=t.kind==='дизайн'?'🎨':'📋';
-    const clr=t.kind==='дизайн'?'#5D3A8E':'#3A6E4A';
+    const clr=t.kind==='дизайн'?'#FE702D':'#3A6E4A';
     const st=t.status==='готово'?'✓ готово':(t.status==='в работе'?'в работе':'не начато');
     return`<div class="shoot-card" style="border-top:4px solid ${clr};border-left:none;margin-bottom:10px" onclick="goToPage('projects')">
       <div class="shoot-header"><div class="shoot-title">${ic} ${t.title||'задача'}</div></div>
@@ -1030,7 +1030,7 @@ function renderAllCal(){
     if(parseInt(sy)===acY&&parseInt(sm)-1===acM){
       const k=parseInt(sd);
       if(!evMap[k])evMap[k]=[];
-      evMap[k].push('#C4552A');
+      evMap[k].push(s.status==='отменена'?'#C4552A;opacity:.28':'#C4552A');
     }
   });
   DB.events.forEach(e=>{
@@ -1466,11 +1466,11 @@ function renderProjects(){
   el.innerHTML=DB.projects.map((p,i)=>{
     const tasks=DB.tasks.filter(t=>t.project_id===p.id);
     const done=tasks.filter(t=>t.status==='готово').length;
-    const inprog=tasks.filter(t=>t.status==='в работе').length;
+    const inprog=tasks.filter(t=>t.status!=='готово').length;
     const taskHtml=tasks.map(t=>{
-      const icon=t.status==='готово'?'✓':t.status==='в работе'?'→':'';
-      const cls=t.status==='готово'?'done':t.status==='в работе'?'progress':'';
-      const badge=t.kind==='дизайн'?'<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fff;background:#C47A0A;padding:1px 6px;border-radius:10px;margin-right:6px">дизайн</span>':'';
+      const icon=t.status==='готово'?'✓':'';
+      const cls=t.status==='готово'?'done':'';
+      const badge=t.kind==='дизайн'?'<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fff;background:#FE702D;padding:1px 6px;border-radius:10px;margin-right:6px">дизайн</span>':'';
       const who=t.assigned_by?`<span class="task-date">от ${t.assigned_by}</span>`:'';
       const dd=t.status==='готово'?(t.done_date||t.date):t.date;
       return`<div class="task-item" onclick="cycleTask(${t.id},'${t.status}')">
@@ -1522,8 +1522,9 @@ function renderProjects(){
 }
 
 async function cycleTask(id,cur){
-  const next=cur==='не начато'?'в работе':cur==='в работе'?'готово':'не начато';
-  const patch={status:next,done_date:next==='готово'?localDateStr(new Date()):null};
+  const patch=cur==='готово'
+    ?{status:'в работе',done_date:null}
+    :{status:'готово',done_date:localDateStr(new Date())};
   await dbPatch('tasks',id,patch);await load();
 }
 function openAddTask(projId){
@@ -1532,7 +1533,6 @@ function openAddTask(projId){
   document.getElementById('task-title').value='';
   document.getElementById('task-assigned').value='';
   document.getElementById('task-date').value='';
-  document.getElementById('task-status').value='не начато';
   document.getElementById('task-modal-title').textContent='Новая задача проекта';
   showModal('modal-task');
 }
@@ -1542,7 +1542,6 @@ function openAddStandaloneTask(kind){
   document.getElementById('task-title').value='';
   document.getElementById('task-assigned').value='';
   document.getElementById('task-date').value='';
-  document.getElementById('task-status').value='не начато';
   document.getElementById('task-modal-title').textContent=kind==='дизайн'?'Новый дизайн':'Новая задача';
   showModal('modal-task');
 }
@@ -1551,7 +1550,6 @@ async function saveTask(){
   const projId=parseInt(projRaw);
   const title=document.getElementById('task-title').value.trim();
   if(!title){alert('Введи название задачи');return;}
-  const status=document.getElementById('task-status').value;
   const assigned=document.getElementById('task-assigned').value.trim();
   const row={
     project_id:isNaN(projId)?null:projId,
@@ -1559,8 +1557,8 @@ async function saveTask(){
     kind:document.getElementById('task-kind').value||'задача',
     assigned_by:assigned||null,
     date:document.getElementById('task-date').value||null,
-    status,
-    done_date:status==='готово'?localDateStr(new Date()):null
+    status:'в работе',
+    done_date:null
   };
   await dbPost('tasks',row);
   hideModal('modal-task');await load();
@@ -1574,16 +1572,15 @@ function renderStandaloneTasks(){
   if(!el)return;
   const tasks=(DB.tasks||[]).filter(t=>t.project_id==null);
   if(!tasks.length){el.innerHTML='<div style="font-size:13px;color:var(--t3);font-style:italic;padding:4px 2px">Пока нет отдельных задач. Жми «+ Задача» / «+ Дизайн» или напиши боту «задача: …»</div>';return;}
-  const order={'не начато':0,'в работе':1,'готово':2};
   const sorted=tasks.slice().sort((a,b)=>{
-    const sa=order[a.status]??0,sb=order[b.status]??0;
+    const sa=a.status==='готово'?1:0,sb=b.status==='готово'?1:0;
     if(sa!==sb)return sa-sb;
     return (a.date||'9999').localeCompare(b.date||'9999');
   });
   el.innerHTML='<div class="task-list">'+sorted.map(t=>{
-    const icon=t.status==='готово'?'✓':t.status==='в работе'?'→':'';
-    const cls=t.status==='готово'?'done':t.status==='в работе'?'progress':'';
-    const badge=t.kind==='дизайн'?'<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fff;background:#C47A0A;padding:1px 6px;border-radius:10px;margin-right:6px">дизайн</span>':'';
+    const icon=t.status==='готово'?'✓':'';
+    const cls=t.status==='готово'?'done':'';
+    const badge=t.kind==='дизайн'?'<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fff;background:#FE702D;padding:1px 6px;border-radius:10px;margin-right:6px">дизайн</span>':'';
     const who=t.assigned_by?`<span class="task-date">от ${t.assigned_by}</span>`:'';
     const dd=t.status==='готово'?(t.done_date||t.date):t.date;
     const datestr=dd?`<span class="task-date">${fmtShort(dd)}</span>`:'';
@@ -2019,10 +2016,14 @@ function renderScripts(){
     const tag=tagLabel[sc.tag]||tagLabel['інше'];
     const linkedShoots=(DB.shoots||[]).filter(s=>(s.script_ids||[]).includes(sc.id));
     const linkedHtml=linkedShoots.length?`<div class="script-meta">📅 ${linkedShoots.map(s=>s.date||'?').join(', ')}</div>`:'';
+    const fileShoot=sc.shoot_id?(DB.shoots||[]).find(s=>s.id===sc.shoot_id):null;
+    const bodyHtml=sc.tg_file_id
+      ?`<div style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--t2);padding:4px 10px;background:var(--s2);border:1px solid var(--b);border-radius:20px">📄 ${sc.tg_file_name||'файл'} — в Телеграме${fileShoot?` · съёмка ${fmtShort(fileShoot.date)}`:''}</div>`
+      :`<a class="script-link" href="${sc.link}" target="_blank" rel="noopener">${sc.link||''}</a>`;
     return `<div class="script-card">
       <div class="script-tag">${tag}</div>
       <div class="script-title">${sc.title||'без названия'}</div>
-      <a class="script-link" href="${sc.link}" target="_blank" rel="noopener">${sc.link||''}</a>
+      ${bodyHtml}
       ${linkedHtml}
     </div>`;
   }).join('');
