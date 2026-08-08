@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Список до школи — 1 клас</title>
+<style>
+  :root{
+    --bg: #FAF7F2;
+    --card: #FFFFFF;
+    --mint: #C7DED2;
+    --mint-deep: #6FA189;
+    --peach: #F4CFC4;
+    --peach-deep: #D97D63;
+    --ink: #34302C;
+    --ink-soft: #7A7369;
+    --qty-bg: #EFEAE2;
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    font-family: -apple-system, 'Segoe UI', Verdana, Arial, sans-serif;
+    color:var(--ink);
+  }
+
+  .wrap{max-width:760px;margin:0 auto;padding:36px 20px 60px;}
+
+  header{
+    text-align:center;
+    margin-bottom:34px;
+  }
+  header h1{
+    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    font-weight:800;
+    font-size:52px;
+    margin:0 0 8px;
+    letter-spacing:0.3px;
+  }
+  header .sub{
+    font-size:19px;
+    color:var(--ink-soft);
+    font-weight:700;
+    margin-bottom:14px;
+  }
+  header .badge{
+    display:inline-block;
+    background:var(--peach);
+    color:#7A3B2C;
+    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    font-weight:700;
+    font-size:18px;
+    padding:9px 26px;
+    border-radius:999px;
+  }
+  header .progress{
+    margin-top:18px;
+    font-size:15px;
+    font-weight:700;
+    color:var(--mint-deep);
+  }
+
+  .section{margin-bottom:30px;}
+  .section-title{
+    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    font-weight:700;
+    font-size:24px;
+    color:var(--mint-deep);
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:14px;
+    padding-left:2px;
+  }
+  .section-title .dot{
+    width:12px;height:12px;border-radius:50%;
+    background:var(--mint-deep);
+    flex-shrink:0;
+  }
+  .section.peach .section-title{color:var(--peach-deep);}
+  .section.peach .section-title .dot{background:var(--peach-deep);}
+
+  .card{
+    background:var(--card);
+    border-radius:18px;
+    border:1px solid #EFEAE2;
+    padding:4px 0;
+    overflow:hidden;
+  }
+
+  .row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:16px 20px;
+    border-bottom:1px solid #F1EDE6;
+    cursor:pointer;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+  .row:last-child{border-bottom:none;}
+  .row:active{background:#FAF8F5;}
+
+  .row input[type="checkbox"]{
+    appearance:none;-webkit-appearance:none;
+    width:26px;height:26px;
+    border-radius:8px;
+    border:2px solid #D8D2C6;
+    background:#fff;
+    flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    position:relative;
+    cursor:pointer;
+  }
+  .row input[type="checkbox"]:checked{
+    background:var(--mint-deep);
+    border-color:var(--mint-deep);
+  }
+  .section.peach .row input[type="checkbox"]:checked{
+    background:var(--peach-deep);
+    border-color:var(--peach-deep);
+  }
+  .row input[type="checkbox"]:checked::after{
+    content:"";
+    position:absolute;
+    left:7px; top:2px;
+    width:7px; height:13px;
+    border:solid white;
+    border-width:0 3px 3px 0;
+    transform:rotate(40deg);
+  }
+
+  .icon{
+    width:42px;height:42px;
+    border-radius:12px;
+    background:var(--mint);
+    display:flex;align-items:center;justify-content:center;
+    font-size:21px;
+    flex-shrink:0;
+  }
+  .section.peach .icon{background:var(--peach);}
+
+  .label{
+    flex:1;
+    font-weight:700;
+    font-size:19px;
+    line-height:1.3;
+    transition:opacity .15s, color .15s;
+  }
+  .label .note{
+    display:block;
+    font-weight:400;
+    font-size:15px;
+    color:var(--ink-soft);
+    margin-top:3px;
+    line-height:1.35;
+  }
+
+  .qty{
+    background:var(--qty-bg);
+    color:var(--ink);
+    font-weight:800;
+    font-size:16px;
+    padding:8px 16px;
+    border-radius:10px;
+    white-space:nowrap;
+    flex-shrink:0;
+    transition:opacity .15s;
+  }
+
+  .row.checked .label{
+    text-decoration:line-through;
+    opacity:0.42;
+  }
+  .row.checked .qty{opacity:0.42;}
+  .row.checked .icon{opacity:0.42;}
+
+  .info-card{
+    background:var(--mint);
+    border-radius:18px;
+    padding:22px 26px;
+    font-size:17px;
+    line-height:1.6;
+    font-weight:600;
+    margin-bottom:22px;
+  }
+  .info-card b{font-family:'Trebuchet MS','Segoe UI',sans-serif;display:block;margin-bottom:10px;font-size:20px;}
+  .info-card ul{margin:0;padding-left:20px;}
+  .info-card li{margin-bottom:5px;}
+
+  footer{
+    text-align:center;
+    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    font-weight:700;
+    font-size:18px;
+    color:var(--peach-deep);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Список до школи</h1>
+    <div class="sub">повний перелік приладдя та речей</div>
+    <span class="badge">для 1-го класу 🎒</span>
+    <div class="progress"><span id="doneCount">0</span> з <span id="totalCount">0</span> зібрано</div>
+  </header>
+
+  <div class="section">
+    <div class="section-title"><span class="dot"></span>Одяг та взуття</div>
+    <div class="card">
+      <label class="row"><input type="checkbox"><div class="icon">🏃</div><div class="label">Спортивна форма</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">👟</div><div class="label">Спортивне взуття<span class="note">зі світлою підошвою + сумка</span></div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🥿</div><div class="label">Змінне взуття<span class="note">+ сумка для нього</span></div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🎒</div><div class="label">Шкільний рюкзак</div></label>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span class="dot"></span>Зошити та письмове приладдя</div>
+    <div class="card">
+      <label class="row"><input type="checkbox"><div class="icon">📗</div><div class="label">Зошит в клітинку<span class="note">12 аркушів, білий папір, цупка обкладинка</span></div><div class="qty">10 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">📘</div><div class="label">Зошит в косу лінію<span class="note">12 аркушів, з додатковою лінією</span></div><div class="qty">10 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">📁</div><div class="label">Папка для зошитів<span class="note">формат А4, жорстка, з липучкою/гумкою</span></div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">📄</div><div class="label">Щільні обкладинки для зошитів</div><div class="qty">20 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🔖</div><div class="label">Закладки для книг</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🖊️</div><div class="label">Ручка для письма, синя</div><div class="qty">5 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">✏️</div><div class="label">Олівець простий<span class="note">твердо-м'який, ТМ/HB</span></div><div class="qty">5 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🌀</div><div class="label">Підстругачка з контейнером</div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🧼</div><div class="label">Гумка м'яка</div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">📏</div><div class="label">Лінійка, 15 см</div><div class="qty">1 шт</div></label>
+    </div>
+  </div>
+
+  <div class="section peach">
+    <div class="section-title"><span class="dot"></span>Малювання, технології, ліплення</div>
+    <div class="card">
+      <label class="row"><input type="checkbox"><div class="icon">🖼️</div><div class="label">Альбом для малювання</div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">💧</div><div class="label">Акварельні фарби<span class="note">на 10 кольорів</span></div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🎨</div><div class="label">Гуашеві фарби<span class="note">на 9 кольорів</span></div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🖌️</div><div class="label">Пензлики<span class="note">тонкий, товстий, середній</span></div><div class="qty">3 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🥤</div><div class="label">Стакан-непроливайка</div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🖍️</div><div class="label">Кольорові олівці<span class="note">на 12 кольорів</span></div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🖊️</div><div class="label">Фломастери<span class="note">на 12 кольорів</span></div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">✂️</div><div class="label">Ножиці<span class="note">із закругленими кінцями</span></div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🧴</div><div class="label">Клей ПВА з пензликом</div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">✒️</div><div class="label">Клей-олівець</div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🟧</div><div class="label">Кольоровий картон</div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🟦</div><div class="label">Кольоровий папір</div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🧵</div><div class="label">Пластилін<span class="note">на 12 кольорів</span></div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🟫</div><div class="label">Дошка для пластиліну</div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🔨</div><div class="label">Стеки</div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🥼</div><div class="label">Фартух з нарукавниками</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🟨</div><div class="label">Клейонка-підкладка на парту</div></label>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span class="dot"></span>Принести самостійно для класу</div>
+    <div class="card">
+      <label class="row"><input type="checkbox"><div class="icon">🖨️</div><div class="label">Папір для ксероксу<span class="note">80 г/м²</span></div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🗂️</div><div class="label">Файли А4</div><div class="qty">100 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">📑</div><div class="label">Плівка для ламінування А4<span class="note">100 мкм</span></div><div class="qty">100 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">📷</div><div class="label">Фото дитини 3×4<span class="note">здати до 1 вересня</span></div><div class="qty">4 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">📋</div><div class="label">Планшетка А4</div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">🍱</div><div class="label">Ланч-бокс</div><div class="qty">1 шт</div></label>
+    </div>
+  </div>
+
+  <div class="section peach">
+    <div class="section-title"><span class="dot"></span>Додому — робоче місце школяра</div>
+    <div class="card">
+      <label class="row"><input type="checkbox"><div class="icon">🗓️</div><div class="label">Шаблон розкладу уроків</div><div class="qty">1 шт</div></label>
+      <label class="row"><input type="checkbox"><div class="icon">📚</div><div class="label">Підставка для книг</div><div class="qty">1 шт</div></label>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <b>🏫 Купує школа централізовано — самим не потрібно</b>
+    <ul>
+      <li>Краватка</li>
+      <li>Значок</li>
+      <li>Папка-портфоліо</li>
+      <li>Блокнот А5, тверда обкладинка (щоденник вражень)</li>
+      <li>Лічильна лінійка «Склад числа 10»</li>
+    </ul>
+  </div>
+
+  <footer>✨ Усі приладдя мають бути підписані! ✨</footer>
+
+</div>
+
+<script>
+  const STORAGE_KEY = 'spysok_do_shkoly_v1';
+  const rows = document.querySelectorAll('.row');
+  const doneEl = document.getElementById('doneCount');
+  const totalEl = document.getElementById('totalCount');
+  totalEl.textContent = rows.length;
+
+  // assign a stable id to each row based on its text, so order changes don't break saved state
+  rows.forEach((row, i) => {
+    const text = row.querySelector('.label').childNodes[0].textContent.trim();
+    row.dataset.id = i + '_' + text;
+  });
+
+  function loadState(){
+    try{
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      rows.forEach(row => {
+        const cb = row.querySelector('input[type="checkbox"]');
+        if(saved[row.dataset.id]){
+          cb.checked = true;
+          row.classList.add('checked');
+        }
+      });
+    }catch(e){ /* ignore corrupted storage */ }
+  }
+
+  function saveState(){
+    const state = {};
+    rows.forEach(row => {
+      const cb = row.querySelector('input[type="checkbox"]');
+      if(cb.checked) state[row.dataset.id] = true;
+    });
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){ /* storage unavailable */ }
+  }
+
+  function updateProgress(){
+    const done = document.querySelectorAll('.row input[type="checkbox"]:checked').length;
+    doneEl.textContent = done;
+  }
+
+  rows.forEach(row => {
+    const cb = row.querySelector('input[type="checkbox"]');
+    cb.addEventListener('change', () => {
+      row.classList.toggle('checked', cb.checked);
+      updateProgress();
+      saveState();
+    });
+  });
+
+  loadState();
+  updateProgress();
+</script>
+
+</body>
+</html>
