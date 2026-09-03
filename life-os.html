@@ -617,6 +617,7 @@ textarea.f{resize:none;line-height:1.6}
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button class="btn-ghost" onclick="shiftReport(-1)">‹ Раньше</button>
           <button class="btn-ghost" onclick="shiftReport(1)">Позже ›</button>
+          <button class="btn-ghost" onclick="autoFillPrices()">✨ Проставить цены по прайсу</button>
           <button class="btn-primary" onclick="exportReport()" style="margin-left:auto">⬇️ Выгрузить файл</button>
         </div>
       </div>
@@ -842,9 +843,9 @@ textarea.f{resize:none;line-height:1.6}
     <div class="modal-head"><span class="modal-title" id="task-modal-title">Новая задача</span><button class="modal-close" onclick="hideModal('modal-task')">✕</button></div>
     <input type="hidden" id="task-proj-id">
     <input type="hidden" id="task-kind">
-    <div class="form-row"><label class="field-label">Задача</label><input type="text" id="task-title" placeholder="Что нужно сделать?"></div>
+    <div class="form-row"><label class="field-label">Задача</label><input type="text" id="task-title" placeholder="Что нужно сделать?" oninput="qaAutoHint()"></div>
     <div class="form-row"><label class="field-label">От кого (поручил)</label><input type="text" id="task-assigned" placeholder="Денис, Марго, Таня…"></div>
-    <div class="form-row"><label class="field-label">Позиция прайса</label>
+    <div class="form-row"><label class="field-label">Позиция прайса <span id="task-auto-hint" style="font-weight:400;color:var(--t3)"></span></label>
       <select id="task-price" onchange="qaRecalc()"></select>
     </div>
     <div style="display:flex;gap:8px">
@@ -977,6 +978,40 @@ const PRICE=[
   {code:'prj_interview', sec:4, name:'Интервью/подкаст 20+ мин',    sum:8000, from:true},
   {code:'prj_thumb',     sec:4, name:'Обложка (превью)',            sum:500}
 ];
+// правила угадывания позиции прайса (те же, что в боте)
+const PRICE_RULES=[
+  ['des_pack',       ['упаковк','корма','корм '],null],
+  ['des_cover_lang', ['обложк'],['язык','укр','польск','англ','локализ','перевод']],
+  ['des_fix',        ['правк','исправ','поправ','подправ','изменить','заменить','переделать'],null],
+  ['des_logo',       ['логотип','лого ','герб'],null],
+  ['des_cover',      ['обложк'],null],
+  ['des_banner1',    ['баннер','афиш','плакат','постер'],null],
+  ['des_program',    ['программа курса','инфографик','многостраничн'],null],
+  ['des_adapt',      ['адаптац','формат','размер'],null],
+  ['prj_thumb',      ['превью','миниатюр'],null],
+  ['prj_inserts',    ['вставк'],null],
+  ['prj_interview',  ['интервью','подкаст','інтерв'],null],
+  ['prj_yt',         ['youtube','ютуб'],null],
+  ['smm_pack',       ['подсъём','подсьём','підйом','дрессировк','дресирув','канистерап','каністерап','мероприят','захід'],null],
+  ['obj_1',          ['предметк','предметн','товар'],null],
+  ['portrait',       ['портрет'],null],
+  ['targ_pack5',     ['таргет','реклам','ролик'],null],
+  ['prj_course',     ['курс','урок','обучающ','навчальн'],null]
+];
+function guessPrice(text){
+  const t=(text||'').toLowerCase();
+  for(const [code,keys,req] of PRICE_RULES){
+    if(!keys.some(k=>t.includes(k)))continue;
+    if(req&&!req.some(r=>t.includes(r)))continue;
+    return code;
+  }
+  return null;
+}
+function autoPriceFor(text){
+  const code=guessPrice(text);
+  if(!code)return null;
+  return {code,amount:calcAmount(code,1,0,0)};
+}
 function priceItem(code){return PRICE.find(p=>p.code===code)||null;}
 function priceName(code){const p=priceItem(code);return p?p.name:'';}
 function priceSecName(code){const p=priceItem(code);return p?PRICE_SECTIONS[p.sec]:'Вне прайса';}
@@ -1696,6 +1731,20 @@ async function cycleTask(id,cur){
     :{status:'готово',done_date:localDateStr(new Date())};
   await dbPatch('tasks',id,patch);await load();
 }
+function qaAutoHint(){
+  const el=document.getElementById('task-auto-hint');
+  const sel=document.getElementById('task-price');
+  if(!el||!sel)return;
+  if(sel.value){el.textContent='';return;}
+  const auto=autoPriceFor(document.getElementById('task-title').value);
+  if(auto){
+    el.textContent='→ '+priceName(auto.code)+' · '+fmtMoney(auto.amount);
+    document.getElementById('task-amount').value=auto.amount;
+  }else{
+    el.textContent='→ вне прайса';
+    document.getElementById('task-amount').value='';
+  }
+}
 function qaRecalc(){
   const auto=calcAmount(document.getElementById('task-price').value,
                         document.getElementById('task-qty').value,
@@ -1735,17 +1784,25 @@ async function saveTask(){
   const title=document.getElementById('task-title').value.trim();
   if(!title){alert('Введи название задачи');return;}
   const assigned=document.getElementById('task-assigned').value.trim();
+  // если позиция не выбрана руками — определяем по прайсу автоматически
+  let pickedCode=document.getElementById('task-price').value||null;
+  let amtField=document.getElementById('task-amount').value;
+  let pickedAmount=amtField===''?null:parseFloat(amtField);
+  if(!pickedCode){
+    const auto=autoPriceFor(title);
+    if(auto){pickedCode=auto.code;if(pickedAmount===null)pickedAmount=auto.amount;}
+  }
   const row={
     project_id:isNaN(projId)?null:projId,
     title,
     kind:document.getElementById('task-kind').value||'задача',
     assigned_by:assigned||null,
     date:document.getElementById('task-date').value||null,
-    price_code:document.getElementById('task-price').value||null,
+    price_code:pickedCode,
     qty:parseFloat(document.getElementById('task-qty').value)||1,
     surcharge:parseFloat(document.getElementById('task-surch').value)||0,
     extra:0,
-    amount:document.getElementById('task-amount').value===''?null:parseFloat(document.getElementById('task-amount').value),
+    amount:pickedAmount,
     assigned_date:document.getElementById('task-assigned-date').value||localDateStr(new Date()),
     status:'в работе',
     done_date:null
@@ -2321,6 +2378,30 @@ function workColor(w){
   if(w.cancelled)return '#C4552A;opacity:.28';
   if(w.kind==='съёмка')return '#C4552A';
   return (w.kind==='дизайн'?'#FE702D':'#3A6E4A')+';border-radius:2px';
+}
+// разом проставляет цены всем записям без цены (по названию / проекту)
+async function autoFillPrices(){
+  const tasks=(DB.tasks||[]).filter(t=>t.amount===null||t.amount===undefined);
+  const shoots=(DB.shoots||[]).filter(s=>(s.amount===null||s.amount===undefined)&&s.status!=='отменена');
+  const plan=[];
+  tasks.forEach(t=>{
+    const a=autoPriceFor(t.title||'');
+    if(a)plan.push({table:'tasks',id:t.id,name:t.title,code:a.code,amount:a.amount});
+  });
+  shoots.forEach(s=>{
+    const a=autoPriceFor([s.project,s.location,s.notes].filter(Boolean).join(' '));
+    if(a)plan.push({table:'shoots',id:s.id,name:s.project||s.location,code:a.code,amount:a.amount});
+  });
+  const skipped=(tasks.length+shoots.length)-plan.length;
+  if(!plan.length){alert('Нечего проставлять: либо цены уже стоят, либо прайс не угадывается по названию.');return;}
+  const preview=plan.slice(0,12).map(p=>`• ${(p.name||'').substring(0,32)} → ${priceName(p.code)} · ${fmtMoney(p.amount)}`).join('\n');
+  if(!confirm(`Проставить цены для ${plan.length} записей?\n\n${preview}${plan.length>12?'\n…и ещё '+(plan.length-12):''}`+
+              `${skipped?'\n\nНе угадалось: '+skipped+' (останутся без цены)':''}`))return;
+  for(const p of plan){
+    await dbPatch(p.table,p.id,{price_code:p.code,qty:1,surcharge:0,extra:0,amount:p.amount});
+  }
+  await load();
+  alert(`Готово: ${plan.length} записей.${skipped?' Без цены осталось: '+skipped+'.':''}`);
 }
 function renderReport(){
   const from=document.getElementById('rp-from').value;

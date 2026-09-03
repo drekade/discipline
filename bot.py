@@ -481,17 +481,21 @@ async def apply_action(action, data):
             due = (it.get("due") or it.get("date") or "").strip()
             if due.lower() in ("не указано", "none", "null", "—", "-", ""):
                 due = ""
+            code = guess_price(title)
+            auto_amount = PRICE_BY_CODE[code]["sum"] if code else None
             row = {
                 "title": title, "kind": kind, "status": "в работе",
                 "project_id": None, "assigned_by": assigned or None,
                 "date": due or None, "done_date": None,
                 "assigned_date": datetime.now().strftime("%Y-%m-%d"),
-                "qty": 1, "surcharge": 0, "extra": 0
+                "qty": 1, "surcharge": 0, "extra": 0,
+                "price_code": code, "amount": auto_amount
             }
             new_id = await supa_insert("tasks", row, return_id=True)
             if new_id:
                 saved += 1
-                created.append({"id": new_id, "title": title})
+                created.append({"id": new_id, "title": title,
+                                "code": code, "amount": auto_amount})
         data["_created"] = created
         return saved
 
@@ -1284,14 +1288,22 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 titles = [(t.get("title") or "").strip()
                           for t in (data.get("tasks") or [])
                           if isinstance(t, dict) and (t.get("title") or "").strip()]
+                created_list = data.get("_created") or []
                 lines2 = [f"{label}: записала {saved} ✓"]
-                for t in titles[:8]:
-                    lines2.append(f"• {t}")
+                total = 0
+                unknown = 0
+                for c in created_list[:10]:
+                    if c.get("amount") is not None:
+                        total += c["amount"]
+                        lines2.append(f"• {c['title']} — {c['amount']} ₴")
+                    else:
+                        unknown += 1
+                        lines2.append(f"• {c['title']} — цену не угадала")
+                if total:
+                    lines2.append(f"\nИтого: {total} ₴")
+                if unknown:
+                    lines2.append("Поправить цены можно в «Жизни».")
                 reply = (reply + "\n\n" if reply else "") + "\n".join(lines2)
-                await msg.reply_text(reply, reply_markup=reply_kbd())
-                for c in (data.get("_created") or [])[:8]:
-                    await ask_price(msg, c["id"], c["title"])
-                return
             else:
                 reply = reply or "Не разобрала задачи. Напиши: задача: ... или дизайн: ..."
 
@@ -1712,7 +1724,7 @@ def main():
             print(f"menu button: {e}")
 
     app.post_init = post_init
-    print("🦀 Rak bot v30 started!")
+    print("🦀 Rak bot v31 started!")
     app.run_polling(drop_pending_updates=True)
 
 
