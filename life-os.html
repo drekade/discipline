@@ -492,7 +492,10 @@ textarea.f{resize:none;line-height:1.6}
       <div id="sc-day-detail"></div>
       <div class="sec-row">
         <div class="sec-title">Все съёмки</div>
-        <button class="btn-ghost" onclick="showModal('modal-shoot')">+ Съёмка</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn-ghost" onclick="openAssign()">🗂 Разобрать</button>
+          <button class="btn-ghost" onclick="showModal('modal-shoot')">+ Съёмка</button>
+        </div>
       </div>
       <div class="shoots-grid" id="shoots-list"></div>
     </div>
@@ -838,6 +841,30 @@ textarea.f{resize:none;line-height:1.6}
   </div>
 </div>
 
+<div class="modal-bg hidden" id="modal-assign">
+  <div class="modal" style="max-width:620px;max-height:90vh;overflow-y:auto">
+    <div class="modal-head">
+      <span class="modal-title">Разобрать съёмки</span>
+      <button class="modal-close" onclick="hideModal('modal-assign')">✕</button>
+    </div>
+    <div style="font-size:13px;color:var(--t3);margin-bottom:10px">Отметь съёмки и выбери проект. Цена подтянется по типу проекта.</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      <select id="as-filter" onchange="renderAssignList()" style="width:auto">
+        <option value="none">Без проекта</option>
+        <option value="all">Все съёмки</option>
+      </select>
+      <button class="btn-ghost" onclick="assignToggleAll(true)">Отметить все</button>
+      <button class="btn-ghost" onclick="assignToggleAll(false)">Снять</button>
+      <span id="as-count" style="font-size:12px;color:var(--t3);margin-left:auto"></span>
+    </div>
+    <div id="as-list" style="max-height:44vh;overflow-y:auto;border:1px solid var(--b);border-radius:10px;padding:6px"></div>
+    <div class="form-row" style="margin-top:12px"><label class="field-label">Назначить проект</label>
+      <select id="as-proj"></select>
+    </div>
+    <button class="btn-primary full" onclick="applyAssign()">Назначить</button>
+  </div>
+</div>
+
 <div class="modal-bg hidden" id="modal-proj-card">
   <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
     <div class="modal-head">
@@ -848,7 +875,14 @@ textarea.f{resize:none;line-height:1.6}
     <div class="form-row"><label class="field-label">Название</label><input type="text" id="pc-name"></div>
     <div class="form-row"><label class="field-label">Описание</label><textarea class="f" id="pc-desc" rows="2"></textarea></div>
     <div class="form-row"><label class="field-label">От кого</label><input type="text" id="pc-assigned" placeholder="Денис, Марго, Таня…"></div>
-    <div class="form-row"><label class="field-label">Позиция прайса (на весь проект)</label>
+    <div class="form-row"><label class="field-label">Тип</label>
+      <select id="pc-billing" onchange="pcRecalc()">
+        <option value="project">Проект под ключ — цена целиком, делится по съёмкам</option>
+        <option value="category">Категория — ставка за каждую съёмку</option>
+        <option value="personal">Личное — без оплаты, не в отчёт</option>
+      </select>
+    </div>
+    <div class="form-row"><label class="field-label" id="pc-price-label">Позиция прайса</label>
       <select id="pc-price" onchange="pcRecalc()"></select>
     </div>
     <div style="display:flex;gap:8px">
@@ -864,6 +898,7 @@ textarea.f{resize:none;line-height:1.6}
     </div>
     <div style="display:flex;gap:10px;margin-top:14px">
       <button class="btn-primary full" onclick="saveProjCard()" style="flex:1">💾 Сохранить</button>
+      <button onclick="deleteProjCard()" style="padding:11px 16px;border:1.5px solid var(--bd);background:var(--peachbg);color:var(--peach);border-radius:10px;cursor:pointer">🗑</button>
     </div>
   </div>
 </div>
@@ -1164,7 +1199,7 @@ function renderShootsCal(){
     if(parseInt(sy)===scY&&parseInt(sm)-1===scM){
       const k=parseInt(sd);
       if(!evMap[k])evMap[k]=[];
-      const pi=DB.projects.findIndex(p=>p.name===s.project);
+      const pi=s.project?DB.projects.findIndex(p=>p.name===s.project):-1;
       const base=PC[pi>=0?pi%5:0];
       evMap[k].push(s.status==='отменена'?base+';opacity:.28':base);
     }
@@ -1194,7 +1229,7 @@ function renderShootDayDetail(){
   const dayTasks=DB.tasks.filter(t=>{const d=(t.status==='готово')?(t.done_date||t.date):t.date;return d===ds;});
   if(!items.length&&!dayTasks.length){el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${scSelDay} — ничего нет</div></div>`;return;}
   const html=items.map(s=>{
-    const pi=DB.projects.findIndex(p=>p.name===s.project);
+    const pi=s.project?DB.projects.findIndex(p=>p.name===s.project):-1;
     const clr=PC[pi>=0?pi%5:0];
     const isCancelled=s.status==='отменена';
     return`<div class="shoot-card" style="border-top:4px solid ${isCancelled?'#C4552A':clr};border-left:none;${isCancelled?'opacity:.55':''};margin-bottom:10px" onclick="openEditShoot(${s.id})">
@@ -1322,7 +1357,7 @@ function renderShoots(){
   if(!DB.shoots.length){el.innerHTML='<div class="empty"><div class="empty-icon">📅</div>Съёмок пока нет<br>Добавь через бота или кнопку +</div>';return;}
   const sorted=[...DB.shoots].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   el.innerHTML=sorted.map(s=>{
-    const pi=DB.projects.findIndex(p=>p.name===s.project);
+    const pi=s.project?DB.projects.findIndex(p=>p.name===s.project):-1;
     const c=PC[pi>=0?pi%5:0];
     const isCancelled=s.status==='отменена';
     return`<div class="shoot-card" style="border-top:4px solid ${isCancelled?'#C4552A':c};border-left:none;${isCancelled?'opacity:.55':''}" onclick="openEditShoot(${s.id})">
@@ -1720,7 +1755,7 @@ function renderProjects(){
     }).join('');
     // съёмки этого проекта
     const projShoots=(DB.shoots||[])
-      .filter(s=>s.project===p.name && s.status!=='отменена')
+      .filter(s=>!!p.name && s.project===p.name && s.status!=='отменена')
       .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     const shootsHtml=projShoots.map(s=>{
       const statusChip=s.status==='снято'
@@ -1848,9 +1883,11 @@ async function saveTask(){
 // съёмки проекта, между которыми делится его цена (отменённые не в счёт)
 function projectShoots(projName){
   if(!projName)return [];
+  if(!projName)return [];
   return (DB.shoots||[]).filter(s=>s.project===projName&&s.status!=='отменена'&&s.date);
 }
 function pcRecalc(){
+  const billing=document.getElementById('pc-billing').value;
   const code=document.getElementById('pc-price').value;
   const auto=calcAmount(code,1,document.getElementById('pc-surch').value,
                         document.getElementById('pc-extra').value);
@@ -1860,6 +1897,20 @@ function pcRecalc(){
   const n=projectShoots(name).length;
   const total=parseFloat(amt.value)||0;
   const el=document.getElementById('pc-split');
+  const lbl=document.getElementById('pc-price-label');
+  if(billing==='personal'){
+    lbl.textContent='Позиция прайса (не нужна)';
+    el.textContent='Личный проект: работы не попадают в отчёт.';
+    return;
+  }
+  if(billing==='category'){
+    lbl.textContent='Позиция прайса (ставка за одну съёмку)';
+    el.textContent=total
+      ? `Каждая съёмка проекта — по ${fmtMoney(total)}. Сейчас съёмок: ${n} = ${fmtMoney(total*n)}`
+      : 'Поставь ставку — её получат все съёмки этого проекта.';
+    return;
+  }
+  lbl.textContent='Позиция прайса (на весь проект)';
   if(!total){el.textContent='';return;}
   el.textContent=n
     ? `Делится на ${n} съёмочн. ${n===1?'день':'дней'} — по ${Math.round(total/n)} ₴, каждый в свой месяц`
@@ -1872,6 +1923,7 @@ function openProjCard(id){
   document.getElementById('pc-name').value=p.name||'';
   document.getElementById('pc-desc').value=p.description||'';
   document.getElementById('pc-assigned').value=p.assigned_by||'';
+  document.getElementById('pc-billing').value=p.billing||'category';
   document.getElementById('pc-price').innerHTML=priceOptionsHtml(p.price_code||'');
   document.getElementById('pc-surch').value=p.surcharge||0;
   document.getElementById('pc-extra').value=p.extra||0;
@@ -1893,6 +1945,7 @@ async function saveProjCard(){
     name,
     description:document.getElementById('pc-desc').value,
     assigned_by:document.getElementById('pc-assigned').value.trim()||null,
+    billing:document.getElementById('pc-billing').value,
     price_code:document.getElementById('pc-price').value||null,
     surcharge:parseFloat(document.getElementById('pc-surch').value)||0,
     extra:parseFloat(document.getElementById('pc-extra').value)||0,
@@ -1900,6 +1953,55 @@ async function saveProjCard(){
     status:document.getElementById('pc-status').value
   });
   hideModal('modal-proj-card');await load();
+}
+async function deleteProjCard(){
+  const id=parseInt(document.getElementById('pc-id').value);
+  const p=(DB.projects||[]).find(x=>x.id===id);
+  const n=p?projectShoots(p.name).length:0;
+  const tn=(DB.tasks||[]).filter(t=>t.project_id===id).length;
+  if(!confirm(`Удалить проект «${p&&p.name?p.name:'без названия'}»?\n\n`+
+    `Съёмки (${n}) и задачи (${tn}) НЕ удаляются — они просто останутся без проекта.`))return;
+  await dbDelete('projects',id);
+  hideModal('modal-proj-card');await load();
+}
+function openAssign(){
+  const sel=document.getElementById('as-proj');
+  sel.innerHTML='<option value="">— убрать проект —</option>'+
+    (DB.projects||[]).filter(p=>p.name).map(p=>{
+      const bl=p.billing==='project'?'под ключ':(p.billing==='personal'?'личное':'категория');
+      return `<option value="${p.name}">${p.name} · ${bl}</option>`;
+    }).join('');
+  document.getElementById('as-filter').value='none';
+  renderAssignList();
+  showModal('modal-assign');
+}
+function renderAssignList(){
+  const mode=document.getElementById('as-filter').value;
+  let list=(DB.shoots||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(mode==='none')list=list.filter(s=>!s.project);
+  const el=document.getElementById('as-list');
+  if(!list.length){el.innerHTML='<div style="padding:10px;color:var(--t3);font-style:italic">Пусто — все съёмки разобраны.</div>';
+    document.getElementById('as-count').textContent='';return;}
+  el.innerHTML=list.map(s=>`<label style="display:flex;gap:8px;align-items:baseline;padding:7px 6px;border-bottom:1px solid var(--b);cursor:pointer">
+    <input type="checkbox" class="as-cb" value="${s.id}" style="width:auto;margin:0">
+    <span style="flex:1;font-size:13px">${s.location||s.project||'съёмка'}${s.people?` <span style="color:var(--t3)">· ${s.people}</span>`:''}</span>
+    <span style="font-size:12px;color:var(--t3)">${s.date?fmtShort(s.date):'—'}</span>
+    <span style="font-size:12px;color:var(--t3)">${s.project||''}</span>
+  </label>`).join('');
+  document.getElementById('as-count').textContent=list.length+' съёмок';
+}
+function assignToggleAll(on){
+  document.querySelectorAll('.as-cb').forEach(c=>{c.checked=on;});
+}
+async function applyAssign(){
+  const ids=[...document.querySelectorAll('.as-cb')].filter(c=>c.checked).map(c=>parseInt(c.value));
+  if(!ids.length){alert('Не отмечено ни одной съёмки');return;}
+  const proj=document.getElementById('as-proj').value;
+  if(!confirm(`Назначить проект «${proj||'— без проекта —'}» для ${ids.length} съёмок?`))return;
+  for(const id of ids){
+    await dbPatch('shoots',id,{project:proj||null});
+  }
+  hideModal('modal-assign');await load();
 }
 function tcRecalc(){
   const code=document.getElementById('tc-price').value;
@@ -2442,9 +2544,15 @@ function shiftReport(dir){
 // собираем работы периода: задачи по дате сдачи, съёмки по дню съёмки.
 // у проектов с ценой сумма делится поровну по съёмочным дням, а задачи
 // внутри такого проекта отдельно не считаются — они входят в цену проекта.
+function projectsByName(){
+  const map={};
+  (DB.projects||[]).forEach(p=>{if(p.name)map[p.name]=p;});
+  return map;
+}
 function pricedProjects(){
   const map={};
   (DB.projects||[]).forEach(p=>{
+    if((p.billing||'category')!=='project')return;
     if(p.amount===null||p.amount===undefined||!p.name)return;
     const shoots=projectShoots(p.name);
     if(!shoots.length)return;
@@ -2461,11 +2569,15 @@ function pricedProjects(){
 function collectWork(from,to){
   const out=[];
   const priced=pricedProjects();
-  const pricedIds={};
-  (DB.projects||[]).forEach(p=>{if(priced[p.name])pricedIds[p.id]=p.name;});
+  const byName=projectsByName();
+  const skipIds={};
+  (DB.projects||[]).forEach(p=>{
+    if(priced[p.name])skipIds[p.id]=1;                       // входит в цену проекта
+    if((p.billing||'category')==='personal')skipIds[p.id]=1;  // личное — не в отчёт
+  });
   (DB.tasks||[]).forEach(t=>{
     if((t.status||'')!=='готово')return;
-    if(t.project_id&&pricedIds[t.project_id])return; // входит в цену проекта
+    if(t.project_id&&skipIds[t.project_id])return;
     const d=(t.done_date||t.date||'').slice(0,10);
     if(!d||d<from||d>to)return;
     out.push({id:t.id,src:'tasks',date:d,kind:t.kind==='дизайн'?'дизайн':'задача',
@@ -2478,16 +2590,21 @@ function collectWork(from,to){
     const d=(s.date||'').slice(0,10);
     if(!d||d<from||d>to)return;
     const cancelled=s.status==='отменена';
+    const parent=byName[s.project];
+    if(parent&&(parent.billing||'category')==='personal')return;
     const pp=priced[s.project];
     const inProject=!!(pp&&pp.shares[s.id]!==undefined);
+    const catRate=(parent&&(parent.billing||'category')==='category'
+                   &&parent.amount!==null&&parent.amount!==undefined)?Number(parent.amount):null;
     let amt;
     if(cancelled)amt=0;
     else if(inProject)amt=pp.shares[s.id];
-    else amt=(s.amount===null||s.amount===undefined)?null:Number(s.amount);
+    else if(s.amount!==null&&s.amount!==undefined)amt=Number(s.amount);
+    else amt=catRate;   // ставка категории, если у съёмки своей цены нет
     out.push({id:s.id,src:'shoots',date:d,kind:'съёмка',
       title:s.project||s.location||'съёмка',who:s.assigned_by||(inProject?(pp.proj.assigned_by||''):''),
       time:s.time||'',place:s.location||'',people:s.people||'',
-      code:inProject?(pp.proj.price_code||''):(s.price_code||''),
+      code:inProject?(pp.proj.price_code||''):(s.price_code||(catRate!==null?(parent.price_code||''):'')),
       amount:amt,
       qty:s.qty||1,surch:s.surcharge||0,extra:s.extra||0,
       given:'',done:(s.delivered_date||'').slice(0,10),cancelled,
