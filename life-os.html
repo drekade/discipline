@@ -2372,6 +2372,7 @@ function collectWork(from,to){
     const cancelled=s.status==='отменена';
     out.push({id:s.id,src:'shoots',date:d,kind:'съёмка',
       title:s.project||s.location||'съёмка',who:s.assigned_by||'',
+      time:s.time||'',place:s.location||'',people:s.people||'',
       code:s.price_code||'',
       amount:cancelled?0:((s.amount===null||s.amount===undefined)?null:Number(s.amount)),
       qty:s.qty||1,surch:s.surcharge||0,extra:s.extra||0,
@@ -2457,6 +2458,13 @@ function renderReportDay(items){
   const sum=day.reduce((s,w)=>s+(w.amount||0),0);
   el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${fmtShort(ds)} — ${fmtMoney(sum)}</div>${day.map(w=>reportRowHtml(w)).join('')}</div>`;
 }
+function workDetails(w){
+  const bits=[];
+  if(w.time)bits.push(w.time);
+  if(w.place&&w.place!==w.title)bits.push('📍 '+w.place);
+  if(w.people)bits.push('👥 '+w.people);
+  return bits;
+}
 function reportRowHtml(w){
   const ic=w.kind==='съёмка'?'🎬':(w.kind==='дизайн'?'🎨':'📋');
   const money=w.amount===null
@@ -2484,6 +2492,7 @@ function reportRowHtml(w){
     <div style="font-size:12px;color:var(--t3);margin-top:2px">
       ${w.who?w.who+' · ':''}${p?p.name:'вне прайса'}${calc}${dates.length?' · '+dates.join(' '):''}
     </div>
+    ${workDetails(w).length?`<div style="font-size:12px;color:var(--t3);margin-top:2px">${workDetails(w).join(' · ')}</div>`:''}
   </div>`;
 }
 function reportBlocksHtml(items){
@@ -2530,8 +2539,9 @@ function exportReport(){
       const dates=[];
       if(w.given)dates.push('ТЗ '+fmtShort(w.given));
       if(w.done)dates.push((w.kind==='съёмка'?'сдано ':'сдано ')+fmtShort(w.done));
+      const det=workDetails(w);
       blocks+=`<tr${w.cancelled?' class="cancel"':''}>
-        <td>${w.title}${w.cancelled?' <i>(отменена)</i>':''}<div class="sub">${p?p.name:'вне прайса'}${dates.length?' · '+dates.join(' · '):''}</div></td>
+        <td>${w.title}${w.cancelled?' <i>(отменена)</i>':''}<div class="sub">${p?p.name:'вне прайса'}${dates.length?' · '+dates.join(' · '):''}</div>${det.length?`<div class="sub">${det.join(' · ')}</div>`:''}</td>
         <td>${w.who||''}</td>
         <td>${fmtShort(w.date)}</td>
         <td class="r">${w.amount===null?'—':fmtMoney(w.amount)}</td></tr>`;
