@@ -676,6 +676,21 @@ textarea.f{resize:none;line-height:1.6}
       <label class="field-label">Причина отмены</label>
       <input type="text" id="es-cancel-reason" placeholder="Почему отменили?">
     </div>
+    <div class="form-row"><label class="field-label">От кого</label><input type="text" id="es-assigned" placeholder="Денис, Марго, Таня…"></div>
+    <div class="form-row"><label class="field-label">Позиция прайса</label>
+      <select id="es-price" onchange="esRecalc()"></select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="form-row" style="flex:1"><label class="field-label">Кол-во</label><input type="number" id="es-qty" min="1" step="1" value="1" oninput="esRecalc()"></div>
+      <div class="form-row" style="flex:1"><label class="field-label">Надбавка</label>
+        <select id="es-surch" onchange="esRecalc()"><option value="0">нет</option><option value="30">+30%</option></select>
+      </div>
+      <div class="form-row" style="flex:1"><label class="field-label">Доплата ₴</label><input type="number" id="es-extra" step="50" value="0" oninput="esRecalc()"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="form-row" style="flex:1"><label class="field-label">Сумма ₴ <span id="es-hint" style="font-weight:400;color:var(--t3)"></span></label><input type="number" id="es-amount" step="50"></div>
+      <div class="form-row" style="flex:1"><label class="field-label">Сдано</label><input type="date" id="es-delivered"></div>
+    </div>
     <div class="form-row"><label class="field-label">Ссылка на сценарий (script)</label><input type="text" id="es-script" placeholder="https://..."></div>
     <div class="form-row"><label class="field-label">Заметки (весь журнал)</label><textarea class="f" id="es-notes" rows="8" style="font-family:var(--fi);font-size:12px"></textarea></div>
     <div style="display:flex;gap:10px;margin-top:14px">
@@ -714,6 +729,46 @@ textarea.f{resize:none;line-height:1.6}
   </div>
 </div>
 
+<div class="modal-bg hidden" id="modal-task-card">
+  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
+    <div class="modal-head">
+      <span class="modal-title" id="tc-head">Задача</span>
+      <button class="modal-close" onclick="hideModal('modal-task-card')">✕</button>
+    </div>
+    <input type="hidden" id="tc-id">
+    <div class="form-row"><label class="field-label">Что сделать</label><input type="text" id="tc-title"></div>
+    <div class="form-row"><label class="field-label">Тип</label>
+      <select id="tc-kind"><option value="задача">Задача</option><option value="дизайн">Дизайн</option></select>
+    </div>
+    <div class="form-row"><label class="field-label">От кого</label><input type="text" id="tc-assigned" placeholder="Денис, Марго, Таня…"></div>
+    <div class="form-row"><label class="field-label">Позиция прайса</label>
+      <select id="tc-price" onchange="tcRecalc()"></select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="form-row" style="flex:1"><label class="field-label">Кол-во</label><input type="number" id="tc-qty" min="1" step="1" value="1" oninput="tcRecalc()"></div>
+      <div class="form-row" style="flex:1"><label class="field-label">Надбавка</label>
+        <select id="tc-surch" onchange="tcRecalc()"><option value="0">нет</option><option value="30">+30%</option></select>
+      </div>
+      <div class="form-row" style="flex:1"><label class="field-label">Доплата ₴</label><input type="number" id="tc-extra" step="50" value="0" oninput="tcRecalc()"></div>
+    </div>
+    <div class="form-row"><label class="field-label">Сумма ₴ <span id="tc-hint" style="font-weight:400;color:var(--t3)"></span></label>
+      <input type="number" id="tc-amount" step="50" placeholder="можно вписать свою">
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="form-row" style="flex:1"><label class="field-label">ТЗ дали</label><input type="date" id="tc-assigned-date"></div>
+      <div class="form-row" style="flex:1"><label class="field-label">Срок</label><input type="date" id="tc-date"></div>
+    </div>
+    <div class="form-row"><label class="field-label">Статус</label>
+      <select id="tc-status"><option value="в работе">В работе</option><option value="готово">Готово</option></select>
+    </div>
+    <div class="form-row" id="tc-done-wrap"><label class="field-label">Сдано</label><input type="date" id="tc-done-date"></div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn-primary full" onclick="saveTaskCard()" style="flex:1">💾 Сохранить</button>
+      <button onclick="deleteTaskCard()" style="padding:11px 16px;border:1.5px solid var(--bd);background:var(--peachbg);color:var(--peach);border-radius:10px;cursor:pointer">🗑</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg hidden" id="modal-event">
   <div class="modal">
     <div class="modal-head"><span class="modal-title">Личное событие</span><button class="modal-close" onclick="hideModal('modal-event')">✕</button></div>
@@ -745,7 +800,20 @@ textarea.f{resize:none;line-height:1.6}
     <input type="hidden" id="task-kind">
     <div class="form-row"><label class="field-label">Задача</label><input type="text" id="task-title" placeholder="Что нужно сделать?"></div>
     <div class="form-row"><label class="field-label">От кого (поручил)</label><input type="text" id="task-assigned" placeholder="Денис, Марго, Таня…"></div>
-    <div class="form-row"><label class="field-label">Срок (необязательно)</label><input type="date" id="task-date"></div>
+    <div class="form-row"><label class="field-label">Позиция прайса</label>
+      <select id="task-price" onchange="qaRecalc()"></select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="form-row" style="flex:1"><label class="field-label">Кол-во</label><input type="number" id="task-qty" min="1" step="1" value="1" oninput="qaRecalc()"></div>
+      <div class="form-row" style="flex:1"><label class="field-label">Надбавка</label>
+        <select id="task-surch" onchange="qaRecalc()"><option value="0">нет</option><option value="30">+30%</option></select>
+      </div>
+      <div class="form-row" style="flex:1"><label class="field-label">Сумма ₴</label><input type="number" id="task-amount" step="50"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="form-row" style="flex:1"><label class="field-label">ТЗ дали</label><input type="date" id="task-assigned-date"></div>
+      <div class="form-row" style="flex:1"><label class="field-label">Срок</label><input type="date" id="task-date"></div>
+    </div>
     <button class="btn-primary full" onclick="saveTask()">Сохранить</button>
   </div>
 </div>
@@ -833,6 +901,62 @@ const SB='https://btgtgcwbrrnfbctchata.supabase.co';
 const SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Z3RnY3dicnJuZmJjdGNoYXRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTQ2OTgsImV4cCI6MjA5MjI5MDY5OH0.lyEWFcmsL3GIm0FrEZdGkK2uRSx26cNiBGFvCVsjdsY';
 const SH={'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=representation'};
 const PC=['#C4552A','#1A5FA5','#4A42B5','#2E6E1A','#C47A0A'];
+
+// ── ПРАЙС (август 2026) ───────────────────────────────
+const PRICE_SECTIONS=['Реклама для таргета','Подсъёмки для SMM','Предметная и портретная','Дизайн','Проектные услуги'];
+const PRICE=[
+  {code:'targ_pack5',    sec:0, name:'Пакет · 5 роликов до 30 сек', sum:6000},
+  {code:'targ_roll',     sec:0, name:'Ролик сверх пакета',          sum:700},
+  {code:'targ_day',      sec:0, name:'Дополнительный съёмочный день',sum:2000},
+  {code:'smm_pack',      sec:1, name:'Пакет · 1,5–2 часа',          sum:3000},
+  {code:'smm_hour',      sec:1, name:'Час съёмки сверх пакета',     sum:500},
+  {code:'smm_express',   sec:1, name:'Экспресс · сдача в день съёмки',sum:500},
+  {code:'obj_1',         sec:2, name:'Предметка · 1 товар',         sum:1000},
+  {code:'obj_2_3',       sec:2, name:'Предметка · 2–3 товара (за товар)',sum:800},
+  {code:'obj_4p',        sec:2, name:'Предметка · 4+ товаров (за товар)',sum:700},
+  {code:'portrait',      sec:2, name:'Портретная съёмка',           sum:2000, from:true},
+  {code:'des_banner1',   sec:3, name:'Афиша, плакат, баннер · 1 макет',sum:1500},
+  {code:'des_series23',  sec:3, name:'Серия 2–3 макета',            sum:3500},
+  {code:'des_series45',  sec:3, name:'Серия 4–5 макетов',           sum:5500},
+  {code:'des_adapt',     sec:3, name:'Адаптация под другой формат', sum:500},
+  {code:'des_cover',     sec:3, name:'Обложка книги или курса',     sum:3000},
+  {code:'des_cover_lang',sec:3, name:'Адаптация обложки под язык',  sum:700},
+  {code:'des_logo',      sec:3, name:'Логотип от референса',        sum:2500, from:true},
+  {code:'des_program',   sec:3, name:'Программа курса, инфографика',sum:3500, from:true},
+  {code:'des_pack',      sec:3, name:'Адаптация упаковки корма',    sum:2000},
+  {code:'des_fix',       sec:3, name:'Правки в готовом макете',     sum:400},
+  {code:'prj_course',    sec:4, name:'Обучающий курс под ключ',     sum:20000,from:true},
+  {code:'prj_relocal',   sec:4, name:'Ремонтаж и локализация курса',sum:15000,from:true},
+  {code:'prj_inserts',   sec:4, name:'Локализация вставок · за видео',sum:500},
+  {code:'prj_short',     sec:4, name:'Видео до 3 минут',            sum:2500, from:true},
+  {code:'prj_yt',        sec:4, name:'YouTube · 5–15 минут',        sum:6000, from:true},
+  {code:'prj_interview', sec:4, name:'Интервью/подкаст 20+ мин',    sum:8000, from:true},
+  {code:'prj_thumb',     sec:4, name:'Обложка (превью)',            sum:500}
+];
+function priceItem(code){return PRICE.find(p=>p.code===code)||null;}
+function priceName(code){const p=priceItem(code);return p?p.name:'';}
+function priceSecName(code){const p=priceItem(code);return p?PRICE_SECTIONS[p.sec]:'Вне прайса';}
+function calcAmount(code,qty,surch,extra){
+  const p=priceItem(code);
+  if(!p)return null;
+  const q=parseFloat(qty)||1, s=parseFloat(surch)||0, e=parseFloat(extra)||0;
+  return Math.round(p.sum*q*(1+s/100)+e);
+}
+function priceOptionsHtml(sel){
+  let h='<option value="">— вне прайса —</option>';
+  PRICE_SECTIONS.forEach((secName,si)=>{
+    h+=`<optgroup label="${secName}">`;
+    PRICE.filter(p=>p.sec===si).forEach(p=>{
+      h+=`<option value="${p.code}"${p.code===sel?' selected':''}>${p.name} — ${p.from?'от ':''}${p.sum} ₴</option>`;
+    });
+    h+='</optgroup>';
+  });
+  return h;
+}
+function fmtMoney(v){
+  if(v===null||v===undefined||v==='')return '';
+  return Number(v).toLocaleString('ru-RU')+' ₴';
+}
 const ROLES_EMOJI={'Дочка':'👧','Муж':'👨','Питомец':'🐾','Врач':'👩‍⚕️','Ветеринар':'🐕','Другое':'👤'};
 
 let DB={shoots:[],projects:[],tasks:[],ideas:[],diary:[],events:[],family:[],scripts:[]};
@@ -963,7 +1087,7 @@ function renderShootDayDetail(){
       <div class="shoot-header">
         <div class="shoot-title">${s.project||s.location||'Съёмка'}${isCancelled?' <span style=\"font-size:10px;color:#C4552A;font-weight:600\">✕ отменена</span>':''}</div>
       </div>
-      <div class="shoot-meta">${s.time?s.time+' · ':''}${s.project&&s.location?s.location:''}${s.people?(s.project&&s.location?' · ':'')+s.people:''}</div>
+      <div class="shoot-meta">${s.time?s.time+' · ':''}${s.project&&s.location?s.location:''}${s.people?(s.project&&s.location?' · ':'')+s.people:''}${(s.amount!==null&&s.amount!==undefined)?' · <b>'+fmtMoney(s.amount)+'</b>':''}</div>
       ${s.notes?`<div class="shoot-note">${s.notes.length>80?s.notes.substring(0,80)+'...':s.notes}</div>`:''}
       ${s.script?`<a class="shoot-link" href="${s.script}" target="_blank" onclick="event.stopPropagation()">📄 Сценарий</a>`:''}
       ${!isCancelled?`<div class="shoot-statuses" onclick="event.stopPropagation()">
@@ -1092,7 +1216,7 @@ function renderShoots(){
         <div class="shoot-title">${s.project||s.location||'Съёмка'}${isCancelled?' <span style=\"font-size:10px;color:#C4552A;font-weight:600\">✕ отменена</span>':''}</div>
         <span class="shoot-badge" style="background:${isCancelled?'#C4552A':c}">${s.date?fmtShort(s.date):'⏳'}</span>
       </div>
-      <div class="shoot-meta">${s.time?s.time+' · ':''}${s.project&&s.location?s.location:''}${s.people?(s.project&&s.location?' · ':'')+s.people:''}</div>
+      <div class="shoot-meta">${s.time?s.time+' · ':''}${s.project&&s.location?s.location:''}${s.people?(s.project&&s.location?' · ':'')+s.people:''}${(s.amount!==null&&s.amount!==undefined)?' · <b>'+fmtMoney(s.amount)+'</b>':''}</div>
       ${s.notes?`<div class="shoot-note">${s.notes.length>80?s.notes.substring(0,80)+'...':s.notes}</div>`:''}
       ${s.script?`<a class="shoot-link" href="${s.script}" target="_blank" onclick="event.stopPropagation()">📄 Сценарий</a>`:''}
       ${!isCancelled?`<div class="shoot-statuses" onclick="event.stopPropagation()">
@@ -1473,10 +1597,11 @@ function renderProjects(){
       const badge=t.kind==='дизайн'?'<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fff;background:#FE702D;padding:1px 6px;border-radius:10px;margin-right:6px">дизайн</span>':'';
       const who=t.assigned_by?`<span class="task-date">от ${t.assigned_by}</span>`:'';
       const dd=t.status==='готово'?(t.done_date||t.date):t.date;
-      return`<div class="task-item" onclick="cycleTask(${t.id},'${t.status}')">
-        <div class="task-check ${cls}">${icon}</div>
-        <span class="task-text ${t.status==='готово'?'done':''}">${badge}${t.title||''}</span>
+      return`<div class="task-item">
+        <div class="task-check ${cls}" onclick="cycleTask(${t.id},'${t.status}')">${icon}</div>
+        <span class="task-text ${t.status==='готово'?'done':''}" onclick="openTaskCard(${t.id})">${badge}${t.title||''}</span>
         ${who}${dd?`<span class="task-date">${fmtShort(dd)}</span>`:''}
+        ${(t.amount===null||t.amount===undefined)?'':`<span class="task-date" style="font-weight:600">${fmtMoney(t.amount)}</span>`}
       </div>`;
     }).join('');
     // съёмки этого проекта
@@ -1527,12 +1652,26 @@ async function cycleTask(id,cur){
     :{status:'готово',done_date:localDateStr(new Date())};
   await dbPatch('tasks',id,patch);await load();
 }
+function qaRecalc(){
+  const auto=calcAmount(document.getElementById('task-price').value,
+                        document.getElementById('task-qty').value,
+                        document.getElementById('task-surch').value,0);
+  if(auto!==null)document.getElementById('task-amount').value=auto;
+}
+function qaResetPrice(){
+  document.getElementById('task-price').innerHTML=priceOptionsHtml('');
+  document.getElementById('task-qty').value=1;
+  document.getElementById('task-surch').value='0';
+  document.getElementById('task-amount').value='';
+  document.getElementById('task-assigned-date').value=localDateStr(new Date());
+}
 function openAddTask(projId){
   document.getElementById('task-proj-id').value=projId;
   document.getElementById('task-kind').value='задача';
   document.getElementById('task-title').value='';
   document.getElementById('task-assigned').value='';
   document.getElementById('task-date').value='';
+  qaResetPrice();
   document.getElementById('task-modal-title').textContent='Новая задача проекта';
   showModal('modal-task');
 }
@@ -1542,6 +1681,7 @@ function openAddStandaloneTask(kind){
   document.getElementById('task-title').value='';
   document.getElementById('task-assigned').value='';
   document.getElementById('task-date').value='';
+  qaResetPrice();
   document.getElementById('task-modal-title').textContent=kind==='дизайн'?'Новый дизайн':'Новая задача';
   showModal('modal-task');
 }
@@ -1557,11 +1697,83 @@ async function saveTask(){
     kind:document.getElementById('task-kind').value||'задача',
     assigned_by:assigned||null,
     date:document.getElementById('task-date').value||null,
+    price_code:document.getElementById('task-price').value||null,
+    qty:parseFloat(document.getElementById('task-qty').value)||1,
+    surcharge:parseFloat(document.getElementById('task-surch').value)||0,
+    extra:0,
+    amount:document.getElementById('task-amount').value===''?null:parseFloat(document.getElementById('task-amount').value),
+    assigned_date:document.getElementById('task-assigned-date').value||localDateStr(new Date()),
     status:'в работе',
     done_date:null
   };
   await dbPost('tasks',row);
   hideModal('modal-task');await load();
+}
+function tcRecalc(){
+  const code=document.getElementById('tc-price').value;
+  const auto=calcAmount(code,document.getElementById('tc-qty').value,
+                        document.getElementById('tc-surch').value,
+                        document.getElementById('tc-extra').value);
+  const hint=document.getElementById('tc-hint');
+  const amt=document.getElementById('tc-amount');
+  if(auto===null){hint.textContent='(вне прайса — впиши руками)';return;}
+  const p=priceItem(code);
+  hint.textContent='(по прайсу '+(p.from?'от ':'')+fmtMoney(auto)+')';
+  if(!amt.dataset.touched)amt.value=auto;
+}
+function openTaskCard(id){
+  const t=(DB.tasks||[]).find(x=>x.id===id);
+  if(!t)return;
+  document.getElementById('tc-id').value=t.id;
+  document.getElementById('tc-head').textContent=t.kind==='дизайн'?'🎨 Дизайн':'📋 Задача';
+  document.getElementById('tc-title').value=t.title||'';
+  document.getElementById('tc-kind').value=t.kind||'задача';
+  document.getElementById('tc-assigned').value=t.assigned_by||'';
+  document.getElementById('tc-price').innerHTML=priceOptionsHtml(t.price_code||'');
+  document.getElementById('tc-qty').value=t.qty||1;
+  document.getElementById('tc-surch').value=t.surcharge||0;
+  document.getElementById('tc-extra').value=t.extra||0;
+  const amt=document.getElementById('tc-amount');
+  delete amt.dataset.touched;
+  amt.value=(t.amount===null||t.amount===undefined)?'':t.amount;
+  if(t.amount!==null&&t.amount!==undefined)amt.dataset.touched='1';
+  amt.oninput=()=>{amt.dataset.touched='1';};
+  document.getElementById('tc-assigned-date').value=(t.assigned_date||'').slice(0,10);
+  document.getElementById('tc-date').value=(t.date||'').slice(0,10);
+  document.getElementById('tc-status').value=t.status==='готово'?'готово':'в работе';
+  document.getElementById('tc-done-date').value=(t.done_date||'').slice(0,10);
+  tcRecalc();
+  showModal('modal-task-card');
+}
+async function saveTaskCard(){
+  const id=parseInt(document.getElementById('tc-id').value);
+  const title=document.getElementById('tc-title').value.trim();
+  if(!title){alert('Введи название задачи');return;}
+  const status=document.getElementById('tc-status').value;
+  let doneDate=document.getElementById('tc-done-date').value||null;
+  if(status==='готово'&&!doneDate)doneDate=localDateStr(new Date());
+  if(status!=='готово')doneDate=null;
+  const amtRaw=document.getElementById('tc-amount').value;
+  await dbPatch('tasks',id,{
+    title,
+    kind:document.getElementById('tc-kind').value,
+    assigned_by:document.getElementById('tc-assigned').value.trim()||null,
+    price_code:document.getElementById('tc-price').value||null,
+    qty:parseFloat(document.getElementById('tc-qty').value)||1,
+    surcharge:parseFloat(document.getElementById('tc-surch').value)||0,
+    extra:parseFloat(document.getElementById('tc-extra').value)||0,
+    amount:amtRaw===''?null:parseFloat(amtRaw),
+    assigned_date:document.getElementById('tc-assigned-date').value||null,
+    date:document.getElementById('tc-date').value||null,
+    status,done_date:doneDate
+  });
+  hideModal('modal-task-card');await load();
+}
+async function deleteTaskCard(){
+  const id=parseInt(document.getElementById('tc-id').value);
+  if(!confirm('Удалить задачу?'))return;
+  await dbDelete('tasks',id);
+  hideModal('modal-task-card');await load();
 }
 async function deleteTask(id){
   if(!confirm('Удалить задачу?'))return;
@@ -1584,11 +1796,13 @@ function renderStandaloneTasks(){
     const who=t.assigned_by?`<span class="task-date">от ${t.assigned_by}</span>`:'';
     const dd=t.status==='готово'?(t.done_date||t.date):t.date;
     const datestr=dd?`<span class="task-date">${fmtShort(dd)}</span>`:'';
+    const money=(t.amount===null||t.amount===undefined)
+      ?'<span class="task-date" style="color:#C4552A" title="цена не проставлена">— ₴</span>'
+      :`<span class="task-date" style="font-weight:600">${fmtMoney(t.amount)}</span>`;
     return`<div class="task-item">
       <div class="task-check ${cls}" onclick="cycleTask(${t.id},'${t.status}')">${icon}</div>
-      <span class="task-text ${t.status==='готово'?'done':''}" onclick="cycleTask(${t.id},'${t.status}')">${badge}${t.title||''}</span>
-      ${who}${datestr}
-      <span onclick="deleteTask(${t.id})" style="cursor:pointer;color:var(--t3);font-size:13px;padding:0 4px" title="удалить">✕</span>
+      <span class="task-text ${t.status==='готово'?'done':''}" onclick="openTaskCard(${t.id})">${badge}${t.title||''}</span>
+      ${who}${datestr}${money}
     </div>`;
   }).join('')+'</div>';
 }
@@ -2043,6 +2257,18 @@ function showPage(id,btn,isMob){
 function showModal(id){document.getElementById(id).classList.remove('hidden');}
 function hideModal(id){document.getElementById(id).classList.add('hidden');}
 
+function esRecalc(){
+  const code=document.getElementById('es-price').value;
+  const auto=calcAmount(code,document.getElementById('es-qty').value,
+                        document.getElementById('es-surch').value,
+                        document.getElementById('es-extra').value);
+  const hint=document.getElementById('es-hint');
+  const amt=document.getElementById('es-amount');
+  if(auto===null){hint.textContent='(вне прайса)';return;}
+  const p=priceItem(code);
+  hint.textContent='(по прайсу '+(p.from?'от ':'')+fmtMoney(auto)+')';
+  if(!amt.dataset.touched)amt.value=auto;
+}
 function openEditShoot(id){
   const s=(DB.shoots||[]).find(x=>x.id===id);
   if(!s)return;
@@ -2054,6 +2280,18 @@ function openEditShoot(id){
   document.getElementById('es-status').value=s.status||'не снято';
   document.getElementById('es-script').value=s.script||'';
   document.getElementById('es-notes').value=s.notes||'';
+  document.getElementById('es-assigned').value=s.assigned_by||'';
+  document.getElementById('es-price').innerHTML=priceOptionsHtml(s.price_code||'');
+  document.getElementById('es-qty').value=s.qty||1;
+  document.getElementById('es-surch').value=s.surcharge||0;
+  document.getElementById('es-extra').value=s.extra||0;
+  const esAmt=document.getElementById('es-amount');
+  delete esAmt.dataset.touched;
+  esAmt.value=(s.amount===null||s.amount===undefined)?'':s.amount;
+  if(s.amount!==null&&s.amount!==undefined)esAmt.dataset.touched='1';
+  esAmt.oninput=()=>{esAmt.dataset.touched='1';};
+  document.getElementById('es-delivered').value=(s.delivered_date||'').slice(0,10);
+  esRecalc();
   // показываем поле причины если отменена
   const cancelWrap=document.getElementById('es-cancel-wrap');
   const cancelReason=document.getElementById('es-cancel-reason');
@@ -2097,7 +2335,14 @@ async function saveEditShoot(){
     people:document.getElementById('es-people').value,
     status,
     script:document.getElementById('es-script').value,
-    notes
+    notes,
+    assigned_by:document.getElementById('es-assigned').value.trim()||null,
+    price_code:document.getElementById('es-price').value||null,
+    qty:parseFloat(document.getElementById('es-qty').value)||1,
+    surcharge:parseFloat(document.getElementById('es-surch').value)||0,
+    extra:parseFloat(document.getElementById('es-extra').value)||0,
+    amount:document.getElementById('es-amount').value===''?null:parseFloat(document.getElementById('es-amount').value),
+    delivered_date:document.getElementById('es-delivered').value||null
   };
   try{
     const r=await fetch(`${SB}/rest/v1/shoots?id=eq.${id}`,{

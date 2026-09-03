@@ -1,5 +1,5 @@
 import os, json, httpx, asyncio, random
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, BotCommand, MenuButtonCommands
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
@@ -13,22 +13,16 @@ SUPA_H = {
     "Content-Type": "application/json",
     "Prefer": "return=representation"
 }
+YEAR = datetime.now().year
+TODAY = datetime.now().strftime("%Y-%m-%d")
+TODAY_NICE = datetime.now().strftime("%d.%m.%Y")
 conversations = {}
 pending = {}
 last_checkin = {}
 
-MONTHS_RU = ["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"]
-
-
-def build_system():
-    now = datetime.now()
-    year = now.year
-    today = now.strftime("%Y-%m-%d")
-    today_nice = now.strftime("%d.%m.%Y")
-    weekday_ru = ["понедельник","вторник","среда","четверг","пятница","суббота","воскресенье"][now.weekday()]
-    return f"""Ты — Рак, личный ассистент Катерины (контент-мейкер, режиссёр, 32 года). Профессиональный, чёткий, с лёгким юмором. Обращайся "Катерина".\nВСЕГДА возвращай JSON с тремя ключами: "reply" (текст ответа), "action" (одно из действий ниже), "data" (параметры).
-СЕГОДНЯ: {today} ({today_nice}), это {weekday_ru}
-ТЕКУЩИЙ ГОД: {year}
+SYSTEM = f"""Ты — Рак, личный ассистент Катерины (контент-мейкер, режиссёр, 32 года). Профессиональный, чёткий, с лёгким юмором. Обращайся "Катерина".\nВСЕГДА возвращай JSON с тремя ключами: "reply" (текст ответа), "action" (одно из действий ниже), "data" (параметры).
+СЕГОДНЯ: {TODAY} ({TODAY_NICE})
+ТЕКУЩИЙ ГОД: {YEAR}
 УКРАИНСКИЕ МЕСЯЦЫ: січень=01 лютий=02 березень=03 квітень=04 травень=05 червень=06 липень=07 серпень=08 вересень=09 жовтень=10 листопад=11 грудень=12
 
 ЛОГИКА РАСПОЗНАВАНИЯ:
@@ -44,15 +38,10 @@ def build_system():
     • "когда последняя съёмка с олегом" → intent=last_shoot_with_person, params={{person:"олег"}}
     • "что у меня запланировано" → intent=upcoming, params={{days:7}}
     • "съёмки с локомотивом" → intent=list_shoots, params={{project:"локомотив"}}
-    • "кто снимался в июле" / "в 7 месяце" → intent=list_people, period=month, params={{month:7, year:{{ТЕКУЩИЙ ГОД или прошлый, если июль ещё не наступил}}}}
-    • "кто снимался в прошлом месяце" → вычисли месяц САМА относительно СЕГОДНЯ (см. выше), intent=list_people, period=month, params={{month:N, year:YYYY}}
-    Если период — КОНКРЕТНЫЙ или ОТНОСИТЕЛЬНЫЙ месяц (не "в этом месяце") — ВСЕГДА добавляй params.month (1-12) и params.year, вычисляя их от СЕГОДНЯ.
     data: {{intent: "list_people"|"count_shoots"|"list_shoots"|"last_shoot_with_person"|"project_stats"|"upcoming", period, params}}
     reply: всегда пиши "Сейчас посмотрю..."
 
 15. РАЗГОВОР (action: none) — только короткие междометия и прямые вопросы.
-    ВАЖНО: если action=none — НИКОГДА не пиши в reply, что ты что-то "записала/сохранила/добавила/занесла".
-    Ты ничего не сохраняешь при action=none. Это просто разговорный ответ.
 
 16. ЗАДАЧА / ДИЗАЙН БЕЗ СЪЁМКИ (action: add_tasks) — ТОЛЬКО если сообщение начинается с "задача:" или "дизайн:".
     "задача: ..." → kind="задача". "дизайн: ..." → kind="дизайн".
@@ -60,14 +49,6 @@ def build_system():
     Из текста вытащи assigned_by (кто поручил: "от Дениса", "поручила Марго", "Таня просила", "для Тани") — без слова "поручил", только имя.
     due — срок сдачи в формате YYYY-MM-DD, ТОЛЬКО если дата названа явно. Если срока нет — due="".
     НЕ выдумывай дату. НЕ создавай add_tasks, если сообщение НЕ начинается с "задача:" или "дизайн:".
-
-17. ПОДТВЕРЖДЕНИЕ ЗАДАЧИ ЗАДНИМ ЧИСЛОМ (action: add_tasks) — если Катерина коротким сообщением
-    ("это задача", "это дизайн", "запиши как задачу", "занеси в работу" и т.п.) подтверждает,
-    что её ПРЕДЫДУЩЕЕ сообщение в этом диалоге (не начинавшееся с "задача:"/"дизайн:") — задача или дизайн-работа:
-    kind определи по слову ("дизайн" → kind="дизайн", иначе kind="задача").
-    title — суть предыдущего сообщения одной фразой (не копируй его целиком).
-    assigned_by и due — вытащи из предыдущего сообщения, если упоминались (кто поручил, срок).
-    Если предыдущее сообщение не похоже на задачу (просто разговор) — action=none, спроси что именно записать.
 
 ХАРАКТЕР: отвечай на том же языке что Катерина. Поддержи если тяжело.
 ФОРМАТ — только JSON без markdown:
@@ -91,7 +72,7 @@ data для add_tasks: {{"kind":"задача"|"дизайн","tasks":[{{"title"
 
 
 async def ask_groq(messages):
-    groq_messages = [{"role": "system", "content": build_system()}]
+    groq_messages = [{"role": "system", "content": SYSTEM}]
     for m in messages:
         role = "assistant" if m["role"] == "model" else "user"
         text = "".join(p.get("text","") for p in m.get("parts",[]))
@@ -190,71 +171,37 @@ def _parse_people(text):
     return [p.strip() for p in raw.split(",") if p.strip()]
 
 
-def _period_filter(items, period, params=None):
-    params = params or {}
+def _period_filter(items, period):
     if period == "all" or not period:
         return items
     now = datetime.now()
     if period == "week":
         cutoff = now - timedelta(days=7)
-        out = []
-        for it in items:
-            d = it.get("date","")
-            if not d:
-                continue
-            try:
-                dt = datetime.strptime(d, "%Y-%m-%d")
-                if dt >= cutoff:
-                    out.append(it)
-            except:
-                pass
-        return out
-    if period == "month":
-        month = params.get("month")
-        year = params.get("year")
-        if month:
-            try:
-                month = int(month)
-                year = int(year) if year else now.year
-            except (TypeError, ValueError):
-                month, year = now.month, now.year
-        else:
-            month, year = now.month, now.year
-        out = []
-        for it in items:
-            d = it.get("date","")
-            if not d:
-                continue
-            try:
-                dt = datetime.strptime(d, "%Y-%m-%d")
-                if dt.year == year and dt.month == month:
-                    out.append(it)
-            except:
-                pass
-        return out
-    return items
+    elif period == "month":
+        cutoff = now.replace(day=1)
+    else:
+        return items
+    out = []
+    for it in items:
+        d = it.get("date","")
+        if not d:
+            continue
+        try:
+            dt = datetime.strptime(d, "%Y-%m-%d")
+            if dt >= cutoff:
+                out.append(it)
+        except:
+            pass
+    return out
 
 
-def _period_label(period, params=None):
-    params = params or {}
+def _period_label(period):
     if period == "week":
         return "за неделю"
     if period == "month":
         now = datetime.now()
-        month = params.get("month")
-        year = params.get("year")
-        if month:
-            try:
-                month = int(month)
-                year = int(year) if year else now.year
-            except (TypeError, ValueError):
-                month, year = now.month, now.year
-        else:
-            month, year = now.month, now.year
-        label = f"за {MONTHS_RU[month-1]}"
-        if year != now.year:
-            label += f" {year}"
-        return label
+        months = ["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"]
+        return f"за {months[now.month-1]}"
     return "за всё время"
 
 
@@ -264,9 +211,9 @@ async def run_query(intent, period="month", params=None):
     projects = await supa_get("projects", 100)
 
     if intent == "list_people":
-        flt = _period_filter(shoots, period, params)
+        flt = _period_filter(shoots, period)
         if not flt:
-            return f"Съёмок {_period_label(period, params)} нет."
+            return f"Съёмок {_period_label(period)} нет."
         people_stats = {}
         for s in flt:
             for p in _parse_people(s.get("people","")):
@@ -278,9 +225,9 @@ async def run_query(intent, period="month", params=None):
                 if d > people_stats[key]["last"]:
                     people_stats[key]["last"] = d
         if not people_stats:
-            return f"Имён людей не записано в съёмках {_period_label(period, params)}."
+            return f"Имён людей не записано в съёмках {_period_label(period)}."
         sorted_p = sorted(people_stats.values(), key=lambda x: -x["count"])
-        lines = [f"👥 Люди {_period_label(period, params)}:\n"]
+        lines = [f"👥 Люди {_period_label(period)}:\n"]
         for p in sorted_p:
             last = fmt_date(p["last"]) if p["last"] else "?"
             times = "съёмка" if p["count"]==1 else "съёмки" if p["count"]<5 else "съёмок"
@@ -288,8 +235,8 @@ async def run_query(intent, period="month", params=None):
         return "\n".join(lines)
 
     if intent == "count_shoots":
-        flt = _period_filter(shoots, period, params)
-        return f"📊 Съёмок {_period_label(period, params)}: {len(flt)}"
+        flt = _period_filter(shoots, period)
+        return f"📊 Съёмок {_period_label(period)}: {len(flt)}"
 
     if intent == "list_shoots":
         items = shoots
@@ -300,7 +247,7 @@ async def run_query(intent, period="month", params=None):
             q = params["location"].lower()
             items = [s for s in items if q in (s.get("location","") or "").lower()]
         if period and period != "all":
-            items = _period_filter(items, period, params)
+            items = _period_filter(items, period)
         if not items:
             return "Ничего не нашла по этому запросу."
         items = sorted(items, key=lambda x: x.get("date",""), reverse=True)[:15]
@@ -523,6 +470,7 @@ async def apply_action(action, data):
         if not isinstance(items, list):
             items = []
         saved = 0
+        created = []
         for it in items:
             if not isinstance(it, dict):
                 continue
@@ -536,11 +484,15 @@ async def apply_action(action, data):
             row = {
                 "title": title, "kind": kind, "status": "в работе",
                 "project_id": None, "assigned_by": assigned or None,
-                "date": due or None, "done_date": None
+                "date": due or None, "done_date": None,
+                "assigned_date": datetime.now().strftime("%Y-%m-%d"),
+                "qty": 1, "surcharge": 0, "extra": 0
             }
-            ok = await supa_insert("tasks", row)
-            if ok:
+            new_id = await supa_insert("tasks", row, return_id=True)
+            if new_id:
                 saved += 1
+                created.append({"id": new_id, "title": title})
+        data["_created"] = created
         return saved
 
     return False
@@ -553,11 +505,97 @@ def fmt_date(date_str):
         return date_str or ""
 
 
-def md_escape(text):
-    text = text or ""
-    for ch in ("_", "*", "[", "`"):
-        text = text.replace(ch, "\\" + ch)
-    return text
+PRICE_SECTIONS = ["Реклама для таргета", "Подсъёмки для SMM",
+                  "Предметная и портретная", "Дизайн", "Проектные услуги"]
+
+PRICE = [
+    {"code": "targ_pack5",     "sec": 0, "name": "Пакет · 5 роликов до 30 сек",   "sum": 6000},
+    {"code": "targ_roll",      "sec": 0, "name": "Ролик сверх пакета",            "sum": 700},
+    {"code": "targ_day",       "sec": 0, "name": "Дополнительный съёмочный день", "sum": 2000},
+    {"code": "smm_pack",       "sec": 1, "name": "Пакет · 1,5-2 часа",            "sum": 3000},
+    {"code": "smm_hour",       "sec": 1, "name": "Час съёмки сверх пакета",       "sum": 500},
+    {"code": "smm_express",    "sec": 1, "name": "Экспресс · сдача в день съёмки","sum": 500},
+    {"code": "obj_1",          "sec": 2, "name": "Предметка · 1 товар",           "sum": 1000},
+    {"code": "obj_2_3",        "sec": 2, "name": "Предметка · 2-3 товара",        "sum": 800},
+    {"code": "obj_4p",         "sec": 2, "name": "Предметка · 4+ товаров",        "sum": 700},
+    {"code": "portrait",       "sec": 2, "name": "Портретная съёмка",             "sum": 2000, "from": True},
+    {"code": "des_banner1",    "sec": 3, "name": "Афиша, плакат, баннер · 1 макет","sum": 1500},
+    {"code": "des_series23",   "sec": 3, "name": "Серия 2-3 макета",              "sum": 3500},
+    {"code": "des_series45",   "sec": 3, "name": "Серия 4-5 макетов",             "sum": 5500},
+    {"code": "des_adapt",      "sec": 3, "name": "Адаптация под другой формат",   "sum": 500},
+    {"code": "des_cover",      "sec": 3, "name": "Обложка книги или курса",       "sum": 3000},
+    {"code": "des_cover_lang", "sec": 3, "name": "Адаптация обложки под язык",    "sum": 700},
+    {"code": "des_logo",       "sec": 3, "name": "Логотип от референса",          "sum": 2500, "from": True},
+    {"code": "des_program",    "sec": 3, "name": "Программа курса, инфографика",  "sum": 3500, "from": True},
+    {"code": "des_pack",       "sec": 3, "name": "Адаптация упаковки корма",      "sum": 2000},
+    {"code": "des_fix",        "sec": 3, "name": "Правки в готовом макете",       "sum": 400},
+    {"code": "prj_course",     "sec": 4, "name": "Обучающий курс под ключ",       "sum": 20000, "from": True},
+    {"code": "prj_relocal",    "sec": 4, "name": "Ремонтаж и локализация курса",  "sum": 15000, "from": True},
+    {"code": "prj_inserts",    "sec": 4, "name": "Локализация вставок · за видео","sum": 500},
+    {"code": "prj_short",      "sec": 4, "name": "Видео до 3 минут",              "sum": 2500, "from": True},
+    {"code": "prj_yt",         "sec": 4, "name": "YouTube · 5-15 минут",          "sum": 6000, "from": True},
+    {"code": "prj_interview",  "sec": 4, "name": "Интервью/подкаст 20+ мин",      "sum": 8000, "from": True},
+    {"code": "prj_thumb",      "sec": 4, "name": "Обложка (превью)",              "sum": 500},
+]
+
+PRICE_BY_CODE = {p["code"]: p for p in PRICE}
+
+# порядок важен: более специфичные правила выше.
+# each: (code, любое_из, ещё_одно_обязательное_из | None)
+PRICE_RULES = [
+    ("des_pack",       ["упаковк", "корма", "корм "], None),
+    ("des_cover_lang", ["обложк"], ["язык", "укр", "польск", "англ", "локализ", "перевод"]),
+    ("des_fix",        ["правк", "исправ", "поправ", "подправ", "изменить", "заменить", "переделать"], None),
+    ("des_logo",       ["логотип", "лого ", "герб"], None),
+    ("des_cover",      ["обложк"], None),
+    ("des_banner1",    ["баннер", "афиш", "плакат", "постер"], None),
+    ("des_program",    ["программа курса", "инфографик", "многостраничн"], None),
+    ("des_adapt",      ["адаптац", "формат", "размер"], None),
+    ("prj_thumb",      ["превью", "миниатюр"], None),
+    ("prj_inserts",    ["вставк"], None),
+    ("smm_pack",       ["подсъём", "подсьём", "дрессировк", "канистерап", "мероприят"], None),
+    ("obj_1",          ["предметк", "предметн", "товар"], None),
+    ("portrait",       ["портрет"], None),
+    ("targ_pack5",     ["таргет", "реклам", "ролик"], None),
+]
+
+
+def guess_price(title):
+    t = (title or "").lower()
+    for code, keys, req in PRICE_RULES:
+        if not any(k in t for k in keys):
+            continue
+        if req and not any(r in t for r in req):
+            continue
+        return code
+    return None
+
+
+async def ask_price(msg, task_id, title):
+    code = guess_price(title)
+    short = title if len(title) <= 40 else title[:40] + "…"
+    if code:
+        p = PRICE_BY_CODE[code]
+        rows = [
+            [InlineKeyboardButton(f"✅ {p['sum']} ₴", callback_data=f"prc_ok_{task_id}_{code}"),
+             InlineKeyboardButton(f"⚡️ +30% = {round(p['sum'] * 1.3)} ₴", callback_data=f"prc_rush_{task_id}_{code}")],
+            [InlineKeyboardButton("✏️ Другая сумма", callback_data=f"prc_man_{task_id}")],
+            [InlineKeyboardButton("— без цены", callback_data=f"prc_skip_{task_id}")]
+        ]
+        text = f"💰 «{short}»\nПохоже на: {price_label(code)}"
+    else:
+        rows = [[InlineKeyboardButton("✏️ Вписать сумму", callback_data=f"prc_man_{task_id}")],
+                [InlineKeyboardButton("— без цены", callback_data=f"prc_skip_{task_id}")]]
+        text = f"💰 «{short}»\nПозицию прайса не угадала."
+    await msg.reply_text(text, reply_markup=InlineKeyboardMarkup(rows))
+
+
+def price_label(code):
+    p = PRICE_BY_CODE.get(code)
+    if not p:
+        return "вне прайса"
+    pre = "от " if p.get("from") else ""
+    return f"{p['name']} — {pre}{p['sum']} ₴"
 
 
 def append_log(old_text, new_text):
@@ -921,6 +959,21 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         p = pending[uid]
         if p.get("type") == "clarify_shoot":
             pass
+        elif p.get("type") == "price_manual":
+            raw = text.strip().lower().replace("₴", "").replace("грн", "")
+            raw = raw.replace(" ", "").replace(",", ".")
+            try:
+                amount = round(float(raw))
+            except ValueError:
+                await msg.reply_text("Не поняла сумму. Напиши числом, например 1500 (или «отмена»).")
+                return
+            task_id = p["task_id"]
+            pending.pop(uid, None)
+            ok = await supa_update("tasks", "id", task_id,
+                                   {"amount": amount, "qty": 1, "surcharge": 0, "extra": 0})
+            await msg.reply_text(f"💰 Записала {amount} ₴ ✓" if ok else "Не сохранилось 😔",
+                                 reply_markup=reply_kbd())
+            return
         elif p.get("type") == "figma_url_for_proj":
             proj_id = p["proj_id"]
             url = text.strip()
@@ -1150,6 +1203,10 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 for t in titles[:8]:
                     lines2.append(f"• {t}")
                 reply = (reply + "\n\n" if reply else "") + "\n".join(lines2)
+                await msg.reply_text(reply, reply_markup=reply_kbd())
+                for c in (data.get("_created") or [])[:8]:
+                    await ask_price(msg, c["id"], c["title"])
+                return
             else:
                 reply = reply or "Не разобрала задачи. Напиши: задача: ... или дизайн: ..."
 
@@ -1166,23 +1223,41 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await q.answer()
     cb = q.data
     uid = q.from_user.id
-    try:
-        await handle_callback_inner(q, uid, cb)
-    except Exception as e:
-        print(f"CALLBACK ERROR ({cb}): {e}")
-        try:
-            await q.message.reply_text("Что-то пошло не так 😔 Попробуй ещё раз", reply_markup=main_kbd())
-        except Exception:
-            pass
 
-
-async def handle_callback_inner(q, uid, cb):
     if cb == "main":
         pending.pop(uid, None)
         await q.edit_message_text("Выбери раздел:", reply_markup=main_kbd())
         return
 
     if cb == "noop":
+        return
+
+    if cb.startswith("prc_"):
+        parts = cb.split("_")
+        kind_cb = parts[1]
+        if kind_cb == "skip":
+            await q.edit_message_text("Ок, без цены. Проставишь позже в «Жизни» ✓")
+            return
+        if kind_cb == "man":
+            pending[uid] = {"type": "price_manual", "task_id": int(parts[2])}
+            await q.edit_message_text("Напиши сумму числом (например 1500):")
+            return
+        task_id = int(parts[2])
+        code = "_".join(parts[3:])
+        p = PRICE_BY_CODE.get(code)
+        if not p:
+            await q.edit_message_text("Не нашла позицию 😔 Проставь в «Жизни».")
+            return
+        surch = 30 if kind_cb == "rush" else 0
+        amount = round(p["sum"] * (1 + surch / 100))
+        ok = await supa_update("tasks", "id", task_id,
+                               {"price_code": code, "qty": 1, "surcharge": surch,
+                                "extra": 0, "amount": amount})
+        if ok:
+            tail = " (+30% срочно)" if surch else ""
+            await q.edit_message_text(f"💰 {p['name']} — {amount} ₴{tail} ✓")
+        else:
+            await q.edit_message_text("Не сохранилось 😔 Проставь в «Жизни».")
         return
 
     if cb == "fileto_cancel":
@@ -1195,6 +1270,7 @@ async def handle_callback_inner(q, uid, cb):
         if not p or p.get("type") != "file_attach":
             await q.edit_message_text("Файл потерялся 😔 Пришли его ещё раз.")
             return
+        from datetime import date, timedelta
         all_shoots = await supa_get("shoots", 100, order="date.desc")
         today_str = date.today().isoformat()
         cutoff = (date.today() - timedelta(days=45)).isoformat()
@@ -1202,9 +1278,9 @@ async def handle_callback_inner(q, uid, cb):
                   if s.get("status") != "отменена"
                   and (not s.get("date") or (s.get("date") or "") >= cutoff)]
         upcoming = sorted([s for s in active if (s.get("date") or "") >= today_str],
-                          key=lambda s: (s.get("date") or "", s.get("time") or ""))
+                          key=lambda s: (s.get("date",""), s.get("time","") or ""))
         recent = sorted([s for s in active if (s.get("date") or "") < today_str],
-                        key=lambda s: s.get("date") or "", reverse=True)[:5]
+                        key=lambda s: s.get("date",""), reverse=True)[:5]
         pick = upcoming[:8] + recent
         if not pick:
             await q.edit_message_text("Съёмок не нашла 😔 Добавь съёмку или сохрани файл в архив.",
@@ -1305,16 +1381,17 @@ async def handle_callback_inner(q, uid, cb):
 
     if cb == "shoots":
         pending.pop(uid, None)
+        from datetime import date, timedelta
         all_shoots = await supa_get("shoots", 100, order="date.desc")
         today_str = date.today().isoformat()
         cutoff = (date.today() - timedelta(days=45)).isoformat()
         active = [s for s in all_shoots
                   if s.get("status") != "отменена"
-                  and (not s.get("date") or (s.get("date") or "") >= cutoff)]
+                  and (not s.get("date") or s.get("date","") >= cutoff)]
         upcoming = sorted([s for s in active if (s.get("date") or "") >= today_str],
-                          key=lambda s: (s.get("date") or "", s.get("time") or ""))
+                          key=lambda s: (s.get("date",""), s.get("time","")))
         recent = sorted([s for s in active if (s.get("date") or "") < today_str],
-                        key=lambda s: s.get("date") or "", reverse=True)[:7]
+                        key=lambda s: s.get("date",""), reverse=True)[:7]
         if not active:
             await q.edit_message_text("📅 Актуальных съёмок нет", reply_markup=main_kbd())
             return
@@ -1444,9 +1521,9 @@ async def handle_callback_inner(q, uid, cb):
             return
         parts = ["💡 Идеи:\n"]
         for i in shown[:20]:
-            t = md_escape(i["title"].strip())
+            t = i["title"].strip()
             parts.append(f"• *{t}*")
-            d = md_escape((i.get("description") or "").strip())
+            d = (i.get("description") or "").strip()
             if d: parts.append(f"  {d[:150]}")
         await q.edit_message_text("\n".join(parts), parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад",callback_data="main")]]))
@@ -1505,10 +1582,10 @@ async def handle_callback_inner(q, uid, cb):
         diary = await supa_get("diary",200)
         projects = await supa_get("projects",200)
         tasks = await supa_get("tasks",200)
-        ns = len([s for s in shoots if (s.get("created_at") or "")>week_ago])
-        ds = len([s for s in shoots if s.get("status")=="снято" and (s.get("created_at") or "")>week_ago])
-        ni = len([i for i in ideas if (i.get("created_at") or "")>week_ago])
-        nd = len([d for d in diary if (d.get("created_at") or "")>week_ago])
+        ns = len([s for s in shoots if s.get("created_at","")>week_ago])
+        ds = len([s for s in shoots if s.get("status")=="снято" and s.get("created_at","")>week_ago])
+        ni = len([i for i in ideas if i.get("created_at","")>week_ago])
+        nd = len([d for d in diary if d.get("created_at","")>week_ago])
         ap = len([p for p in projects if p.get("status")!="готово"])
         ot = len([t for t in tasks if (t.get("status") or "")!="готово"])
         week_ago_str = (datetime.now()-timedelta(days=7)).strftime("%Y-%m-%d")
@@ -1549,12 +1626,8 @@ def main():
         except Exception as e:
             print(f"menu button: {e}")
 
-    async def on_error(update, context):
-        print(f"UNHANDLED ERROR: {context.error}")
-
-    app.add_error_handler(on_error)
     app.post_init = post_init
-    print("🦀 Rak bot v30 started!")
+    print("🦀 Rak bot v29 started!")
     app.run_polling(drop_pending_updates=True)
 
 
