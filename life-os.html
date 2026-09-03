@@ -838,6 +838,36 @@ textarea.f{resize:none;line-height:1.6}
   </div>
 </div>
 
+<div class="modal-bg hidden" id="modal-proj-card">
+  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
+    <div class="modal-head">
+      <span class="modal-title">Проект</span>
+      <button class="modal-close" onclick="hideModal('modal-proj-card')">✕</button>
+    </div>
+    <input type="hidden" id="pc-id">
+    <div class="form-row"><label class="field-label">Название</label><input type="text" id="pc-name"></div>
+    <div class="form-row"><label class="field-label">Описание</label><textarea class="f" id="pc-desc" rows="2"></textarea></div>
+    <div class="form-row"><label class="field-label">От кого</label><input type="text" id="pc-assigned" placeholder="Денис, Марго, Таня…"></div>
+    <div class="form-row"><label class="field-label">Позиция прайса (на весь проект)</label>
+      <select id="pc-price" onchange="pcRecalc()"></select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="form-row" style="flex:1"><label class="field-label">Надбавка</label>
+        <select id="pc-surch" onchange="pcRecalc()"><option value="0">нет</option><option value="30">+30%</option></select>
+      </div>
+      <div class="form-row" style="flex:1"><label class="field-label">Доплата ₴</label><input type="number" id="pc-extra" step="100" value="0" oninput="pcRecalc()"></div>
+      <div class="form-row" style="flex:1"><label class="field-label">Сумма ₴</label><input type="number" id="pc-amount" step="100"></div>
+    </div>
+    <div style="font-size:12px;color:var(--t3);margin:-4px 0 10px" id="pc-split"></div>
+    <div class="form-row"><label class="field-label">Статус</label>
+      <select id="pc-status"><option value="в работе">В работе</option><option value="готово">Готово</option></select>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn-primary full" onclick="saveProjCard()" style="flex:1">💾 Сохранить</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg hidden" id="modal-task">
   <div class="modal">
     <div class="modal-head"><span class="modal-title" id="task-modal-title">Новая задача</span><button class="modal-close" onclick="hideModal('modal-task')">✕</button></div>
@@ -1712,7 +1742,7 @@ function renderProjects(){
     }).join('');
 
     return`<div class="proj-card" style="border-top-color:${PC[i%5]}">
-      <div class="proj-name">${p.name}</div>
+      <div class="proj-name" onclick="openProjCard(${p.id})" style="cursor:pointer" title="открыть проект — цена, заказчик">${p.name}${(p.amount!==null&&p.amount!==undefined)?` <span style="font-size:12px;font-weight:700;color:var(--purple)">${fmtMoney(p.amount)}</span>`:''}</div>
       <div class="proj-meta">${tasks.length?`${done}/${tasks.length} задач`:''}${inprog?' · '+inprog+' в работе':''}${projShoots.length?' · '+projShoots.length+' съём.':''}</div>
       ${p.link?`<a href="${p.link}" target="_blank" class="link-row" style="margin-bottom:6px">🔗 Документ</a>`:''}
       ${p.figma_url?`<a href="${p.figma_url}" target="_blank" class="link-row" style="margin-bottom:8px;color:#A85638">🎨 Figma</a>`:''}
@@ -1814,6 +1844,62 @@ async function saveTask(){
   };
   await dbPost('tasks',row);
   hideModal('modal-task');await load();
+}
+// съёмки проекта, между которыми делится его цена (отменённые не в счёт)
+function projectShoots(projName){
+  if(!projName)return [];
+  return (DB.shoots||[]).filter(s=>s.project===projName&&s.status!=='отменена'&&s.date);
+}
+function pcRecalc(){
+  const code=document.getElementById('pc-price').value;
+  const auto=calcAmount(code,1,document.getElementById('pc-surch').value,
+                        document.getElementById('pc-extra').value);
+  const amt=document.getElementById('pc-amount');
+  if(auto!==null&&!amt.dataset.touched)amt.value=auto;
+  const name=document.getElementById('pc-name').value;
+  const n=projectShoots(name).length;
+  const total=parseFloat(amt.value)||0;
+  const el=document.getElementById('pc-split');
+  if(!total){el.textContent='';return;}
+  el.textContent=n
+    ? `Делится на ${n} съёмочн. ${n===1?'день':'дней'} — по ${Math.round(total/n)} ₴, каждый в свой месяц`
+    : 'У проекта нет съёмок — сумма никуда не попадёт, пока они не появятся';
+}
+function openProjCard(id){
+  const p=(DB.projects||[]).find(x=>x.id===id);
+  if(!p)return;
+  document.getElementById('pc-id').value=p.id;
+  document.getElementById('pc-name').value=p.name||'';
+  document.getElementById('pc-desc').value=p.description||'';
+  document.getElementById('pc-assigned').value=p.assigned_by||'';
+  document.getElementById('pc-price').innerHTML=priceOptionsHtml(p.price_code||'');
+  document.getElementById('pc-surch').value=p.surcharge||0;
+  document.getElementById('pc-extra').value=p.extra||0;
+  const amt=document.getElementById('pc-amount');
+  delete amt.dataset.touched;
+  amt.value=(p.amount===null||p.amount===undefined)?'':p.amount;
+  if(p.amount!==null&&p.amount!==undefined)amt.dataset.touched='1';
+  amt.oninput=()=>{amt.dataset.touched='1';pcRecalc();};
+  document.getElementById('pc-status').value=p.status==='готово'?'готово':'в работе';
+  pcRecalc();
+  showModal('modal-proj-card');
+}
+async function saveProjCard(){
+  const id=parseInt(document.getElementById('pc-id').value);
+  const name=document.getElementById('pc-name').value.trim();
+  if(!name){alert('Введи название проекта');return;}
+  const amtRaw=document.getElementById('pc-amount').value;
+  await dbPatch('projects',id,{
+    name,
+    description:document.getElementById('pc-desc').value,
+    assigned_by:document.getElementById('pc-assigned').value.trim()||null,
+    price_code:document.getElementById('pc-price').value||null,
+    surcharge:parseFloat(document.getElementById('pc-surch').value)||0,
+    extra:parseFloat(document.getElementById('pc-extra').value)||0,
+    amount:amtRaw===''?null:parseFloat(amtRaw),
+    status:document.getElementById('pc-status').value
+  });
+  hideModal('modal-proj-card');await load();
 }
 function tcRecalc(){
   const code=document.getElementById('tc-price').value;
@@ -2353,11 +2439,33 @@ function shiftReport(dir){
   rpSelDay=null;
   renderReport();
 }
-// собираем работы периода: задачи по дате сдачи, съёмки по дню съёмки
+// собираем работы периода: задачи по дате сдачи, съёмки по дню съёмки.
+// у проектов с ценой сумма делится поровну по съёмочным дням, а задачи
+// внутри такого проекта отдельно не считаются — они входят в цену проекта.
+function pricedProjects(){
+  const map={};
+  (DB.projects||[]).forEach(p=>{
+    if(p.amount===null||p.amount===undefined||!p.name)return;
+    const shoots=projectShoots(p.name);
+    if(!shoots.length)return;
+    const total=Number(p.amount);
+    const per=Math.floor(total/shoots.length);
+    const rest=total-per*shoots.length;
+    const shares={};
+    shoots.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''))
+      .forEach((s,i)=>{shares[s.id]=per+(i===shoots.length-1?rest:0);});
+    map[p.name]={proj:p,shares,count:shoots.length};
+  });
+  return map;
+}
 function collectWork(from,to){
   const out=[];
+  const priced=pricedProjects();
+  const pricedIds={};
+  (DB.projects||[]).forEach(p=>{if(priced[p.name])pricedIds[p.id]=p.name;});
   (DB.tasks||[]).forEach(t=>{
     if((t.status||'')!=='готово')return;
+    if(t.project_id&&pricedIds[t.project_id])return; // входит в цену проекта
     const d=(t.done_date||t.date||'').slice(0,10);
     if(!d||d<from||d>to)return;
     out.push({id:t.id,src:'tasks',date:d,kind:t.kind==='дизайн'?'дизайн':'задача',
@@ -2370,13 +2478,20 @@ function collectWork(from,to){
     const d=(s.date||'').slice(0,10);
     if(!d||d<from||d>to)return;
     const cancelled=s.status==='отменена';
+    const pp=priced[s.project];
+    const inProject=!!(pp&&pp.shares[s.id]!==undefined);
+    let amt;
+    if(cancelled)amt=0;
+    else if(inProject)amt=pp.shares[s.id];
+    else amt=(s.amount===null||s.amount===undefined)?null:Number(s.amount);
     out.push({id:s.id,src:'shoots',date:d,kind:'съёмка',
-      title:s.project||s.location||'съёмка',who:s.assigned_by||'',
+      title:s.project||s.location||'съёмка',who:s.assigned_by||(inProject?(pp.proj.assigned_by||''):''),
       time:s.time||'',place:s.location||'',people:s.people||'',
-      code:s.price_code||'',
-      amount:cancelled?0:((s.amount===null||s.amount===undefined)?null:Number(s.amount)),
+      code:inProject?(pp.proj.price_code||''):(s.price_code||''),
+      amount:amt,
       qty:s.qty||1,surch:s.surcharge||0,extra:s.extra||0,
-      given:'',done:(s.delivered_date||'').slice(0,10),cancelled});
+      given:'',done:(s.delivered_date||'').slice(0,10),cancelled,
+      projShare:inProject?{name:s.project,total:Number(pp.proj.amount),count:pp.count}:null});
   });
   return out.sort((a,b)=>a.date.localeCompare(b.date));
 }
@@ -2472,7 +2587,9 @@ function reportRowHtml(w){
     :`<b>${fmtMoney(w.amount)}</b>`;
   const p=priceItem(w.code);
   let calc='';
-  if(p&&w.amount!==null){
+  if(w.projShare){
+    calc=` · часть проекта «${w.projShare.name}»: ${fmtMoney(w.projShare.total)} ÷ ${w.projShare.count}`;
+  }else if(p&&w.amount!==null){
     const parts=[`${p.sum} ₴`];
     if(w.qty&&w.qty!=1)parts.push(`× ${w.qty}`);
     if(w.surch)parts.push(`+${w.surch}%`);
