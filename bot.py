@@ -789,6 +789,7 @@ async def cmd_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "📋 Задачи без съёмки (типография, дизайн):\n"
         "• «задача: сделать баннер, поправить упаковку»\n"
         "• «дизайн: исправить текст в логотипе от Дениса»\n\n"
+        "📊 Отчёт: «отчёт», «отчёт за август», «отчёт за неделю»\n\n"
         "📄 Файлы:\n"
         "• пришли/перешли документ (PDF и любой другой) — предложу\n"
         "  прицепить к съёмке или в архив сценариев\n"
@@ -1030,6 +1031,90 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 return
 
     text_low = text.lower().strip()
+
+    if text_low.startswith("отчёт") or text_low.startswith("отчет") or text_low.startswith("звіт"):
+        from datetime import date as _date, timedelta as _td
+        months_ru = ["январ", "феврал", "март", "апрел", "мая", "май", "июн", "июл",
+                     "август", "сентябр", "октябр", "ноябр", "декабр"]
+        month_map = {"январ": 1, "феврал": 2, "март": 3, "апрел": 4, "мая": 5, "май": 5,
+                     "июн": 6, "июл": 7, "август": 8, "сентябр": 9, "октябр": 10,
+                     "ноябр": 11, "декабр": 12}
+        today = _date.today()
+        picked = None
+        for key, num in month_map.items():
+            if key in text_low:
+                picked = num
+                break
+        if "недел" in text_low:
+            frm = today - _td(days=(today.weekday()))
+            to = frm + _td(days=6)
+            label = f"неделя {frm.strftime('%d.%m')}–{to.strftime('%d.%m')}"
+        else:
+            m = picked or today.month
+            y = today.year if (picked is None or picked <= today.month) else today.year - 1
+            frm = _date(y, m, 1)
+            to = _date(y + (1 if m == 12 else 0), 1 if m == 12 else m + 1, 1) - _td(days=1)
+            label = f"{months_ru[m-1] if m-1 < len(months_ru) else m}. {y}"
+        f_s, t_s = frm.isoformat(), to.isoformat()
+
+        tasks = await supa_get("tasks", 300)
+        shoots = await supa_get("shoots", 300)
+        rows = []
+        for t in tasks or []:
+            if (t.get("status") or "") != "готово":
+                continue
+            d = (t.get("done_date") or t.get("date") or "")[:10]
+            if not d or d < f_s or d > t_s:
+                continue
+            rows.append((d, "дизайн" if t.get("kind") == "дизайн" else "задача",
+                         t.get("title") or "", t.get("assigned_by") or "",
+                         t.get("price_code") or "", t.get("amount")))
+        for s in shoots or []:
+            d = (s.get("date") or "")[:10]
+            if not d or d < f_s or d > t_s:
+                continue
+            cancelled = s.get("status") == "отменена"
+            amt = 0 if cancelled else s.get("amount")
+            rows.append((d, "съёмка", (s.get("project") or s.get("location") or "съёмка") + (" ✕отменена" if cancelled else ""),
+                         s.get("assigned_by") or "", s.get("price_code") or "", amt))
+        rows.sort(key=lambda r: r[0])
+        if not rows:
+            await msg.reply_text(f"📊 За {label} работ не записано.", reply_markup=reply_kbd())
+            return
+
+        by_sec = {}
+        total = 0
+        no_price = 0
+        by_who = {}
+        for d, kind, title, who, code, amt in rows:
+            p = PRICE_BY_CODE.get(code)
+            sec = PRICE_SECTIONS[p["sec"]] if p else "Вне прайса"
+            by_sec.setdefault(sec, []).append((d, kind, title, who, amt))
+            if amt is None:
+                no_price += 1
+            else:
+                total += amt
+                by_who[who or "—"] = by_who.get(who or "—", 0) + amt
+
+        out = [f"📊 Отчёт · {label}", f"Итого: {total} ₴ · {len(rows)} работ"]
+        if no_price:
+            out.append(f"⚠️ без цены: {no_price}")
+        for sec in PRICE_SECTIONS + ["Вне прайса"]:
+            lst = by_sec.get(sec)
+            if not lst:
+                continue
+            s_sum = sum(a for _, _, _, _, a in lst if a is not None)
+            out.append(f"\n▸ {sec} — {s_sum} ₴")
+            for d, kind, title, who, amt in lst[:12]:
+                ic = "🎬" if kind == "съёмка" else ("🎨" if kind == "дизайн" else "📋")
+                money = "— ₴" if amt is None else f"{amt} ₴"
+                out.append(f"{ic} {d[8:10]}.{d[5:7]} {title[:34]}{' · ' + who if who else ''} — {money}")
+        if by_who:
+            out.append("\nПо заказчикам:")
+            for w, v in sorted(by_who.items(), key=lambda x: -x[1]):
+                out.append(f"• {w}: {v} ₴")
+        await msg.reply_text("\n".join(out), reply_markup=reply_kbd())
+        return
 
     if text_low in ("файлы", "файли"):
         scripts = await supa_get("scripts", 200)
@@ -1627,7 +1712,7 @@ def main():
             print(f"menu button: {e}")
 
     app.post_init = post_init
-    print("🦀 Rak bot v29 started!")
+    print("🦀 Rak bot v30 started!")
     app.run_polling(drop_pending_updates=True)
 
 
