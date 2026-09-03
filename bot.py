@@ -545,31 +545,37 @@ PRICE = [
 PRICE_BY_CODE = {p["code"]: p for p in PRICE}
 
 # порядок важен: более специфичные правила выше.
-# each: (code, любое_из, ещё_одно_обязательное_из | None)
+# (code, любое_из, ещё_одно_обязательное_из | None, стоп-слова | None)
 PRICE_RULES = [
-    ("des_pack",       ["упаковк", "корма", "корм "], None),
-    ("des_cover_lang", ["обложк"], ["язык", "укр", "польск", "англ", "локализ", "перевод"]),
-    ("des_fix",        ["правк", "исправ", "поправ", "подправ", "изменить", "заменить", "переделать"], None),
-    ("des_logo",       ["логотип", "лого ", "герб"], None),
-    ("des_cover",      ["обложк"], None),
-    ("des_banner1",    ["баннер", "афиш", "плакат", "постер"], None),
-    ("des_program",    ["программа курса", "инфографик", "многостраничн"], None),
-    ("des_adapt",      ["адаптац", "формат", "размер"], None),
-    ("prj_thumb",      ["превью", "миниатюр"], None),
-    ("prj_inserts",    ["вставк"], None),
-    ("smm_pack",       ["подсъём", "подсьём", "дрессировк", "канистерап", "мероприят"], None),
-    ("obj_1",          ["предметк", "предметн", "товар"], None),
-    ("portrait",       ["портрет"], None),
-    ("targ_pack5",     ["таргет", "реклам", "ролик"], None),
+    ("obj_1",          ["предметк", "предметн"], None, None),
+    ("des_pack",       ["упаковк", "корма", "корм "], None,
+                       ["съемк", "съёмк", "зйом", "зйомк", "фото", "генерац", "видео", "ролик"]),
+    ("des_cover_lang", ["обложк"], ["язык", "мов", "укр", "польск", "англ", "локализ", "перевод"], None),
+    ("des_fix",        ["правк", "исправ", "поправ", "подправ", "изменить", "заменить", "переделать"], None, None),
+    ("des_logo",       ["логотип", "лого ", "герб"], None, None),
+    ("des_cover",      ["обложк"], None, None),
+    ("des_banner1",    ["баннер", "афиш", "плакат", "постер", "макет"], None, None),
+    ("des_program",    ["программа курса", "инфографик", "многостраничн"], None, None),
+    ("des_adapt",      ["адаптац", "формат", "размер"], None, None),
+    ("prj_thumb",      ["превью", "миниатюр"], None, None),
+    ("prj_inserts",    ["вставк"], None, None),
+    ("prj_interview",  ["интервью", "подкаст", "інтерв"], None, None),
+    ("prj_yt",         ["youtube", "ютуб"], None, None),
+    ("smm_pack",       ["подсъём", "подсьём", "підйом", "дрессировк", "дресирув",
+                        "канистерап", "каністерап", "мероприят", "захід"], None, None),
+    ("portrait",       ["портрет"], None, None),
+    ("targ_pack5",     ["таргет", "реклам", "ролик"], None, None),
 ]
 
 
 def guess_price(title):
     t = (title or "").lower()
-    for code, keys, req in PRICE_RULES:
+    for code, keys, req, stop in PRICE_RULES:
         if not any(k in t for k in keys):
             continue
         if req and not any(r in t for r in req):
+            continue
+        if stop and any(s in t for s in stop):
             continue
         return code
     return None
