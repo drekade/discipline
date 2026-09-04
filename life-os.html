@@ -2910,9 +2910,9 @@ function renderPriceList(){
   const rows=DB.price_list||[];
   document.getElementById('price-src').textContent=rows.length
     ? `${rows.length} позиций из базы`
-    : 'таблица пуста — работает встроенный прайс';
+    : 'таблицы price_list нет или она пуста — работает встроенный прайс';
   if(!rows.length){
-    el.innerHTML='<div class="cal-wrap" style="color:var(--t3);font-style:italic">Нажми «Загрузить прайс из файла», чтобы перенести позиции в базу и править их здесь.</div>';
+    el.innerHTML='<div class="cal-wrap" style="color:var(--t3);font-style:italic">Расчёт идёт по встроенному прайсу — всё работает.<br><br>Чтобы править цены здесь, в Supabase должна быть таблица <b>price_list</b>. Создай её SQL-запросом, потом нажми «Загрузить прайс из файла».</div>';
     return;
   }
   let html='';
@@ -2978,16 +2978,22 @@ async function addPriceRow(){
 async function seedPriceList(){
   if((DB.price_list||[]).length&&!confirm('В базе уже есть позиции. Добавить недостающие из файла?'))return;
   const have={};(DB.price_list||[]).forEach(r=>{have[r.code]=1;});
-  let n=0;
+  let ok=0,fail=0;
   for(let i=0;i<PRICE_FALLBACK.length;i++){
     const p=PRICE_FALLBACK[i];
     if(have[p.code])continue;
-    await dbPost('price_list',{code:p.code,sec:p.sec,name:p.name,sum:p.sum,
+    const done=await dbPost('price_list',{code:p.code,sec:p.sec,name:p.name,sum:p.sum,
       step:p.step||0,per_unit:!!p.per_unit,is_from:!!p.from,unit:p.unit||null,sort:i});
-    n++;
+    if(done)ok++;else fail++;
   }
   await load();
-  alert(n?`Добавлено позиций: ${n}`:'Всё уже на месте.');
+  if(fail&&!ok){
+    alert('Не удалось записать ни одной позиции.\n\nСкорее всего в Supabase ещё нет таблицы price_list — её нужно создать SQL-запросом. Пока её нет, всё работает на встроенном прайсе.');
+  }else if(fail){
+    alert(`Добавлено: ${ok}. Не удалось: ${fail}.`);
+  }else{
+    alert(ok?`Добавлено позиций: ${ok}`:'Всё уже на месте.');
+  }
 }
 function renderScripts(){
   const el=document.getElementById('scripts-list');
