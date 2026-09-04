@@ -29,7 +29,7 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 1. НЕСКОЛЬКО СЪЁМОК (action: add_multiple_shoots) — несколько блоков с датами/местами.
    Каждый блок — отдельная съёмка. Массив shoots[]. Игнорируй @ники и теги.
    ВАЖНО: если в сообщении 2+ даты (числа месяца или дни недели) с разными локациями/описаниями — это ВСЕГДА add_multiple_shoots.
-   Дни недели тоже считаются датами: середа=среда, п\'ятниця=пятница, субота=суббота, неділя=воскресенье.\nКаждая съёмка: date, time, location, topic, project, people, notes (всё остальное что не вошло).\n   topic — ТЕМА съёмки: что именно снимаем (\"Реклама французьких бульдогів\", \"канистерапия с детьми\").\n   location — только МЕСТО (парк, офис, локация). НЕ клади тему в location.\n   project — только если Катерина явно назвала проект. Иначе пусто. Тему в project НЕ клади.\n2. ОДНА СЪЁМКА (action: add_shoot) — есть явная локация + желательно дата.\nЕсли есть ЛОКАЦИЯ но нет ДАТЫ → action=clarify, data.partial = {{location, time, topic, project, people}}\nЕсли нет локации — это не съёмка.\n3. УДАЛЕНИЕ СЪЁМКИ (action: delete_shoot) — "удали съёмку X"\ndata: {{shoot_date, shoot_location, shoot_time}}\n4. ЗАВЕРШЕНИЕ ПРОЕКТА (action: complete_project) — "закончила/завершила проект X"\n5. ИДЕЯ (action: add_idea) — "идея:", "ідея:"\ndata: {{"title": "суть идеи одной фразой", "description": "детали если есть", "category": "Идея"}}\n6. ДНЕВНИК (action: add_diary) — Катерина рассказывает про свой день.\nПРИМЕРЫ когда ВСЕГДА action=add_diary:\n• "сегодня работала с 12 до 16, в 8 встала" → add_diary\n• "тяжелый день был" → add_diary\n• "снимали урок, потом монтировала" → add_diary\nЛюбой рассказ с временем/действиями про прожитый день = ДНЕВНИК.\nevents = что делала (факты). thoughts = чувства/мысли если есть.\nmood: хорошо/нейтрально/плохо — определи по тону.\n7. ЛИЧНОЕ СОБЫТИЕ (action: add_event) — врач, ветеринар, школа, мероприятие, встреча\ndata: {{title, date(YYYY-MM-DD), time, category, notes}}\n8. НОВЫЙ ПРОЕКТ (action: add_project)\n9. ТЕМА ПРОЕКТА (action: update_topic) — "сняла тему X", "смонтировала тему Y", "тема Z готова"\ndata: {{"topic": "название или номер темы", "project": "проект если упомянут", "stage": "стадия которую отмечаем"}}\n10. ОТМЕНА СЪЁМКИ (action: cancel_shoot) — "съёмка такого-то числа отменилась", с причиной или без.\ndata: {{"date": "YYYY-MM-DD", "location": "если есть", "reason": "причина если указана"}}\n11. СЦЕНАРИЙ БЕЗ СЪЁМКИ (action: add_script) — ссылка + слово "сценарий" без явной даты И локации.\nСоздаём съёмку-заготовку: дата пустая, локация "?", статус "не снято".\ndata: {{"url": "https://...", "project": "проект если упомянут", "title": "о чём сценарий одной фразой"}}\n12. ОЧИСТКА ПОЛЯ (action: clear_field) — "отмени/убери/очисти заметку/ссылку"\ndata: {{field: "notes"|"script"|"link", entity: "shoot"|"project"}}\n13. ОТВЕТ НА УТОЧНЕНИЕ (action: clarify_reply) — ТОЛЬКО если твой прошлый reply был вопросом
+   Дни недели тоже считаются датами: середа=среда, п\'ятниця=пятница, субота=суббота, неділя=воскресенье.\nКаждая съёмка: date, time, location, topic, project, people, notes (всё остальное что не вошло).\n   topic — ТЕМА съёмки: что именно снимаем (\"Реклама французьких бульдогів\", \"канистерапия с детьми\").\n   location — только МЕСТО (парк, офис, локация). НЕ клади тему в location.\n   project — только если Катерина явно назвала проект. Иначе пусто. Тему в project НЕ клади.\n   qty — сколько роликов/сценариев снимаем в этот день, если названо числом (\"3 ролика\", \"два сценария\", \"5 роликов\"). Если не сказано — 1.\n2. ОДНА СЪЁМКА (action: add_shoot) — есть явная локация + желательно дата.\nЕсли есть ЛОКАЦИЯ но нет ДАТЫ → action=clarify, data.partial = {{location, time, topic, project, people}}\nЕсли нет локации — это не съёмка.\n3. УДАЛЕНИЕ СЪЁМКИ (action: delete_shoot) — "удали съёмку X"\ndata: {{shoot_date, shoot_location, shoot_time}}\n4. ЗАВЕРШЕНИЕ ПРОЕКТА (action: complete_project) — "закончила/завершила проект X"\n5. ИДЕЯ (action: add_idea) — "идея:", "ідея:"\ndata: {{"title": "суть идеи одной фразой", "description": "детали если есть", "category": "Идея"}}\n6. ДНЕВНИК (action: add_diary) — Катерина рассказывает про свой день.\nПРИМЕРЫ когда ВСЕГДА action=add_diary:\n• "сегодня работала с 12 до 16, в 8 встала" → add_diary\n• "тяжелый день был" → add_diary\n• "снимали урок, потом монтировала" → add_diary\nЛюбой рассказ с временем/действиями про прожитый день = ДНЕВНИК.\nevents = что делала (факты). thoughts = чувства/мысли если есть.\nmood: хорошо/нейтрально/плохо — определи по тону.\n7. ЛИЧНОЕ СОБЫТИЕ (action: add_event) — врач, ветеринар, школа, мероприятие, встреча\ndata: {{title, date(YYYY-MM-DD), time, category, notes}}\n8. НОВЫЙ ПРОЕКТ (action: add_project)\n9. ТЕМА ПРОЕКТА (action: update_topic) — "сняла тему X", "смонтировала тему Y", "тема Z готова"\ndata: {{"topic": "название или номер темы", "project": "проект если упомянут", "stage": "стадия которую отмечаем"}}\n10. ОТМЕНА СЪЁМКИ (action: cancel_shoot) — "съёмка такого-то числа отменилась", с причиной или без.\ndata: {{"date": "YYYY-MM-DD", "location": "если есть", "reason": "причина если указана"}}\n11. СЦЕНАРИЙ БЕЗ СЪЁМКИ (action: add_script) — ссылка + слово "сценарий" без явной даты И локации.\nСоздаём съёмку-заготовку: дата пустая, локация "?", статус "не снято".\ndata: {{"url": "https://...", "project": "проект если упомянут", "title": "о чём сценарий одной фразой"}}\n12. ОЧИСТКА ПОЛЯ (action: clear_field) — "отмени/убери/очисти заметку/ссылку"\ndata: {{field: "notes"|"script"|"link", entity: "shoot"|"project"}}\n13. ОТВЕТ НА УТОЧНЕНИЕ (action: clarify_reply) — ТОЛЬКО если твой прошлый reply был вопросом
     data: {{field_given: "date"|"time"|"location", value: "..."}}
 
 14. ЗАПРОС ИНФОРМАЦИИ (action: query)
@@ -53,7 +53,7 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 ХАРАКТЕР: отвечай на том же языке что Катерина. Поддержи если тяжело.
 ФОРМАТ — только JSON без markdown:
 {{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|cancel_shoot|clarify|clarify_reply|clear_field|complete_project|add_idea|add_diary|add_event|add_project|add_script|update_topic|add_tasks|query","data":{{}}}}
-data для add_multiple_shoots: {{"shoots":[{{"date":"YYYY-MM-DD","time":"HH:MM","location":"","topic":"","project":"","people":"","notes":""}}]}}
+data для add_multiple_shoots: {{"shoots":[{{"date":"YYYY-MM-DD","time":"HH:MM","location":"","topic":"","project":"","qty":1,"people":"","notes":""}}]}}
 data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
 data для add_event: title, date(YYYY-MM-DD), time, category, notes
 data для delete_shoot: shoot_date, shoot_location, shoot_time
@@ -329,7 +329,7 @@ async def apply_action(action, data):
             "people": data.get("people",""), "script": data.get("script",""),
             "notes": data.get("notes",""), "status": "не снято"
         }
-        row.update(shoot_price_fields(topic, data.get("project"), loc, data.get("notes")))
+        row.update(shoot_price_fields(topic, data.get("project"), loc, data.get("notes"), data.get("qty", 1)))
         return await supa_insert("shoots", row)
 
     elif action == "add_multiple_shoots":
@@ -348,7 +348,7 @@ async def apply_action(action, data):
                 "people": s.get("people",""), "script": s.get("script",""),
                 "notes": s.get("notes",""), "status": "не снято"
             }
-            row.update(shoot_price_fields(topic, s.get("project"), loc, s.get("notes")))
+            row.update(shoot_price_fields(topic, s.get("project"), loc, s.get("notes"), s.get("qty", 1)))
             ok = await supa_insert("shoots", row)
             if ok: saved += 1
         return saved
@@ -605,13 +605,17 @@ def price_amount(code, qty=1, surch=0, extra=0):
     return round(base * (1 + (surch or 0) / 100) + (extra or 0))
 
 
-def shoot_price_fields(topic, project, location, notes=""):
+def shoot_price_fields(topic, project, location, notes="", qty=1):
     text = " ".join([topic or "", project or "", location or "", notes or ""])
+    try:
+        q = max(1, int(qty or 1))
+    except (TypeError, ValueError):
+        q = 1
     code = guess_price(text)
     if not code:
-        return {}
-    return {"price_code": code, "amount": price_amount(code, 1),
-            "qty": 1, "surcharge": 0, "extra": 0}
+        return {"qty": q}
+    return {"price_code": code, "amount": price_amount(code, q),
+            "qty": q, "surcharge": 0, "extra": 0}
 
 
 def guess_price(title):
@@ -1776,7 +1780,7 @@ def main():
             print(f"menu button: {e}")
 
     app.post_init = post_init
-    print("🦀 Rak bot v33 started!")
+    print("🦀 Rak bot v34 started!")
     app.run_polling(drop_pending_updates=True)
 
 

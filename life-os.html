@@ -790,8 +790,15 @@ textarea.f{resize:none;line-height:1.6}
     <div class="modal-head"><span class="modal-title">Новая съёмка</span><button class="modal-close" onclick="hideModal('modal-shoot')">✕</button></div>
     <div class="form-row"><label class="field-label">Дата</label><input type="date" id="sh-date"></div>
     <div class="form-row"><label class="field-label">Время</label><input type="time" id="sh-time"></div>
-    <div class="form-row"><label class="field-label">Локация</label><input type="text" id="sh-loc" placeholder="Где?"></div>
-    <div class="form-row"><label class="field-label">Тема съёмки</label><input type="text" id="sh-topic" placeholder="Реклама французьких бульдогів"></div>
+    <div class="form-row"><label class="field-label">Локация</label><input type="text" id="sh-loc" oninput="shRecalc()" placeholder="Где?"></div>
+    <div class="form-row"><label class="field-label">Тема съёмки</label><input type="text" id="sh-topic" placeholder="Реклама французьких бульдогів" oninput="shRecalc()"></div>
+    <div style="display:flex;gap:8px">
+      <div class="form-row" style="flex:1"><label class="field-label" id="sh-qty-label">Сколько роликов / сценариев</label>
+        <input type="number" id="sh-qty" min="1" step="1" value="1" oninput="shRecalc()"></div>
+      <div class="form-row" style="flex:1"><label class="field-label">Сумма ₴</label>
+        <input type="number" id="sh-amount" step="50" placeholder="посчитаю сама"></div>
+    </div>
+    <div style="font-size:12px;color:var(--t3);margin:-6px 0 10px" id="sh-price-hint"></div>
     <div class="form-row"><label class="field-label">Проект</label><select id="sh-proj"><option value="">— выбери —</option></select></div>
     <div class="form-row"><label class="field-label">Участники</label><input type="text" id="sh-people" placeholder="Имена"></div>
     <div class="form-row"><label class="field-label">Ссылка на сценарий</label><input type="text" id="sh-script" placeholder="https://..."></div>
@@ -2238,11 +2245,35 @@ function updateSelects(){
   sel.innerHTML='<option value="">— выбери —</option>'+DB.projects.map(p=>`<option>${p.name}</option>`).join('');
 }
 
+function shRecalc(){
+  const topic=document.getElementById('sh-topic').value;
+  const loc=document.getElementById('sh-loc').value;
+  const proj=document.getElementById('sh-proj').value;
+  const auto=autoPriceFor([topic,proj,loc].filter(Boolean).join(' '));
+  const qty=parseFloat(document.getElementById('sh-qty').value)||1;
+  const lbl=document.getElementById('sh-qty-label');
+  const hint=document.getElementById('sh-price-hint');
+  const amt=document.getElementById('sh-amount');
+  if(!auto){
+    lbl.textContent='Сколько роликов / сценариев';
+    hint.textContent='Позиция прайса не определилась — впиши сумму сама или поставь её потом в карточке.';
+    return;
+  }
+  const u=priceUnit(auto.code);
+  lbl.textContent=u?('Сколько '+u):'Кол-во';
+  const total=calcAmount(auto.code,qty,0,0);
+  hint.textContent=`${priceName(auto.code)} → ${fmtMoney(total)}`;
+  if(!amt.dataset.touched)amt.value=total;
+}
 async function saveShoot(){
   const topic=document.getElementById('sh-topic').value.trim();
   const d={date:document.getElementById('sh-date').value,time:document.getElementById('sh-time').value,location:document.getElementById('sh-loc').value,project:document.getElementById('sh-proj').value,topic:topic||null,people:document.getElementById('sh-people').value,script:document.getElementById('sh-script').value,notes:document.getElementById('sh-notes').value,status:'не снято'};
+  const qty=parseFloat(document.getElementById('sh-qty').value)||1;
+  const manual=document.getElementById('sh-amount').value;
   const autoP=autoPriceFor([topic,d.project,d.location].filter(Boolean).join(' '));
-  if(autoP){d.price_code=autoP.code;d.amount=autoP.amount;d.qty=1;d.surcharge=0;d.extra=0;}
+  d.qty=qty;d.surcharge=0;d.extra=0;
+  if(autoP){d.price_code=autoP.code;d.amount=calcAmount(autoP.code,qty,0,0);}
+  if(manual!=='')d.amount=parseFloat(manual);
   if(!d.date&&!d.location){alert('Укажи дату или локацию');return;}
   await dbPost('shoots',d);hideModal('modal-shoot');await load();
 }
