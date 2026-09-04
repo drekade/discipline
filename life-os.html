@@ -1169,17 +1169,38 @@ async function dbGet(t,lim=200,ord='created_at.desc'){
   const r=await fetch(`${SB}/rest/v1/${t}?order=${ord}&limit=${lim}`,{headers:SH});
   return r.ok?r.json():[];
 }
+let lastDbError='';
+async function dbNote(r){
+  if(r.ok){lastDbError='';return true;}
+  try{
+    const t=await r.text();
+    let msg=t;
+    try{const j=JSON.parse(t);msg=j.message||j.hint||j.details||t;}catch(e){}
+    lastDbError=msg||('HTTP '+r.status);
+  }catch(e){lastDbError='HTTP '+r.status;}
+  console.error('DB error:',lastDbError);
+  return false;
+}
+function dbErrHint(){
+  if(!lastDbError)return '';
+  let hint='';
+  if(/column .* does not exist|Could not find the .* column/i.test(lastDbError))
+    hint='\n\nПохоже, в базе нет нужной колонки — выполни SQL, который я давала для этого поля.';
+  else if(/relation .* does not exist/i.test(lastDbError))
+    hint='\n\nВ базе нет такой таблицы — её нужно создать SQL-запросом.';
+  return '\n\n'+lastDbError+hint;
+}
 async function dbPost(t,d){
   const r=await fetch(`${SB}/rest/v1/${t}`,{method:'POST',headers:SH,body:JSON.stringify(d)});
-  return r.ok;
+  return dbNote(r);
 }
 async function dbPatch(t,id,d){
   const r=await fetch(`${SB}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:SH,body:JSON.stringify(d)});
-  return r.ok;
+  return dbNote(r);
 }
 async function dbDelete(t,id){
   const r=await fetch(`${SB}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:SH});
-  return r.ok;
+  return dbNote(r);
 }
 
 async function load(){
@@ -2382,7 +2403,7 @@ async function saveEditIdea(){
     ok=await dbPatch('ideas',id,dataNoNotes);
   }
   if(ok){hideModal('modal-edit-idea');await load();}
-  else alert('Не сохранилось 😔');
+  else alert('Не сохранилось 😔'+dbErrHint());
 }
 
 async function deleteIdea(){
@@ -3131,17 +3152,33 @@ async function saveEditShoot(){
     delivered_date:document.getElementById('es-delivered').value||null,
     paid_cancelled:document.getElementById('es-paid-cancelled').checked
   };
+  // если в базе ещё нет свежей колонки — сохраняем без неё, а не теряем всю правку
+  const optional=['paid_cancelled','topic','delivered_date','assigned_by','price_code','qty','surcharge','extra','amount'];
+  const dropped=[];
   try{
-    const r=await fetch(`${SB}/rest/v1/shoots?id=eq.${id}`,{
-      method:'PATCH',
-      headers:{...SH,'Content-Type':'application/json'},
-      body:JSON.stringify(data)
-    });
-    if(r.ok){
-      hideModal('modal-edit-shoot');
-      await load();
-    } else {
-      alert('Не сохранилось 😔');
+    let payload={...data};
+    for(let attempt=0;attempt<=optional.length;attempt++){
+      const r=await fetch(`${SB}/rest/v1/shoots?id=eq.${id}`,{
+        method:'PATCH',
+        headers:{...SH,'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+      if(r.ok){
+        hideModal('modal-edit-shoot');
+        await load();
+        if(dropped.length)alert('Сохранено, но без полей: '+dropped.join(', ')+
+          '.\n\nВ базе нет таких колонок — выполни SQL, который я давала, и сохрани ещё раз.');
+        return;
+      }
+      const txt=await r.text();
+      const miss=optional.find(f=>txt.includes("'"+f+"'")||txt.includes('"'+f+'"')||txt.includes(' '+f+' '));
+      if(!miss||!(miss in payload)){
+        lastDbError=txt;
+        alert('Не сохранилось 😔'+dbErrHint());
+        return;
+      }
+      delete payload[miss];
+      dropped.push(miss);
     }
   }catch(e){alert('Ошибка: '+e);}
 }
