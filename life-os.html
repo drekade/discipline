@@ -2811,11 +2811,17 @@ function reportRowHtml(w){
   if(w.projShare){
     calc=` · часть проекта «${w.projShare.name}»: ${fmtMoney(w.projShare.total)} ÷ ${w.projShare.count}`;
   }else if(p&&w.amount!==null){
-    const parts=[`${p.sum} ₴`];
-    if(w.qty&&w.qty!=1)parts.push(`× ${w.qty}`);
+    const parts=[];
+    const q=w.qty||1;
+    if(p.step&&q>1)parts.push(`${p.sum} ₴ + ${p.step} ₴ × ${q-1}`);
+    else if(q!=1)parts.push(`${p.sum} ₴ × ${q}`);
+    else parts.push(`${p.sum} ₴`);
     if(w.surch)parts.push(`+${w.surch}%`);
     if(w.extra)parts.push(`+${w.extra} ₴`);
-    if(parts.length>1)calc=' · '+parts.join(' ');
+    const byPrice=calcAmount(w.code,q,w.surch||0,w.extra||0);
+    if(byPrice!==null&&Math.round(byPrice)!==Math.round(w.amount))
+      parts.push(`<span style="color:#C4552A">сумма вручную, по прайсу ${fmtMoney(byPrice)}</span>`);
+    if(parts.length>1||parts[0]!==`${p.sum} ₴`)calc=' · '+parts.join(' · ');
   }
   const dates=[];
   if(w.given)dates.push('ТЗ '+fmtShort(w.given));
