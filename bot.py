@@ -29,7 +29,7 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 1. НЕСКОЛЬКО СЪЁМОК (action: add_multiple_shoots) — несколько блоков с датами/местами.
    Каждый блок — отдельная съёмка. Массив shoots[]. Игнорируй @ники и теги.
    ВАЖНО: если в сообщении 2+ даты (числа месяца или дни недели) с разными локациями/описаниями — это ВСЕГДА add_multiple_shoots.
-   Дни недели тоже считаются датами: середа=среда, п\'ятниця=пятница, субота=суббота, неділя=воскресенье.\nКаждая съёмка: date, time, location, project, people, notes (всё остальное что не вошло).\n2. ОДНА СЪЁМКА (action: add_shoot) — есть явная локация + желательно дата.\nЕсли есть ЛОКАЦИЯ но нет ДАТЫ → action=clarify, data.partial = {{location, time, project, people}}\nЕсли нет локации — это не съёмка.\n3. УДАЛЕНИЕ СЪЁМКИ (action: delete_shoot) — "удали съёмку X"\ndata: {{shoot_date, shoot_location, shoot_time}}\n4. ЗАВЕРШЕНИЕ ПРОЕКТА (action: complete_project) — "закончила/завершила проект X"\n5. ИДЕЯ (action: add_idea) — "идея:", "ідея:"\ndata: {{"title": "суть идеи одной фразой", "description": "детали если есть", "category": "Идея"}}\n6. ДНЕВНИК (action: add_diary) — Катерина рассказывает про свой день.\nПРИМЕРЫ когда ВСЕГДА action=add_diary:\n• "сегодня работала с 12 до 16, в 8 встала" → add_diary\n• "тяжелый день был" → add_diary\n• "снимали урок, потом монтировала" → add_diary\nЛюбой рассказ с временем/действиями про прожитый день = ДНЕВНИК.\nevents = что делала (факты). thoughts = чувства/мысли если есть.\nmood: хорошо/нейтрально/плохо — определи по тону.\n7. ЛИЧНОЕ СОБЫТИЕ (action: add_event) — врач, ветеринар, школа, мероприятие, встреча\ndata: {{title, date(YYYY-MM-DD), time, category, notes}}\n8. НОВЫЙ ПРОЕКТ (action: add_project)\n9. ТЕМА ПРОЕКТА (action: update_topic) — "сняла тему X", "смонтировала тему Y", "тема Z готова"\ndata: {{"topic": "название или номер темы", "project": "проект если упомянут", "stage": "стадия которую отмечаем"}}\n10. ОТМЕНА СЪЁМКИ (action: cancel_shoot) — "съёмка такого-то числа отменилась", с причиной или без.\ndata: {{"date": "YYYY-MM-DD", "location": "если есть", "reason": "причина если указана"}}\n11. СЦЕНАРИЙ БЕЗ СЪЁМКИ (action: add_script) — ссылка + слово "сценарий" без явной даты И локации.\nСоздаём съёмку-заготовку: дата пустая, локация "?", статус "не снято".\ndata: {{"url": "https://...", "project": "проект если упомянут", "title": "о чём сценарий одной фразой"}}\n12. ОЧИСТКА ПОЛЯ (action: clear_field) — "отмени/убери/очисти заметку/ссылку"\ndata: {{field: "notes"|"script"|"link", entity: "shoot"|"project"}}\n13. ОТВЕТ НА УТОЧНЕНИЕ (action: clarify_reply) — ТОЛЬКО если твой прошлый reply был вопросом
+   Дни недели тоже считаются датами: середа=среда, п\'ятниця=пятница, субота=суббота, неділя=воскресенье.\nКаждая съёмка: date, time, location, topic, project, people, notes (всё остальное что не вошло).\n   topic — ТЕМА съёмки: что именно снимаем (\"Реклама французьких бульдогів\", \"канистерапия с детьми\").\n   location — только МЕСТО (парк, офис, локация). НЕ клади тему в location.\n   project — только если Катерина явно назвала проект. Иначе пусто. Тему в project НЕ клади.\n2. ОДНА СЪЁМКА (action: add_shoot) — есть явная локация + желательно дата.\nЕсли есть ЛОКАЦИЯ но нет ДАТЫ → action=clarify, data.partial = {{location, time, topic, project, people}}\nЕсли нет локации — это не съёмка.\n3. УДАЛЕНИЕ СЪЁМКИ (action: delete_shoot) — "удали съёмку X"\ndata: {{shoot_date, shoot_location, shoot_time}}\n4. ЗАВЕРШЕНИЕ ПРОЕКТА (action: complete_project) — "закончила/завершила проект X"\n5. ИДЕЯ (action: add_idea) — "идея:", "ідея:"\ndata: {{"title": "суть идеи одной фразой", "description": "детали если есть", "category": "Идея"}}\n6. ДНЕВНИК (action: add_diary) — Катерина рассказывает про свой день.\nПРИМЕРЫ когда ВСЕГДА action=add_diary:\n• "сегодня работала с 12 до 16, в 8 встала" → add_diary\n• "тяжелый день был" → add_diary\n• "снимали урок, потом монтировала" → add_diary\nЛюбой рассказ с временем/действиями про прожитый день = ДНЕВНИК.\nevents = что делала (факты). thoughts = чувства/мысли если есть.\nmood: хорошо/нейтрально/плохо — определи по тону.\n7. ЛИЧНОЕ СОБЫТИЕ (action: add_event) — врач, ветеринар, школа, мероприятие, встреча\ndata: {{title, date(YYYY-MM-DD), time, category, notes}}\n8. НОВЫЙ ПРОЕКТ (action: add_project)\n9. ТЕМА ПРОЕКТА (action: update_topic) — "сняла тему X", "смонтировала тему Y", "тема Z готова"\ndata: {{"topic": "название или номер темы", "project": "проект если упомянут", "stage": "стадия которую отмечаем"}}\n10. ОТМЕНА СЪЁМКИ (action: cancel_shoot) — "съёмка такого-то числа отменилась", с причиной или без.\ndata: {{"date": "YYYY-MM-DD", "location": "если есть", "reason": "причина если указана"}}\n11. СЦЕНАРИЙ БЕЗ СЪЁМКИ (action: add_script) — ссылка + слово "сценарий" без явной даты И локации.\nСоздаём съёмку-заготовку: дата пустая, локация "?", статус "не снято".\ndata: {{"url": "https://...", "project": "проект если упомянут", "title": "о чём сценарий одной фразой"}}\n12. ОЧИСТКА ПОЛЯ (action: clear_field) — "отмени/убери/очисти заметку/ссылку"\ndata: {{field: "notes"|"script"|"link", entity: "shoot"|"project"}}\n13. ОТВЕТ НА УТОЧНЕНИЕ (action: clarify_reply) — ТОЛЬКО если твой прошлый reply был вопросом
     data: {{field_given: "date"|"time"|"location", value: "..."}}
 
 14. ЗАПРОС ИНФОРМАЦИИ (action: query)
@@ -53,7 +53,7 @@ SYSTEM = f"""Ты — Рак, личный ассистент Катерины (
 ХАРАКТЕР: отвечай на том же языке что Катерина. Поддержи если тяжело.
 ФОРМАТ — только JSON без markdown:
 {{"reply":"текст","action":"none|add_shoot|add_multiple_shoots|delete_shoot|cancel_shoot|clarify|clarify_reply|clear_field|complete_project|add_idea|add_diary|add_event|add_project|add_script|update_topic|add_tasks|query","data":{{}}}}
-data для add_multiple_shoots: {{"shoots":[{{"date":"YYYY-MM-DD","time":"HH:MM","location":"","project":"","people":"","notes":""}}]}}
+data для add_multiple_shoots: {{"shoots":[{{"date":"YYYY-MM-DD","time":"HH:MM","location":"","topic":"","project":"","people":"","notes":""}}]}}
 data для add_diary: mood(хорошо/нейтрально/плохо), events, thoughts
 data для add_event: title, date(YYYY-MM-DD), time, category, notes
 data для delete_shoot: shoot_date, shoot_location, shoot_time
@@ -253,7 +253,7 @@ async def run_query(intent, period="month", params=None):
         items = sorted(items, key=lambda x: x.get("date",""), reverse=True)[:15]
         lines = [f"📅 Съёмки ({len(items)}):\n"]
         for s in items:
-            what = s.get("project","").strip() or s.get("location","?")
+            what = (s.get("topic") or "").strip() or s.get("project","").strip() or s.get("location","?")
             lines.append(f"• {fmt_date(s.get('date',''))} {(s.get('time') or '')} — {what}")
         return "\n".join(lines)
 
@@ -266,7 +266,7 @@ async def run_query(intent, period="month", params=None):
             return f"Съёмок с «{params.get('person')}» не нашла."
         matched = sorted(matched, key=lambda x: x.get("date",""), reverse=True)
         last = matched[0]
-        what = last.get("project","").strip() or last.get("location","?")
+        what = (last.get("topic") or "").strip() or last.get("project","").strip() or last.get("location","?")
         return f"📅 Последняя съёмка с {params.get('person')} — {fmt_date(last.get('date',''))} {(last.get('time') or '')} — {what}"
 
     if intent == "project_stats":
@@ -306,7 +306,7 @@ async def run_query(intent, period="month", params=None):
         items.sort(key=lambda x: x[2])
         lines = ["🗓 Что впереди:\n"]
         for icon, it, dt in items:
-            title = it.get("project","") or it.get("location","") or it.get("title","")
+            title = it.get("topic","") or it.get("project","") or it.get("location","") or it.get("title","")
             lines.append(f"• {icon} {fmt_date(it.get('date',''))} {it.get('time','')} — {title}")
         return "\n".join(lines)
 
@@ -317,18 +317,23 @@ async def apply_action(action, data):
     today = datetime.now().strftime("%Y-%m-%d")
 
     if action == "add_shoot":
+        await load_price()
         loc = (data.get("location") or "").strip()
         if not loc or loc.lower() in ("не указано","none","null","—","-"):
             print(f"SKIP add_shoot: empty location ({data})")
             return False
-        return await supa_insert("shoots", {
+        topic = (data.get("topic") or "").strip()
+        row = {
             "date": data.get("date", today), "time": data.get("time",""),
-            "location": loc, "project": data.get("project",""),
+            "location": loc, "topic": topic or None, "project": data.get("project",""),
             "people": data.get("people",""), "script": data.get("script",""),
             "notes": data.get("notes",""), "status": "не снято"
-        })
+        }
+        row.update(shoot_price_fields(topic, data.get("project"), loc, data.get("notes")))
+        return await supa_insert("shoots", row)
 
     elif action == "add_multiple_shoots":
+        await load_price()
         shoots = data.get("shoots", [])
         saved = 0
         for s in shoots:
@@ -336,12 +341,15 @@ async def apply_action(action, data):
             if not loc or loc.lower() in ("не указано","none","null","—","-"):
                 print(f"SKIP multiple_shoot: empty location ({s})")
                 continue
-            ok = await supa_insert("shoots", {
+            topic = (s.get("topic") or "").strip()
+            row = {
                 "date": s.get("date", today), "time": s.get("time",""),
-                "location": loc, "project": s.get("project",""),
+                "location": loc, "topic": topic or None, "project": s.get("project",""),
                 "people": s.get("people",""), "script": s.get("script",""),
                 "notes": s.get("notes",""), "status": "не снято"
-            })
+            }
+            row.update(shoot_price_fields(topic, s.get("project"), loc, s.get("notes")))
+            ok = await supa_insert("shoots", row)
             if ok: saved += 1
         return saved
 
@@ -463,6 +471,7 @@ async def apply_action(action, data):
         return False
 
     elif action == "add_tasks":
+        await load_price()
         kind = (data.get("kind") or "задача").strip().lower()
         if kind not in ("задача", "дизайн"):
             kind = "задача"
@@ -482,7 +491,7 @@ async def apply_action(action, data):
             if due.lower() in ("не указано", "none", "null", "—", "-", ""):
                 due = ""
             code = guess_price(title)
-            auto_amount = PRICE_BY_CODE[code]["sum"] if code else None
+            auto_amount = price_amount(code, 1) if code else None
             row = {
                 "title": title, "kind": kind, "status": "в работе",
                 "project_id": None, "assigned_by": assigned or None,
@@ -513,9 +522,7 @@ PRICE_SECTIONS = ["Реклама для таргета", "Подсъёмки д
                   "Предметная и портретная", "Дизайн", "Проектные услуги"]
 
 PRICE = [
-    {"code": "targ_pack5",     "sec": 0, "name": "Пакет · 5 роликов до 30 сек",   "sum": 6000},
-    {"code": "targ_roll",      "sec": 0, "name": "Ролик сверх пакета",            "sum": 700},
-    {"code": "targ_day",       "sec": 0, "name": "Дополнительный съёмочный день", "sum": 2000},
+    {"code": "targ_session",   "sec": 0, "name": "Съёмочная сессия · выезд + 1 сценарий", "sum": 2000, "step": 1000},
     {"code": "smm_pack",       "sec": 1, "name": "Пакет · 1,5-2 часа",            "sum": 3000},
     {"code": "smm_hour",       "sec": 1, "name": "Час съёмки сверх пакета",       "sum": 500},
     {"code": "smm_express",    "sec": 1, "name": "Экспресс · сдача в день съёмки","sum": 500},
@@ -540,9 +547,29 @@ PRICE = [
     {"code": "prj_yt",         "sec": 4, "name": "YouTube · 5-15 минут",          "sum": 6000, "from": True},
     {"code": "prj_interview",  "sec": 4, "name": "Интервью/подкаст 20+ мин",      "sum": 8000, "from": True},
     {"code": "prj_thumb",      "sec": 4, "name": "Обложка (превью)",              "sum": 500},
+    {"code": "targ_pack5",     "sec": 0, "name": "Пакет · 5 роликов (старый прайс)", "sum": 6000},
 ]
 
 PRICE_BY_CODE = {p["code"]: p for p in PRICE}
+
+
+async def load_price():
+    """Прайс из Supabase; если таблицы нет — встроенный."""
+    global PRICE_BY_CODE
+    try:
+        rows = await supa_get("price_list", 200, order="sort.asc")
+    except Exception:
+        rows = None
+    if rows:
+        PRICE_BY_CODE = {r["code"]: {"code": r["code"], "sec": int(r.get("sec") or 0),
+                                     "name": r.get("name") or r["code"],
+                                     "sum": float(r.get("sum") or 0),
+                                     "step": float(r.get("step") or 0),
+                                     "from": bool(r.get("is_from"))}
+                         for r in rows if r.get("code")}
+    else:
+        PRICE_BY_CODE = {p["code"]: p for p in PRICE}
+    return PRICE_BY_CODE
 
 # порядок важен: более специфичные правила выше.
 # (code, любое_из, ещё_одно_обязательное_из | None, стоп-слова | None)
@@ -564,8 +591,27 @@ PRICE_RULES = [
     ("smm_pack",       ["подсъём", "подсьём", "підйом", "дрессировк", "дресирув",
                         "канистерап", "каністерап", "мероприят", "захід"], None, None),
     ("portrait",       ["портрет"], None, None),
-    ("targ_pack5",     ["таргет", "реклам", "ролик"], None, None),
+    ("targ_session",   ["таргет", "реклам", "ролик"], None, None),
 ]
+
+
+def price_amount(code, qty=1, surch=0, extra=0):
+    p = PRICE_BY_CODE.get(code)
+    if not p:
+        return None
+    q = max(1, int(qty or 1))
+    step = p.get("step") or 0
+    base = p["sum"] + step * (q - 1) if step else p["sum"] * q
+    return round(base * (1 + (surch or 0) / 100) + (extra or 0))
+
+
+def shoot_price_fields(topic, project, location, notes=""):
+    text = " ".join([topic or "", project or "", location or "", notes or ""])
+    code = guess_price(text)
+    if not code:
+        return {}
+    return {"price_code": code, "amount": price_amount(code, 1),
+            "qty": 1, "surcharge": 0, "extra": 0}
 
 
 def guess_price(title):
@@ -776,7 +822,7 @@ async def cmd_today_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if not today_shoots and not today_events and not task_lines:
             lines.append("Сегодня свободно ✦")
         for s in today_shoots:
-            what = s.get("project") or s.get("location") or "съёмка"
+            what = s.get("topic") or s.get("project") or s.get("location") or "съёмка"
             done = "✅" if s.get("status") == "снято" else "🔸"
             lines.append(f"{done} {(s.get('time') or '')} — {what}")
         for e in today_events:
@@ -863,7 +909,7 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 if not today_shoots and not today_events and not task_lines:
                     lines.append("Сегодня свободно ✦")
                 for s in today_shoots:
-                    what = s.get("project") or s.get("location") or "съёмка"
+                    what = s.get("topic") or s.get("project") or s.get("location") or "съёмка"
                     done = "✅" if s.get("status") == "снято" else "🔸"
                     lines.append(f"{done} {(s.get('time') or '')} — {what}")
                 for e in today_events:
@@ -1085,7 +1131,7 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 continue
             cancelled = s.get("status") == "отменена"
             amt = 0 if cancelled else s.get("amount")
-            rows.append((d, "съёмка", (s.get("project") or s.get("location") or "съёмка") + (" ✕отменена" if cancelled else ""),
+            rows.append((d, "съёмка", (s.get("topic") or s.get("project") or s.get("location") or "съёмка") + (" ✕отменена" if cancelled else ""),
                          s.get("assigned_by") or "", s.get("price_code") or "", amt))
         rows.sort(key=lambda r: r[0])
         if not rows:
@@ -1730,7 +1776,7 @@ def main():
             print(f"menu button: {e}")
 
     app.post_init = post_init
-    print("🦀 Rak bot v31 started!")
+    print("🦀 Rak bot v33 started!")
     app.run_polling(drop_pending_updates=True)
 
 

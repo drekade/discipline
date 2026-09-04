@@ -363,6 +363,7 @@ textarea.f{resize:none;line-height:1.6}
       <button class="nb" onclick="showPage('family',this)"><span class="icon">👨‍👩‍👧</span>Семья</button>
       <button class="nb" onclick="showPage('week',this)"><span class="icon">📊</span>Итоги</button>
       <button class="nb" onclick="showPage('report',this)"><span class="icon">💰</span>Отчёт</button>
+      <button class="nb" onclick="showPage('price',this)"><span class="icon">🏷</span>Прайс</button>
       <button class="nb" onclick="showPage('timer',this)"><span class="icon">⏱</span>Таймер</button>
     </nav>
     <div class="sidebar-footer">
@@ -389,6 +390,7 @@ textarea.f{resize:none;line-height:1.6}
       <button class="mob-nb" onclick="showPage('family',this,true)">👨‍👩‍👧 Семья</button>
       <button class="mob-nb" onclick="showPage('week',this,true)">📊 Итоги</button>
       <button class="mob-nb" onclick="showPage('report',this,true)">💰 Отчёт</button>
+      <button class="mob-nb" onclick="showPage('price',this,true)">🏷 Прайс</button>
       <button class="mob-nb" onclick="showPage('timer',this,true)">⏱ Таймер</button>
     </div>
   </div>
@@ -599,6 +601,25 @@ textarea.f{resize:none;line-height:1.6}
     </div>
 
     <!-- WEEK -->
+    <!-- PRICE -->
+    <div class="page" id="page-price">
+      <div class="page-title">Прайс</div>
+      <div class="page-sub">Позиции и цены. Правь здесь — расчёт сразу поедет по новым</div>
+      <div class="cal-wrap" style="margin-bottom:16px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn-primary" onclick="addPriceRow()">+ Позиция</button>
+          <button class="btn-ghost" onclick="seedPriceList()">↺ Загрузить прайс из файла</button>
+          <span style="font-size:12px;color:var(--t3);margin-left:auto" id="price-src"></span>
+        </div>
+        <div style="font-size:12px;color:var(--t2);margin-top:10px;line-height:1.5">
+          <b>Шаг</b> — доплата за каждую следующую единицу (реклама: 2000 + 1000 за сценарий).<br>
+          <b>За единицу</b> — цена умножается на количество (предметка: 800 × товар).<br>
+          <b>от</b> — цена договорная, показывается как «от N ₴».
+        </div>
+      </div>
+      <div id="price-list"></div>
+    </div>
+
     <!-- REPORT -->
     <div class="page" id="page-report">
       <div class="page-title">Отчёт</div>
@@ -710,7 +731,8 @@ textarea.f{resize:none;line-height:1.6}
     <input type="hidden" id="es-id">
     <div class="form-row"><label class="field-label">Дата</label><input type="date" id="es-date"></div>
     <div class="form-row"><label class="field-label">Время</label><input type="time" id="es-time"></div>
-    <div class="form-row"><label class="field-label">Проект (тема)</label><select id="es-proj"><option value="">— нет —</option></select></div>
+    <div class="form-row"><label class="field-label">Тема съёмки</label><input type="text" id="es-topic" placeholder="Реклама французьких бульдогів"></div>
+    <div class="form-row"><label class="field-label">Проект</label><select id="es-proj"><option value="">— нет —</option></select></div>
     <div class="form-row"><label class="field-label">Локация</label><input type="text" id="es-loc"></div>
     <div class="form-row"><label class="field-label">Участники</label><input type="text" id="es-people"></div>
     <div class="form-row"><label class="field-label">Статус</label>
@@ -729,7 +751,7 @@ textarea.f{resize:none;line-height:1.6}
       <select id="es-price" onchange="esRecalc()"></select>
     </div>
     <div style="display:flex;gap:8px">
-      <div class="form-row" style="flex:1"><label class="field-label">Кол-во</label><input type="number" id="es-qty" min="1" step="1" value="1" oninput="esRecalc()"></div>
+      <div class="form-row" style="flex:1"><label class="field-label" id="es-qty-label">Кол-во</label><input type="number" id="es-qty" min="1" step="1" value="1" oninput="esRecalc()"></div>
       <div class="form-row" style="flex:1"><label class="field-label">Надбавка</label>
         <select id="es-surch" onchange="esRecalc()"><option value="0">нет</option><option value="30">+30%</option></select>
       </div>
@@ -769,6 +791,7 @@ textarea.f{resize:none;line-height:1.6}
     <div class="form-row"><label class="field-label">Дата</label><input type="date" id="sh-date"></div>
     <div class="form-row"><label class="field-label">Время</label><input type="time" id="sh-time"></div>
     <div class="form-row"><label class="field-label">Локация</label><input type="text" id="sh-loc" placeholder="Где?"></div>
+    <div class="form-row"><label class="field-label">Тема съёмки</label><input type="text" id="sh-topic" placeholder="Реклама французьких бульдогів"></div>
     <div class="form-row"><label class="field-label">Проект</label><select id="sh-proj"><option value="">— выбери —</option></select></div>
     <div class="form-row"><label class="field-label">Участники</label><input type="text" id="sh-people" placeholder="Имена"></div>
     <div class="form-row"><label class="field-label">Ссылка на сценарий</label><input type="text" id="sh-script" placeholder="https://..."></div>
@@ -793,7 +816,7 @@ textarea.f{resize:none;line-height:1.6}
       <select id="tc-price" onchange="tcRecalc()"></select>
     </div>
     <div style="display:flex;gap:8px">
-      <div class="form-row" style="flex:1"><label class="field-label">Кол-во</label><input type="number" id="tc-qty" min="1" step="1" value="1" oninput="tcRecalc()"></div>
+      <div class="form-row" style="flex:1"><label class="field-label" id="tc-qty-label">Кол-во</label><input type="number" id="tc-qty" min="1" step="1" value="1" oninput="tcRecalc()"></div>
       <div class="form-row" style="flex:1"><label class="field-label">Надбавка</label>
         <select id="tc-surch" onchange="tcRecalc()"><option value="0">нет</option><option value="30">+30%</option></select>
       </div>
@@ -1014,16 +1037,14 @@ const PC=['#C4552A','#1A5FA5','#4A42B5','#2E6E1A','#C47A0A'];
 
 // ── ПРАЙС (август 2026) ───────────────────────────────
 const PRICE_SECTIONS=['Реклама для таргета','Подсъёмки для SMM','Предметная и портретная','Дизайн','Проектные услуги'];
-const PRICE=[
-  {code:'targ_pack5',    sec:0, name:'Пакет · 5 роликов до 30 сек', sum:6000},
-  {code:'targ_roll',     sec:0, name:'Ролик сверх пакета',          sum:700},
-  {code:'targ_day',      sec:0, name:'Дополнительный съёмочный день',sum:2000},
+const PRICE_FALLBACK=[
+  {code:'targ_session',  sec:0, name:'Съёмочная сессия · выезд + 1 сценарий', sum:2000, step:1000, unit:'сценариев'},
   {code:'smm_pack',      sec:1, name:'Пакет · 1,5–2 часа',          sum:3000},
-  {code:'smm_hour',      sec:1, name:'Час съёмки сверх пакета',     sum:500},
+  {code:'smm_hour',      sec:1, name:'Час съёмки сверх пакета',     sum:500, per_unit:true},
   {code:'smm_express',   sec:1, name:'Экспресс · сдача в день съёмки',sum:500},
   {code:'obj_1',         sec:2, name:'Предметка · 1 товар',         sum:1000},
-  {code:'obj_2_3',       sec:2, name:'Предметка · 2–3 товара (за товар)',sum:800},
-  {code:'obj_4p',        sec:2, name:'Предметка · 4+ товаров (за товар)',sum:700},
+  {code:'obj_2_3',       sec:2, name:'Предметка · 2–3 товара (за товар)',sum:800, per_unit:true},
+  {code:'obj_4p',        sec:2, name:'Предметка · 4+ товаров (за товар)',sum:700, per_unit:true},
   {code:'portrait',      sec:2, name:'Портретная съёмка',           sum:2000, from:true},
   {code:'des_banner1',   sec:3, name:'Афиша, плакат, баннер · 1 макет',sum:1500},
   {code:'des_series23',  sec:3, name:'Серия 2–3 макета',            sum:3500},
@@ -1037,12 +1058,22 @@ const PRICE=[
   {code:'des_fix',       sec:3, name:'Правки в готовом макете',     sum:400},
   {code:'prj_course',    sec:4, name:'Обучающий курс под ключ',     sum:20000,from:true},
   {code:'prj_relocal',   sec:4, name:'Ремонтаж и локализация курса',sum:15000,from:true},
-  {code:'prj_inserts',   sec:4, name:'Локализация вставок · за видео',sum:500},
+  {code:'prj_inserts',   sec:4, name:'Локализация вставок · за видео',sum:500, per_unit:true},
   {code:'prj_short',     sec:4, name:'Видео до 3 минут',            sum:2500, from:true},
   {code:'prj_yt',        sec:4, name:'YouTube · 5–15 минут',        sum:6000, from:true},
   {code:'prj_interview', sec:4, name:'Интервью/подкаст 20+ мин',    sum:8000, from:true},
-  {code:'prj_thumb',     sec:4, name:'Обложка (превью)',            sum:500}
+  {code:'prj_thumb',     sec:4, name:'Обложка (превью)',            sum:500, per_unit:true},
+  {code:'targ_pack5',    sec:0, name:'Пакет · 5 роликов (старый прайс)',sum:6000}
 ];
+let PRICE=PRICE_FALLBACK.slice();
+function applyPriceList(rows){
+  if(!rows||!rows.length){PRICE=PRICE_FALLBACK.slice();return;}
+  PRICE=rows.slice()
+    .sort((a,b)=>(a.sec-b.sec)||((a.sort||0)-(b.sort||0))||String(a.name||'').localeCompare(String(b.name||'')))
+    .map(r=>({code:r.code,sec:Number(r.sec)||0,name:r.name||r.code,sum:Number(r.sum)||0,
+              step:Number(r.step)||0,per_unit:!!r.per_unit,from:!!r.is_from,sort:r.sort||0,id:r.id}));
+}
+
 // правила угадывания позиции прайса (те же, что в боте)
 const PRICE_RULES=[
   ['obj_1',          ['предметк','предметн'],null,null],
@@ -1060,7 +1091,7 @@ const PRICE_RULES=[
   ['prj_yt',         ['youtube','ютуб'],null,null],
   ['smm_pack',       ['подсъём','подсьём','підйом','дрессировк','дресирув','канистерап','каністерап','мероприят','захід'],null,null],
   ['portrait',       ['портрет'],null,null],
-  ['targ_pack5',     ['таргет','реклам','ролик'],null,null]
+  ['targ_session',   ['таргет','реклам','ролик'],null,null]
 ];
 function guessPrice(text){
   const t=(text||'').toLowerCase();
@@ -1084,8 +1115,13 @@ function calcAmount(code,qty,surch,extra){
   const p=priceItem(code);
   if(!p)return null;
   const q=parseFloat(qty)||1, s=parseFloat(surch)||0, e=parseFloat(extra)||0;
-  return Math.round(p.sum*q*(1+s/100)+e);
+  let base;
+  if(p.step)base=p.sum+p.step*Math.max(0,q-1);   // выезд + следующие единицы
+  else if(p.per_unit)base=p.sum*q;               // цена за единицу
+  else base=p.sum*q;
+  return Math.round(base*(1+s/100)+e);
 }
+function priceUnit(code){const p=priceItem(code);return (p&&p.unit)?p.unit:'';}
 function priceOptionsHtml(sel){
   let h='<option value="">— вне прайса —</option>';
   PRICE_SECTIONS.forEach((secName,si)=>{
@@ -1134,12 +1170,13 @@ async function dbDelete(t,id){
 
 async function load(){
   try{
-    const [s,p,tk,i,d,ev,fm,sc]=await Promise.all([
+    const [s,p,tk,i,d,ev,fm,sc,pl]=await Promise.all([
       dbGet('shoots'),dbGet('projects'),dbGet('tasks').catch(()=>[]),
       dbGet('ideas'),dbGet('diary'),dbGet('events').catch(()=>[]),dbGet('family').catch(()=>[]),
-      dbGet('scripts').catch(()=>[])
+      dbGet('scripts').catch(()=>[]),dbGet('price_list').catch(()=>[])
     ]);
-    DB={shoots:s||[],projects:p||[],tasks:tk||[],ideas:i||[],diary:d||[],events:ev||[],family:fm||[],scripts:sc||[]};
+    DB={shoots:s||[],projects:p||[],tasks:tk||[],ideas:i||[],diary:d||[],events:ev||[],family:fm||[],scripts:sc||[],price_list:pl||[]};
+    applyPriceList(DB.price_list);
     setSyncOk(true);renderAll();
   }catch(e){setSyncOk(false);}
 }
@@ -1151,7 +1188,7 @@ function setSyncOk(ok){
 
 function renderAll(){
   renderHome();renderAllCal();renderShootsCal();renderLifeCal();renderShoots();renderEvents();
-  renderProjects();renderStandaloneTasks();renderIdeas();renderDiary();renderFamily();renderWeek();renderScripts();renderReportSafe();updateSelects();
+  renderProjects();renderStandaloneTasks();renderIdeas();renderDiary();renderFamily();renderWeek();renderScripts();renderPriceList();renderReportSafe();updateSelects();
 }
 
 function fmtShort(d){
@@ -1234,7 +1271,7 @@ function renderShootDayDetail(){
     const isCancelled=s.status==='отменена';
     return`<div class="shoot-card" style="border-top:4px solid ${isCancelled?'#C4552A':clr};border-left:none;${isCancelled?'opacity:.55':''};margin-bottom:10px" onclick="openEditShoot(${s.id})">
       <div class="shoot-header">
-        <div class="shoot-title">${s.project||s.location||'Съёмка'}${isCancelled?' <span style=\"font-size:10px;color:#C4552A;font-weight:600\">✕ отменена</span>':''}</div>
+        <div class="shoot-title">${s.topic||s.project||s.location||'Съёмка'}${isCancelled?' <span style=\"font-size:10px;color:#C4552A;font-weight:600\">✕ отменена</span>':''}</div>
       </div>
       <div class="shoot-meta">${s.time?s.time+' · ':''}${s.project&&s.location?s.location:''}${s.people?(s.project&&s.location?' · ':'')+s.people:''}${(s.amount!==null&&s.amount!==undefined)?' · <b>'+fmtMoney(s.amount)+'</b>':''}</div>
       ${s.notes?`<div class="shoot-note">${s.notes.length>80?s.notes.substring(0,80)+'...':s.notes}</div>`:''}
@@ -1362,7 +1399,7 @@ function renderShoots(){
     const isCancelled=s.status==='отменена';
     return`<div class="shoot-card" style="border-top:4px solid ${isCancelled?'#C4552A':c};border-left:none;${isCancelled?'opacity:.55':''}" onclick="openEditShoot(${s.id})">
       <div class="shoot-header">
-        <div class="shoot-title">${s.project||s.location||'Съёмка'}${isCancelled?' <span style=\"font-size:10px;color:#C4552A;font-weight:600\">✕ отменена</span>':''}</div>
+        <div class="shoot-title">${s.topic||s.project||s.location||'Съёмка'}${isCancelled?' <span style=\"font-size:10px;color:#C4552A;font-weight:600\">✕ отменена</span>':''}</div>
         <span class="shoot-badge" style="background:${isCancelled?'#C4552A':c}">${s.date?fmtShort(s.date):'⏳'}</span>
       </div>
       <div class="shoot-meta">${s.time?s.time+' · ':''}${s.project&&s.location?s.location:''}${s.people?(s.project&&s.location?' · ':'')+s.people:''}${(s.amount!==null&&s.amount!==undefined)?' · <b>'+fmtMoney(s.amount)+'</b>':''}</div>
@@ -2005,6 +2042,9 @@ async function applyAssign(){
 }
 function tcRecalc(){
   const code=document.getElementById('tc-price').value;
+  const u=priceUnit(code);
+  const ql=document.getElementById('tc-qty-label');
+  if(ql)ql.textContent=u?('Кол-во ('+u+')'):'Кол-во';
   const auto=calcAmount(code,document.getElementById('tc-qty').value,
                         document.getElementById('tc-surch').value,
                         document.getElementById('tc-extra').value);
@@ -2199,7 +2239,10 @@ function updateSelects(){
 }
 
 async function saveShoot(){
-  const d={date:document.getElementById('sh-date').value,time:document.getElementById('sh-time').value,location:document.getElementById('sh-loc').value,project:document.getElementById('sh-proj').value,people:document.getElementById('sh-people').value,script:document.getElementById('sh-script').value,notes:document.getElementById('sh-notes').value,status:'не снято'};
+  const topic=document.getElementById('sh-topic').value.trim();
+  const d={date:document.getElementById('sh-date').value,time:document.getElementById('sh-time').value,location:document.getElementById('sh-loc').value,project:document.getElementById('sh-proj').value,topic:topic||null,people:document.getElementById('sh-people').value,script:document.getElementById('sh-script').value,notes:document.getElementById('sh-notes').value,status:'не снято'};
+  const autoP=autoPriceFor([topic,d.project,d.location].filter(Boolean).join(' '));
+  if(autoP){d.price_code=autoP.code;d.amount=autoP.amount;d.qty=1;d.surcharge=0;d.extra=0;}
   if(!d.date&&!d.location){alert('Укажи дату или локацию');return;}
   await dbPost('shoots',d);hideModal('modal-shoot');await load();
 }
@@ -2602,8 +2645,9 @@ function collectWork(from,to){
     else if(s.amount!==null&&s.amount!==undefined)amt=Number(s.amount);
     else amt=catRate;   // ставка категории, если у съёмки своей цены нет
     out.push({id:s.id,src:'shoots',date:d,kind:'съёмка',
-      title:s.project||s.location||'съёмка',who:s.assigned_by||(inProject?(pp.proj.assigned_by||''):''),
-      time:s.time||'',place:s.location||'',people:s.people||'',
+      title:s.topic||s.project||s.location||'съёмка',
+      who:s.assigned_by||(parent?(parent.assigned_by||''):''),
+      time:s.time||'',place:s.location||'',people:s.people||'',proj:s.project||'',
       code:inProject?(pp.proj.price_code||''):(s.price_code||(catRate!==null?(parent.price_code||''):'')),
       amount:amt,
       qty:s.qty||1,surch:s.surcharge||0,extra:s.extra||0,
@@ -2627,7 +2671,7 @@ async function autoFillPrices(){
     if(a)plan.push({table:'tasks',id:t.id,name:t.title,code:a.code,amount:a.amount});
   });
   shoots.forEach(s=>{
-    const a=autoPriceFor([s.project,s.location,s.notes].filter(Boolean).join(' '));
+    const a=autoPriceFor([s.topic,s.project,s.location,s.notes].filter(Boolean).join(' '));
     if(a)plan.push({table:'shoots',id:s.id,name:s.project||s.location,code:a.code,amount:a.amount});
   });
   const skipped=(tasks.length+shoots.length)-plan.length;
@@ -2695,6 +2739,7 @@ function workDetails(w){
   if(w.time)bits.push(w.time);
   if(w.place&&w.place!==w.title)bits.push('📍 '+w.place);
   if(w.people)bits.push('👥 '+w.people);
+  if(w.proj&&w.proj!==w.title)bits.push('🎬 '+w.proj);
   return bits;
 }
 function reportRowHtml(w){
@@ -2820,6 +2865,92 @@ function renderReportSafe(){
   if(!el.value){setReportPreset('month');return;}
   renderReport();
 }
+// ── ПРАЙС ─────────────────────────────────────────────
+function renderPriceList(){
+  const el=document.getElementById('price-list');
+  if(!el)return;
+  const rows=DB.price_list||[];
+  document.getElementById('price-src').textContent=rows.length
+    ? `${rows.length} позиций из базы`
+    : 'таблица пуста — работает встроенный прайс';
+  if(!rows.length){
+    el.innerHTML='<div class="cal-wrap" style="color:var(--t3);font-style:italic">Нажми «Загрузить прайс из файла», чтобы перенести позиции в базу и править их здесь.</div>';
+    return;
+  }
+  let html='';
+  PRICE_SECTIONS.forEach((sec,si)=>{
+    const list=rows.filter(r=>Number(r.sec)===si).sort((a,b)=>(a.sort||0)-(b.sort||0));
+    if(!list.length)return;
+    html+=`<div class="cal-wrap" style="margin-bottom:14px">
+      <div style="font-family:var(--fi);font-size:16px;font-weight:600;margin-bottom:8px">${sec}</div>
+      ${list.map(r=>priceRowHtml(r)).join('')}
+    </div>`;
+  });
+  const other=rows.filter(r=>Number(r.sec)<0||Number(r.sec)>=PRICE_SECTIONS.length);
+  if(other.length){
+    html+=`<div class="cal-wrap" style="margin-bottom:14px">
+      <div style="font-family:var(--fi);font-size:16px;font-weight:600;margin-bottom:8px">Прочее</div>
+      ${other.map(r=>priceRowHtml(r)).join('')}</div>`;
+  }
+  el.innerHTML=html;
+}
+function priceRowHtml(r){
+  const secOpts=PRICE_SECTIONS.map((s,i)=>`<option value="${i}"${Number(r.sec)===i?' selected':''}>${s}</option>`).join('');
+  return `<div style="border-bottom:1px solid var(--b);padding:10px 0" data-pid="${r.id}">
+    <input type="text" value="${(r.name||'').replace(/"/g,'&quot;')}" onchange="savePriceRow(${r.id},'name',this.value)"
+      style="font-size:14px;font-weight:600;margin-bottom:6px">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <label style="font-size:11px;color:var(--t3)">цена
+        <input type="number" value="${r.sum||0}" step="50" onchange="savePriceRow(${r.id},'sum',this.value)" style="width:100px"></label>
+      <label style="font-size:11px;color:var(--t3)">шаг
+        <input type="number" value="${r.step||0}" step="50" onchange="savePriceRow(${r.id},'step',this.value)" style="width:90px"></label>
+      <label style="font-size:11px;color:var(--t3)">ед. изм.
+        <input type="text" value="${r.unit||''}" placeholder="сценариев" onchange="savePriceRow(${r.id},'unit',this.value)" style="width:110px"></label>
+      <label style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:4px">
+        <input type="checkbox" ${r.per_unit?'checked':''} onchange="savePriceRow(${r.id},'per_unit',this.checked)" style="width:auto;margin:0">за единицу</label>
+      <label style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:4px">
+        <input type="checkbox" ${r.is_from?'checked':''} onchange="savePriceRow(${r.id},'is_from',this.checked)" style="width:auto;margin:0">от</label>
+      <select onchange="savePriceRow(${r.id},'sec',this.value)" style="width:auto;font-size:12px">${secOpts}</select>
+      <span style="font-size:11px;color:var(--t3)">код: ${r.code||'—'}</span>
+      <span onclick="deletePriceRow(${r.id})" style="cursor:pointer;color:var(--t3);margin-left:auto" title="удалить">✕</span>
+    </div>
+  </div>`;
+}
+async function savePriceRow(id,field,val){
+  const patch={};
+  if(field==='sum'||field==='step'||field==='sec')patch[field]=parseFloat(val)||0;
+  else if(field==='per_unit'||field==='is_from')patch[field]=!!val;
+  else patch[field]=val;
+  await dbPatch('price_list',id,patch);
+  await load();
+}
+async function deletePriceRow(id){
+  const r=(DB.price_list||[]).find(x=>x.id===id);
+  if(!confirm(`Удалить позицию «${r?r.name:''}»?\nРаботы с этой позицией останутся со своими суммами.`))return;
+  await dbDelete('price_list',id);await load();
+}
+async function addPriceRow(){
+  const name=prompt('Название позиции:');
+  if(!name)return;
+  const sum=parseFloat(prompt('Цена, ₴:','0'))||0;
+  const code='custom_'+Date.now().toString(36);
+  await dbPost('price_list',{code,sec:3,name,sum,step:0,per_unit:false,is_from:false,sort:999});
+  await load();
+}
+async function seedPriceList(){
+  if((DB.price_list||[]).length&&!confirm('В базе уже есть позиции. Добавить недостающие из файла?'))return;
+  const have={};(DB.price_list||[]).forEach(r=>{have[r.code]=1;});
+  let n=0;
+  for(let i=0;i<PRICE_FALLBACK.length;i++){
+    const p=PRICE_FALLBACK[i];
+    if(have[p.code])continue;
+    await dbPost('price_list',{code:p.code,sec:p.sec,name:p.name,sum:p.sum,
+      step:p.step||0,per_unit:!!p.per_unit,is_from:!!p.from,unit:p.unit||null,sort:i});
+    n++;
+  }
+  await load();
+  alert(n?`Добавлено позиций: ${n}`:'Всё уже на месте.');
+}
 function renderScripts(){
   const el=document.getElementById('scripts-list');
   if(!el)return;
@@ -2864,6 +2995,9 @@ function hideModal(id){document.getElementById(id).classList.add('hidden');}
 
 function esRecalc(){
   const code=document.getElementById('es-price').value;
+  const u=priceUnit(code);
+  const ql=document.getElementById('es-qty-label');
+  if(ql)ql.textContent=u?('Кол-во ('+u+')'):'Кол-во';
   const auto=calcAmount(code,document.getElementById('es-qty').value,
                         document.getElementById('es-surch').value,
                         document.getElementById('es-extra').value);
@@ -2885,6 +3019,7 @@ function openEditShoot(id){
   document.getElementById('es-status').value=s.status||'не снято';
   document.getElementById('es-script').value=s.script||'';
   document.getElementById('es-notes').value=s.notes||'';
+  document.getElementById('es-topic').value=s.topic||'';
   document.getElementById('es-assigned').value=s.assigned_by||'';
   document.getElementById('es-price').innerHTML=priceOptionsHtml(s.price_code||'');
   document.getElementById('es-qty').value=s.qty||1;
@@ -2941,6 +3076,7 @@ async function saveEditShoot(){
     status,
     script:document.getElementById('es-script').value,
     notes,
+    topic:document.getElementById('es-topic').value.trim()||null,
     assigned_by:document.getElementById('es-assigned').value.trim()||null,
     price_code:document.getElementById('es-price').value||null,
     qty:parseFloat(document.getElementById('es-qty').value)||1,
