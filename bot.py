@@ -519,7 +519,8 @@ def fmt_date(date_str):
 
 
 PRICE_SECTIONS = ["Реклама для таргета", "Подсъёмки для SMM",
-                  "Предметная и портретная", "Дизайн", "Проектные услуги"]
+                  "Предметная и портретная", "Дизайн", "Проектные услуги",
+                  "Доплаты и компенсации"]
 
 PRICE = [
     {"code": "targ_session",   "sec": 0, "name": "Съёмочная сессия · выезд + 1 сценарий", "sum": 2000, "step": 1000},
@@ -548,6 +549,9 @@ PRICE = [
     {"code": "prj_interview",  "sec": 4, "name": "Интервью/подкаст 20+ мин",      "sum": 8000, "from": True},
     {"code": "prj_thumb",      "sec": 4, "name": "Обложка (превью)",              "sum": 500},
     {"code": "targ_pack5",     "sec": 0, "name": "Пакет · 5 роликов (старый прайс)", "sum": 6000},
+    {"code": "add_overtime",   "sec": 5, "name": "Переработка на площадке (сверх 2 часов)", "sum": 1000},
+    {"code": "add_travel",     "sec": 5, "name": "Выезд без съёмки · дорога",      "sum": 600},
+    {"code": "add_travel_fail","sec": 5, "name": "Сорванный выезд по вине заказчика", "sum": 2000},
 ]
 
 PRICE_BY_CODE = {p["code"]: p for p in PRICE}
@@ -1134,7 +1138,10 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             if not d or d < f_s or d > t_s:
                 continue
             cancelled = s.get("status") == "отменена"
-            amt = 0 if cancelled else s.get("amount")
+            if cancelled:
+                amt = s.get("amount") if s.get("paid_cancelled") else 0
+            else:
+                amt = s.get("amount")
             rows.append((d, "съёмка", (s.get("topic") or s.get("project") or s.get("location") or "съёмка") + (" ✕отменена" if cancelled else ""),
                          s.get("assigned_by") or "", s.get("price_code") or "", amt))
         rows.sort(key=lambda r: r[0])
@@ -1780,7 +1787,7 @@ def main():
             print(f"menu button: {e}")
 
     app.post_init = post_init
-    print("🦀 Rak bot v34 started!")
+    print("🦀 Rak bot v35 started!")
     app.run_polling(drop_pending_updates=True)
 
 

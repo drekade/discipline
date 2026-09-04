@@ -761,6 +761,10 @@ textarea.f{resize:none;line-height:1.6}
       <div class="form-row" style="flex:1"><label class="field-label">Сумма ₴ <span id="es-hint" style="font-weight:400;color:var(--t3)"></span></label><input type="number" id="es-amount" step="50"></div>
       <div class="form-row" style="flex:1"><label class="field-label">Сдано</label><input type="date" id="es-delivered"></div>
     </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t2);margin-bottom:12px;cursor:pointer">
+      <input type="checkbox" id="es-paid-cancelled" style="width:auto;margin:0">
+      Оплачивается, хотя съёмка отменена (выезд, дорога, сорванный выезд)
+    </label>
     <div class="form-row"><label class="field-label">Ссылка на сценарий (script)</label><input type="text" id="es-script" placeholder="https://..."></div>
     <div class="form-row"><label class="field-label">Заметки (весь журнал)</label><textarea class="f" id="es-notes" rows="8" style="font-family:var(--fi);font-size:12px"></textarea></div>
     <div style="display:flex;gap:10px;margin-top:14px">
@@ -1043,7 +1047,7 @@ const SH={'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/j
 const PC=['#C4552A','#1A5FA5','#4A42B5','#2E6E1A','#C47A0A'];
 
 // ── ПРАЙС (август 2026) ───────────────────────────────
-const PRICE_SECTIONS=['Реклама для таргета','Подсъёмки для SMM','Предметная и портретная','Дизайн','Проектные услуги'];
+const PRICE_SECTIONS=['Реклама для таргета','Подсъёмки для SMM','Предметная и портретная','Дизайн','Проектные услуги','Доплаты и компенсации'];
 const PRICE_FALLBACK=[
   {code:'targ_session',  sec:0, name:'Съёмочная сессия · выезд + 1 сценарий', sum:2000, step:1000, unit:'сценариев'},
   {code:'smm_pack',      sec:1, name:'Пакет · 1,5–2 часа',          sum:3000},
@@ -1070,7 +1074,10 @@ const PRICE_FALLBACK=[
   {code:'prj_yt',        sec:4, name:'YouTube · 5–15 минут',        sum:6000, from:true},
   {code:'prj_interview', sec:4, name:'Интервью/подкаст 20+ мин',    sum:8000, from:true},
   {code:'prj_thumb',     sec:4, name:'Обложка (превью)',            sum:500, per_unit:true},
-  {code:'targ_pack5',    sec:0, name:'Пакет · 5 роликов (старый прайс)',sum:6000}
+  {code:'targ_pack5',    sec:0, name:'Пакет · 5 роликов (старый прайс)',sum:6000},
+  {code:'add_overtime',  sec:5, name:'Переработка на площадке (сверх 2 часов)',sum:1000},
+  {code:'add_travel',    sec:5, name:'Выезд без съёмки · дорога',      sum:600},
+  {code:'add_travel_fail',sec:5,name:'Сорванный выезд по вине заказчика',sum:2000}
 ];
 let PRICE=PRICE_FALLBACK.slice();
 function applyPriceList(rows){
@@ -2671,7 +2678,7 @@ function collectWork(from,to){
     const catRate=(parent&&(parent.billing||'category')==='category'
                    &&parent.amount!==null&&parent.amount!==undefined)?Number(parent.amount):null;
     let amt;
-    if(cancelled)amt=0;
+    if(cancelled)amt=s.paid_cancelled?((s.amount===null||s.amount===undefined)?null:Number(s.amount)):0;
     else if(inProject)amt=pp.shares[s.id];
     else if(s.amount!==null&&s.amount!==undefined)amt=Number(s.amount);
     else amt=catRate;   // ставка категории, если у съёмки своей цены нет
@@ -2796,7 +2803,7 @@ function reportRowHtml(w){
   return`<div onclick="${opener}" title="открыть и поправить"
     style="padding:9px 0;border-bottom:1px solid var(--b);cursor:pointer${w.cancelled?';opacity:.55':''}">
     <div style="display:flex;gap:8px;align-items:baseline">
-      <span style="flex:1;font-size:14px;font-weight:600">${ic} ${w.title}${w.cancelled?' <span style="font-size:10px;color:#C4552A">✕ отменена</span>':''}</span>
+      <span style="flex:1;font-size:14px;font-weight:600">${ic} ${w.title}${w.cancelled?` <span style="font-size:10px;color:#C4552A">✕ отменена${w.amount?' · компенсация':''}</span>`:''}</span>
       ${money}
     </div>
     <div style="font-size:12px;color:var(--t3);margin-top:2px">
@@ -2851,7 +2858,7 @@ function exportReport(){
       if(w.done)dates.push((w.kind==='съёмка'?'сдано ':'сдано ')+fmtShort(w.done));
       const det=workDetails(w);
       blocks+=`<tr${w.cancelled?' class="cancel"':''}>
-        <td>${w.title}${w.cancelled?' <i>(отменена)</i>':''}<div class="sub">${p?p.name:'вне прайса'}${dates.length?' · '+dates.join(' · '):''}</div>${det.length?`<div class="sub">${det.join(' · ')}</div>`:''}</td>
+        <td>${w.title}${w.cancelled?(w.amount?' <i>(отменена, компенсация)</i>':' <i>(отменена)</i>'):''}<div class="sub">${p?p.name:'вне прайса'}${dates.length?' · '+dates.join(' · '):''}</div>${det.length?`<div class="sub">${det.join(' · ')}</div>`:''}</td>
         <td>${w.who||''}</td>
         <td>${fmtShort(w.date)}</td>
         <td class="r">${w.amount===null?'—':fmtMoney(w.amount)}</td></tr>`;
@@ -3062,6 +3069,7 @@ function openEditShoot(id){
   if(s.amount!==null&&s.amount!==undefined)esAmt.dataset.touched='1';
   esAmt.oninput=()=>{esAmt.dataset.touched='1';};
   document.getElementById('es-delivered').value=(s.delivered_date||'').slice(0,10);
+  document.getElementById('es-paid-cancelled').checked=!!s.paid_cancelled;
   esRecalc();
   // показываем поле причины если отменена
   const cancelWrap=document.getElementById('es-cancel-wrap');
@@ -3114,7 +3122,8 @@ async function saveEditShoot(){
     surcharge:parseFloat(document.getElementById('es-surch').value)||0,
     extra:parseFloat(document.getElementById('es-extra').value)||0,
     amount:document.getElementById('es-amount').value===''?null:parseFloat(document.getElementById('es-amount').value),
-    delivered_date:document.getElementById('es-delivered').value||null
+    delivered_date:document.getElementById('es-delivered').value||null,
+    paid_cancelled:document.getElementById('es-paid-cancelled').checked
   };
   try{
     const r=await fetch(`${SB}/rest/v1/shoots?id=eq.${id}`,{
