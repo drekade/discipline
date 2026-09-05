@@ -497,6 +497,7 @@ textarea.f{resize:none;line-height:1.6}
       <div class="sec-row">
         <div class="sec-title">Все съёмки</div>
         <div style="display:flex;gap:6px">
+          <button class="btn-ghost" onclick="openTopics()">🏷 Темы</button>
           <button class="btn-ghost" onclick="openAssign()">🗂 Разобрать</button>
           <button class="btn-ghost" onclick="showModal('modal-shoot')">+ Съёмка</button>
         </div>
@@ -881,6 +882,27 @@ textarea.f{resize:none;line-height:1.6}
     <div class="form-row"><label class="field-label">Описание</label><textarea class="f" id="pr-desc" rows="2" placeholder="О чём?"></textarea></div>
     <div class="form-row"><label class="field-label">Ссылка</label><input type="text" id="pr-link" placeholder="https://..."></div>
     <button class="btn-primary full" onclick="saveProject()">Сохранить</button>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="modal-topics">
+  <div class="modal" style="max-width:640px;max-height:90vh;overflow-y:auto">
+    <div class="modal-head">
+      <span class="modal-title">Темы съёмок</span>
+      <button class="modal-close" onclick="hideModal('modal-topics')">✕</button>
+    </div>
+    <div style="font-size:13px;color:var(--t3);margin-bottom:12px">
+      О чём была съёмка. Это название попадёт в отчёт вместо локации, и по нему определится цена.
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <select id="tp-filter" onchange="renderTopicsList()" style="width:auto">
+        <option value="none">Только без темы</option>
+        <option value="all">Все съёмки</option>
+      </select>
+      <span id="tp-count" style="font-size:12px;color:var(--t3);margin-left:auto"></span>
+    </div>
+    <div id="tp-list" style="max-height:52vh;overflow-y:auto"></div>
+    <button class="btn-primary full" onclick="saveTopics()" style="margin-top:12px">Сохранить темы</button>
   </div>
 </div>
 
@@ -2121,6 +2143,49 @@ async function deleteProjCard(){
   await dbDelete('projects',id);
   hideModal('modal-proj-card');await load();
 }
+function openTopics(){
+  document.getElementById('tp-filter').value='none';
+  renderTopicsList();
+  showModal('modal-topics');
+}
+function renderTopicsList(){
+  const mode=document.getElementById('tp-filter').value;
+  let list=(DB.shoots||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(mode==='none')list=list.filter(s=>!s.topic);
+  const el=document.getElementById('tp-list');
+  document.getElementById('tp-count').textContent=list.length+' съёмок';
+  if(!list.length){el.innerHTML='<div style="padding:10px;color:var(--t3);font-style:italic">Все съёмки с темами ✓</div>';return;}
+  el.innerHTML=list.slice(0,60).map(s=>`
+    <div style="border-bottom:1px solid var(--b);padding:8px 2px">
+      <div style="font-size:12px;color:var(--t3);margin-bottom:4px">
+        ${s.date?fmtShort(s.date):'—'} · ${s.location||'без локации'}${s.people?' · '+s.people:''}${s.project?' · 🎬 '+s.project:''}
+      </div>
+      <input type="text" class="tp-in" data-id="${s.id}" value="${(s.topic||'').replace(/"/g,'&quot;')}"
+        placeholder="о чём съёмка: реклама французов, канистерапия…">
+      ${s.notes?`<div style="font-size:11px;color:var(--t3);margin-top:3px">заметка: ${String(s.notes).slice(0,90)}</div>`:''}
+    </div>`).join('');
+}
+async function saveTopics(){
+  const inputs=[...document.querySelectorAll('.tp-in')];
+  const changed=inputs.filter(i=>{
+    const s=(DB.shoots||[]).find(x=>x.id===parseInt(i.dataset.id));
+    return s&&(i.value.trim()||'')!==(s.topic||'');
+  });
+  if(!changed.length){alert('Ничего не изменилось');return;}
+  if(!confirm(`Сохранить темы для ${changed.length} съёмок?\nЦены проставятся по теме, если позиция определится.`))return;
+  for(const i of changed){
+    const id=parseInt(i.dataset.id);
+    const s=(DB.shoots||[]).find(x=>x.id===id);
+    const topic=i.value.trim();
+    const patch={topic:topic||null};
+    if(topic&&(s.amount===null||s.amount===undefined)){
+      const auto=autoPriceFor([topic,s.project,s.location].filter(Boolean).join(' '));
+      if(auto){patch.price_code=auto.code;patch.amount=auto.amount;patch.qty=s.qty||1;}
+    }
+    await dbPatch('shoots',id,patch);
+  }
+  hideModal('modal-topics');await load();
+}
 function openAssign(){
   const sel=document.getElementById('as-proj');
   sel.innerHTML='<option value="">— убрать проект —</option>'+
@@ -2876,7 +2941,7 @@ function collectIssues(from,to){
   const noTopic=inPeriod.filter(s=>!s.topic&&!s.project);
   if(noTopic.length)out.push({
     icon:'🏷', level:'warn',
-    text:`${noTopic.length} без темы — цену по названию не определить`,
+    text:`${noTopic.length} без темы — в отчёте вместо темы будет локация <span onclick="event.stopPropagation();openTopics()" style="color:var(--purple);text-decoration:underline">вписать темы</span>`,
     list:noTopic.slice(0,10).map(s=>({label:s.location||'съёмка',date:s.date,src:'shoots',id:s.id}))});
 
   const usedProj={};
