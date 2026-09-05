@@ -3256,7 +3256,14 @@ async function seedPriceList(){
   }
   await load();
   if(fail&&!ok){
-    alert('Не удалось записать ни одной позиции.\n\nСкорее всего в Supabase ещё нет таблицы price_list — её нужно создать SQL-запросом. Пока её нет, всё работает на встроенном прайсе.');
+    let why='';
+    if(/relation .* does not exist|Could not find the table/i.test(lastDbError))
+      why='Таблицы price_list нет — создай её SQL-запросом.';
+    else if(/row-level security|permission denied|JWT|401|403/i.test(lastDbError))
+      why='Таблица есть, но закрыта защитой (RLS) без разрешающей политики.\nЛибо выполни блок с политиками из шага 5, либо сними RLS с price_list:\n\nalter table price_list disable row level security;';
+    else if(/duplicate key/i.test(lastDbError))
+      why='Позиции уже есть в базе — обнови страницу, список должен появиться.';
+    alert('Не удалось записать ни одной позиции.\n\nОтвет сервера: '+(lastDbError||'пусто')+(why?'\n\n'+why:''));
   }else if(fail){
     alert(`Добавлено: ${ok}. Не удалось: ${fail}.`);
   }else{
