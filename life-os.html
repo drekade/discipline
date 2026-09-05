@@ -198,6 +198,8 @@ textarea.f{resize:none;line-height:1.6}
 .mob-nav::-webkit-scrollbar{display:none}
 .mob-nb{flex-shrink:0;padding:6px 13px;border-radius:20px;border:1.5px solid var(--bd);background:transparent;color:var(--t);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;font-family:var(--ff)}
 .mob-nb.active{background:var(--a);color:#fff;border-color:var(--a)}
+.nb-extra{display:none}
+body.show-extra .nb-extra{display:flex}
 .mob-fab{position:fixed;bottom:20px;right:16px;width:52px;height:52px;border-radius:50%;background:var(--a);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(196,85,42,.4);z-index:100;display:none;align-items:center;justify-content:center}
 
 @media(max-width:768px){
@@ -353,16 +355,17 @@ textarea.f{resize:none;line-height:1.6}
       </div>
     </div>
     <nav class="nav">
-      <button class="nb active" onclick="showPage('home',this)"><span class="icon">🏠</span>Главная</button>
-      <button class="nb" onclick="showPage('all-cal',this)"><span class="icon">🗓️</span>Общий</button>
-      <button class="nb" onclick="showPage('shoots-cal',this)"><span class="icon">📅</span>Работа</button>
+      <button class="nb" id="more-btn" onclick="toggleExtra()"><span class="icon">···</span>Ещё</button>
+      <button class="nb nb-extra" onclick="showPage('home',this)"><span class="icon">🏠</span>Главная</button>
+      <button class="nb nb-extra" onclick="showPage('all-cal',this)"><span class="icon">🗓️</span>Общий</button>
+      <button class="nb active" onclick="showPage('shoots-cal',this)"><span class="icon">📅</span>Работа</button>
       <button class="nb" onclick="showPage('life-cal',this)"><span class="icon">🏡</span>Жизнь</button>
       <button class="nb" onclick="showPage('projects',this)"><span class="icon">🎬</span>Проекты</button>
-      <button class="nb" onclick="showPage('ideas',this)"><span class="icon">💡</span>Идеи</button>
-      <button class="nb" onclick="showPage('scripts',this)"><span class="icon">📜</span>Сценарии</button>
-      <button class="nb" onclick="showPage('diary',this)"><span class="icon">📓</span>Дневник</button>
-      <button class="nb" onclick="showPage('family',this)"><span class="icon">👨‍👩‍👧</span>Семья</button>
-      <button class="nb" onclick="showPage('week',this)"><span class="icon">📊</span>Итоги</button>
+      <button class="nb nb-extra" onclick="showPage('ideas',this)"><span class="icon">💡</span>Идеи</button>
+      <button class="nb nb-extra" onclick="showPage('scripts',this)"><span class="icon">📜</span>Сценарии</button>
+      <button class="nb nb-extra" onclick="showPage('diary',this)"><span class="icon">📓</span>Дневник</button>
+      <button class="nb nb-extra" onclick="showPage('family',this)"><span class="icon">👨‍👩‍👧</span>Семья</button>
+      <button class="nb nb-extra" onclick="showPage('week',this)"><span class="icon">📊</span>Итоги</button>
       <button class="nb" onclick="showPage('report',this)"><span class="icon">💰</span>Отчёт</button>
       <button class="nb" onclick="showPage('price',this)"><span class="icon">🏷</span>Прайс</button>
       <button class="nb" onclick="logout()" style="opacity:.6"><span class="icon">🔒</span>Выйти</button>
@@ -381,16 +384,17 @@ textarea.f{resize:none;line-height:1.6}
       <span class="sync-row"><span class="sdot" id="sdot2"></span><span style="font-size:11px;color:var(--t3)" id="stext2"></span></span>
     </div>
     <div class="mob-nav">
-      <button class="mob-nb active" onclick="showPage('home',this,true)">🏠 Главная</button>
-      <button class="mob-nb" onclick="showPage('all-cal',this,true)">🗓️ Общий</button>
-      <button class="mob-nb" onclick="showPage('shoots-cal',this,true)">📅 Работа</button>
+      <button class="mob-nb" onclick="toggleExtra()">··· Ещё</button>
+      <button class="mob-nb nb-extra" onclick="showPage('home',this,true)">🏠 Главная</button>
+      <button class="mob-nb nb-extra" onclick="showPage('all-cal',this,true)">🗓️ Общий</button>
+      <button class="mob-nb active" onclick="showPage('shoots-cal',this,true)">📅 Работа</button>
       <button class="mob-nb" onclick="showPage('life-cal',this,true)">🏡 Жизнь</button>
       <button class="mob-nb" onclick="showPage('projects',this,true)">🎬 Проекты</button>
-      <button class="mob-nb" onclick="showPage('ideas',this,true)">💡 Идеи</button>
-      <button class="mob-nb" onclick="showPage('scripts',this,true)">📜 Сценарии</button>
-      <button class="mob-nb" onclick="showPage('diary',this,true)">📓 Дневник</button>
-      <button class="mob-nb" onclick="showPage('family',this,true)">👨‍👩‍👧 Семья</button>
-      <button class="mob-nb" onclick="showPage('week',this,true)">📊 Итоги</button>
+      <button class="mob-nb nb-extra" onclick="showPage('ideas',this,true)">💡 Идеи</button>
+      <button class="mob-nb nb-extra" onclick="showPage('scripts',this,true)">📜 Сценарии</button>
+      <button class="mob-nb nb-extra" onclick="showPage('diary',this,true)">📓 Дневник</button>
+      <button class="mob-nb nb-extra" onclick="showPage('family',this,true)">👨‍👩‍👧 Семья</button>
+      <button class="mob-nb nb-extra" onclick="showPage('week',this,true)">📊 Итоги</button>
       <button class="mob-nb" onclick="showPage('report',this,true)">💰 Отчёт</button>
       <button class="mob-nb" onclick="showPage('price',this,true)">🏷 Прайс</button>
       <button class="mob-nb" onclick="showPage('timer',this,true)">⏱ Таймер</button>
@@ -401,7 +405,7 @@ textarea.f{resize:none;line-height:1.6}
   <main class="main">
 
     <!-- HOME -->
-    <div class="page active" id="page-home">
+    <div class="page" id="page-home">
       <div class="home-greeting">
         <div class="home-hello" id="home-hello">Доброе утро</div>
         <div class="home-phrase" id="home-phrase"></div>
@@ -471,7 +475,7 @@ textarea.f{resize:none;line-height:1.6}
     </div>
 
     <!-- SHOOTS CAL -->
-    <div class="page" id="page-shoots-cal">
+    <div class="page active" id="page-shoots-cal">
       <div class="page-title">Работа</div>
       <div class="page-sub">Съёмки, задачи и дизайн в одном календаре</div>
       <div class="cal-wrap">
@@ -3379,6 +3383,9 @@ function renderScripts(){
   }).join('');
 }
 
+function toggleExtra(){
+  document.body.classList.toggle('show-extra');
+}
 function showPage(id,btn,isMob){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
