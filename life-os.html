@@ -606,7 +606,7 @@ textarea.f{resize:none;line-height:1.6}
     <!-- PRICE -->
     <div class="page" id="page-price">
       <div class="page-title">Прайс</div>
-      <div class="page-sub">Позиции и цены. Правь здесь — расчёт сразу поедет по новым</div>
+      <div class="page-sub">Твои цены. Система считает по ним</div>
       <div class="cal-wrap" style="margin-bottom:16px">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <button class="btn-primary" onclick="addPriceRow()">+ Позиция</button>
@@ -614,9 +614,7 @@ textarea.f{resize:none;line-height:1.6}
           <span style="font-size:12px;color:var(--t3);margin-left:auto" id="price-src"></span>
         </div>
         <div style="font-size:12px;color:var(--t2);margin-top:10px;line-height:1.5">
-          <b>Шаг</b> — доплата за каждую следующую единицу (реклама: 2000 + 1000 за сценарий).<br>
-          <b>За единицу</b> — цена умножается на количество (предметка: 800 × товар).<br>
-          <b>от</b> — цена договорная, показывается как «от N ₴».
+          Меняй цену — расчёт сразу пойдёт по новой. Остальные настройки под ⚙️, обычно их трогать не нужно.
         </div>
       </div>
       <div id="price-list"></div>
@@ -3202,25 +3200,43 @@ function renderPriceList(){
 }
 function priceRowHtml(r){
   const secOpts=PRICE_SECTIONS.map((s,i)=>`<option value="${i}"${Number(r.sec)===i?' selected':''}>${s}</option>`).join('');
-  return `<div style="border-bottom:1px solid var(--b);padding:10px 0" data-pid="${r.id}">
-    <input type="text" value="${(r.name||'').replace(/"/g,'&quot;')}" onchange="savePriceRow(${r.id},'name',this.value)"
-      style="font-size:14px;font-weight:600;margin-bottom:6px">
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-      <label style="font-size:11px;color:var(--t3)">цена
-        <input type="number" value="${r.sum||0}" step="50" onchange="savePriceRow(${r.id},'sum',this.value)" style="width:100px"></label>
-      <label style="font-size:11px;color:var(--t3)">шаг
-        <input type="number" value="${r.step||0}" step="50" onchange="savePriceRow(${r.id},'step',this.value)" style="width:90px"></label>
-      <label style="font-size:11px;color:var(--t3)">ед. изм.
-        <input type="text" value="${r.unit||''}" placeholder="сценариев" onchange="savePriceRow(${r.id},'unit',this.value)" style="width:110px"></label>
-      <label style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:4px">
-        <input type="checkbox" ${r.per_unit?'checked':''} onchange="savePriceRow(${r.id},'per_unit',this.checked)" style="width:auto;margin:0">за единицу</label>
-      <label style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:4px">
-        <input type="checkbox" ${r.is_from?'checked':''} onchange="savePriceRow(${r.id},'is_from',this.checked)" style="width:auto;margin:0">от</label>
-      <select onchange="savePriceRow(${r.id},'sec',this.value)" style="width:auto;font-size:12px">${secOpts}</select>
-      <span style="font-size:11px;color:var(--t3)">код: ${r.code||'—'}</span>
-      <span onclick="deletePriceRow(${r.id})" style="cursor:pointer;color:var(--t3);margin-left:auto" title="удалить">✕</span>
+  let note='';
+  if(r.step)note=`+${r.step} ₴ за каждый следующий`;
+  else if(r.per_unit)note='за штуку';
+  if(r.is_from)note=(note?note+' · ':'')+'договорная';
+  return `<div style="border-bottom:1px solid var(--b);padding:10px 2px">
+    <div style="display:flex;gap:10px;align-items:center">
+      <input type="text" value="${(r.name||'').replace(/"/g,'&quot;')}" onchange="savePriceRow(${r.id},'name',this.value)"
+        style="flex:1;font-size:14px;font-weight:600;border:none;background:transparent;padding:2px 0">
+      <input type="number" value="${r.sum||0}" step="50" onchange="savePriceRow(${r.id},'sum',this.value)"
+        style="width:90px;text-align:right;font-weight:700">
+      <span style="color:var(--t3)">₴</span>
+      <span onclick="togglePriceAdv(${r.id})" style="cursor:pointer;color:var(--t3);padding:0 4px" title="настройки">⚙️</span>
+    </div>
+    ${note?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${note}</div>`:''}
+    <div id="padv-${r.id}" class="hidden" style="margin-top:8px;padding:8px;background:var(--s2);border-radius:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <label style="font-size:11px;color:var(--t3)">шаг, ₴
+          <input type="number" value="${r.step||0}" step="50" onchange="savePriceRow(${r.id},'step',this.value)" style="width:80px"></label>
+        <label style="font-size:11px;color:var(--t3)">считаем в
+          <input type="text" value="${r.unit||''}" placeholder="сценариях" onchange="savePriceRow(${r.id},'unit',this.value)" style="width:110px"></label>
+        <label style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:4px">
+          <input type="checkbox" ${r.per_unit?'checked':''} onchange="savePriceRow(${r.id},'per_unit',this.checked)" style="width:auto;margin:0">цена за штуку</label>
+        <label style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:4px">
+          <input type="checkbox" ${r.is_from?'checked':''} onchange="savePriceRow(${r.id},'is_from',this.checked)" style="width:auto;margin:0">договорная («от»)</label>
+        <select onchange="savePriceRow(${r.id},'sec',this.value)" style="width:auto;font-size:12px">${secOpts}</select>
+        <span onclick="deletePriceRow(${r.id})" style="cursor:pointer;color:#C4552A;font-size:12px;margin-left:auto">удалить позицию</span>
+      </div>
+      <div style="font-size:11px;color:var(--t3);margin-top:6px">
+        <b>шаг</b> — доплата за каждую следующую единицу (реклама: 2000 + 1000 за сценарий).
+        <b>за штуку</b> — цена умножается на количество. Обычно ни то, ни другое не нужно.
+      </div>
     </div>
   </div>`;
+}
+function togglePriceAdv(id){
+  const el=document.getElementById('padv-'+id);
+  if(el)el.classList.toggle('hidden');
 }
 async function savePriceRow(id,field,val){
   const patch={};
