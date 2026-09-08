@@ -61,6 +61,9 @@
 
   .mt-temp-list { display: flex; flex-direction: column; gap: 2px; }
   .mt-temp-item { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; }
+  .mt-freq-stats { font-size: 13px; line-height: 1.6; margin-bottom: 8px; }
+  .mt-freq-stats b { color: var(--purple); }
+  .mt-sparkline { width: 100%; height: auto; display: block; }
 
   .mt-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
   .mt-type-btn {
@@ -69,6 +72,14 @@
     font-size: 13px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent;
   }
   .mt-type-btn.active { background: var(--orange); color: white; border-color: var(--orange); }
+
+  .mt-day-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .mt-day-btn {
+    padding: 9px 4px; text-align: center; border-radius: 10px;
+    background: #FCFAF4; border: 1px solid var(--border);
+    font-size: 12px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .mt-day-btn.active { background: var(--purple); color: white; border-color: var(--purple); }
 
   .mt-form label { display: block; font-size: 12px; color: #6b6259; margin: 10px 0 3px 0; }
   .mt-form input {
@@ -108,8 +119,9 @@
   var SK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Z3RnY3dicnJuZmJjdGNoYXRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTQ2OTgsImV4cCI6MjA5MjI5MDY5OH0.lyEWFcmsL3GIm0FrEZdGkK2uRSx26cNiBGFvCVsjdsY";
   var SH = { "apikey": SK, "Authorization": "Bearer " + SK, "Content-Type": "application/json", "Prefer": "return=representation" };
   var TABLE = "med_log";
+  var TEMP_THRESHOLD = 38.0;
 
-  var state = { entries: [], formType: "Лекарство", syncError: null, loaded: false };
+  var state = { entries: [], formType: "Лекарство", formDay: 0, syncError: null, loaded: false };
 
   var FAMILIES = {
     ibuprofen: { label: "Нурофен / ибупрофен", keywords: ["нурофен","ибупрофен","ибуфен","адвил","некст"] },
@@ -133,10 +145,12 @@
     return detectFamily(name) ? SAME_INTERVAL_H : null;
   }
 
+  function pad2(n) { return String(n).padStart(2, "0"); }
+
   function fmtTime(iso) {
     var d = new Date(iso);
-    var hh = String(d.getHours()).padStart(2, "0");
-    var mm = String(d.getMinutes()).padStart(2, "0");
+    var hh = pad2(d.getHours());
+    var mm = pad2(d.getMinutes());
     var day = d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
     var isToday = d.toDateString() === new Date().toDateString();
     return (isToday ? "" : day + " ") + hh + ":" + mm;
@@ -152,10 +166,17 @@
     return neg ? "просрочено на " + str : str;
   }
 
-  function nowLocalInputValue() {
+  function fmtHours(h) {
+    if (h === null || h === undefined) return "-";
+    var hh = Math.floor(h);
+    var mm = Math.round((h - hh) * 60);
+    if (mm === 60) { hh += 1; mm = 0; }
+    return (hh > 0 ? hh + "ч " : "") + mm + "м";
+  }
+
+  function nowTimeValue() {
     var d = new Date();
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 16);
+    return pad2(d.getHours()) + ":" + pad2(d.getMinutes());
   }
 
   function escapeHtml(s) {
@@ -186,7 +207,7 @@
     if (!res.ok) throw new Error("delete failed: " + res.status);
   }
 
-  async function refresh(silent) {
+  async function refresh() {
     try {
       var rows = await dbList();
       state.entries = rows;
@@ -196,7 +217,8 @@
       state.syncError = "Нет связи с базой — показаны последние загруженные данные";
       state.loaded = true;
     }
-    render();
+    renderShellIfNeeded();
+    renderData();
   }
 
   function lastOf(entries, predicate) {
@@ -302,6 +324,63 @@
     return html;
   }
 
+  function renderTempFrequency() {
+    var temps = state.entries.filter(function(e) { return e.type === "Температура"; })
+      .slice().sort(function(a, b) { return new Date(a.time) - new Date(b.time); });
+    if (temps.length === 0) return "";
+
+    var now = new Date();
+    var spikes = temps.filter(function(t) { return parseFloat(t.dose) >= TEMP_THRESHOLD; });
+    var statsHtml = "";
+
+    if (spikes.length === 0) {
+      statsHtml = '<div class="mt-freq-stats">Подъёмов ≥' + TEMP_THRESHOLD + '° пока не зафиксировано</div>';
+    } else {
+      var count24 = spikes.filter(function(s) { return (now - new Date(s.time)) < 24 * 3600000; }).length;
+      var gaps = [];
+      for (var i = 1; i < spikes.length; i++) {
+        gaps.push((new Date(spikes[i].time) - new Date(spikes[i - 1].time)) / 3600000);
+      }
+      var avgGap = gaps.length ? (gaps.reduce(function(a, b) { return a + b; }, 0) / gaps.length) : null;
+      var last = spikes[spikes.length - 1];
+      var sinceLast = now - new Date(last.time);
+
+      statsHtml = '<div class="mt-freq-stats">' +
+        'Подъёмов ≥' + TEMP_THRESHOLD + '° за 24ч: <b>' + count24 + '</b><br/>' +
+        (avgGap !== null ? 'Средний интервал между подъёмами: <b>' + fmtHours(avgGap) + '</b><br/>' : '') +
+        'С последнего подъёма (' + fmtTime(last.time) + '): <b>' + fmtDuration(sinceLast) + '</b>' +
+        '</div>';
+    }
+
+    var recent = temps.slice(-12);
+    var min = 35, max = 40;
+    var w = 440, h = 70, pad = 6;
+    var stepX = recent.length > 1 ? (w - pad * 2) / (recent.length - 1) : 0;
+    var pts = recent.map(function(t, i) {
+      var val = parseFloat(t.dose);
+      var clamped = Math.max(min, Math.min(max, val));
+      var x = pad + i * stepX;
+      var y = h - pad - ((clamped - min) / (max - min)) * (h - pad * 2);
+      return { x: x, y: y, val: val };
+    });
+    var thresholdY = h - pad - ((TEMP_THRESHOLD - min) / (max - min)) * (h - pad * 2);
+    var polyPoints = pts.map(function(p) { return p.x + "," + p.y; }).join(" ");
+    var circles = pts.map(function(p) {
+      var color = p.val >= TEMP_THRESHOLD ? "var(--red)" : "var(--purple)";
+      return '<circle cx="' + p.x + '" cy="' + p.y + '" r="3" fill="' + color + '" />';
+    }).join("");
+
+    var svg = recent.length > 1
+      ? '<svg class="mt-sparkline" viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg">' +
+          '<line x1="' + pad + '" y1="' + thresholdY + '" x2="' + (w - pad) + '" y2="' + thresholdY + '" stroke="var(--orange)" stroke-width="1" stroke-dasharray="4,3" />' +
+          '<polyline points="' + polyPoints + '" fill="none" stroke="var(--purple)" stroke-width="2" />' +
+          circles +
+        '</svg>'
+      : "";
+
+    return statsHtml + svg;
+  }
+
   function renderHistory() {
     var entries = state.entries.slice(0, 25);
     if (entries.length === 0) return '<div class="mt-empty">Записей ещё нет</div>';
@@ -321,49 +400,66 @@
     return html;
   }
 
-  function render() {
-    var app = document.getElementById("mt-app");
-    if (!state.loaded) { app.innerHTML = '<div class="mt-empty">Загрузка...</div>'; return; }
-    var t = state.formType;
+  var shellBuilt = false;
 
+  function renderShellIfNeeded() {
+    if (shellBuilt) return;
+    var app = document.getElementById("mt-app");
     app.innerHTML =
       '<div class="mt-head-row"><h1>Аптечка</h1><button class="mt-refresh" onclick="mtRefresh()">Обновить</button></div>' +
       '<div class="sub">' + new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" }) + '</div>' +
-      (state.syncError ? '<div class="mt-sync-note err">' + state.syncError + '</div>' : '<div class="mt-sync-note">синхронизировано, видно на всех устройствах по этой ссылке</div>') +
-
-      '<div class="mt-section"><h2>Жаропонижающие</h2>' + renderAntipyreticBoard() + '</div>' +
-      '<div class="mt-section"><h2>Другое (интервал)</h2>' + renderOtherBoard() + '</div>' +
-      '<div class="mt-section"><h2>Температура</h2>' + renderTempList() + '</div>' +
-
+      '<div id="mt-sync"></div>' +
+      '<div id="mt-data"></div>' +
       '<div class="mt-section">' +
         '<h2>Добавить запись</h2>' +
         '<div class="mt-type-grid">' +
-          '<div class="mt-type-btn ' + (t === "Лекарство" ? "active" : "") + '" onclick="mtSetType(\'Лекарство\')">Лекарство</div>' +
-          '<div class="mt-type-btn ' + (t === "Ингаляция" ? "active" : "") + '" onclick="mtSetType(\'Ингаляция\')">Ингаляция</div>' +
-          '<div class="mt-type-btn ' + (t === "Другое" ? "active" : "") + '" onclick="mtSetType(\'Другое\')">Другое</div>' +
-          '<div class="mt-type-btn ' + (t === "Температура" ? "active" : "") + '" onclick="mtSetType(\'Температура\')">Температура</div>' +
+          '<div class="mt-type-btn ' + (state.formType === "Лекарство" ? "active" : "") + '" onclick="mtSetType(\'Лекарство\')">Лекарство</div>' +
+          '<div class="mt-type-btn ' + (state.formType === "Ингаляция" ? "active" : "") + '" onclick="mtSetType(\'Ингаляция\')">Ингаляция</div>' +
+          '<div class="mt-type-btn ' + (state.formType === "Другое" ? "active" : "") + '" onclick="mtSetType(\'Другое\')">Другое</div>' +
+          '<div class="mt-type-btn ' + (state.formType === "Температура" ? "active" : "") + '" onclick="mtSetType(\'Температура\')">Температура</div>' +
         '</div>' +
         '<div class="mt-form" id="mt-form-fields"></div>' +
         '<button class="mt-btn" id="mt-save-btn" onclick="mtAdd()">Сохранить</button>' +
-      '</div>' +
-
-      '<div class="mt-section">' +
-        '<h2>История</h2>' +
-        renderHistory() +
       '</div>';
-
+    shellBuilt = true;
     renderFormFields();
+  }
+
+  function renderData() {
+    var syncEl = document.getElementById("mt-sync");
+    if (syncEl) {
+      syncEl.innerHTML = state.syncError
+        ? '<div class="mt-sync-note err">' + state.syncError + '</div>'
+        : '<div class="mt-sync-note">синхронизировано, видно на всех устройствах по этой ссылке</div>';
+    }
+    var dataEl = document.getElementById("mt-data");
+    if (!dataEl) return;
+    dataEl.innerHTML =
+      '<div class="mt-section"><h2>Жаропонижающие</h2>' + renderAntipyreticBoard() + '</div>' +
+      '<div class="mt-section"><h2>Другое (интервал)</h2>' + renderOtherBoard() + '</div>' +
+      '<div class="mt-section"><h2>Температура</h2>' + renderTempList() + '</div>' +
+      '<div class="mt-section"><h2>Частота подъёмов</h2>' + renderTempFrequency() + '</div>' +
+      '<div class="mt-section"><h2>История</h2>' + renderHistory() + '</div>';
   }
 
   function renderFormFields() {
     var el = document.getElementById("mt-form-fields");
     var t = state.formType;
+    var dayGrid =
+      '<label>Когда</label>' +
+      '<div class="mt-day-grid">' +
+        '<div class="mt-day-btn ' + (state.formDay === 2 ? "active" : "") + '" onclick="mtSetDay(2)">Позавчера</div>' +
+        '<div class="mt-day-btn ' + (state.formDay === 1 ? "active" : "") + '" onclick="mtSetDay(1)">Вчера</div>' +
+        '<div class="mt-day-btn ' + (state.formDay === 0 ? "active" : "") + '" onclick="mtSetDay(0)">Сегодня</div>' +
+      '</div>' +
+      '<label>Время</label>' +
+      '<input id="mt-time-only" type="time" value="' + nowTimeValue() + '" />';
+
     if (t === "Температура") {
       el.innerHTML =
         '<label>Температура, °C</label>' +
         '<input id="mt-temp" type="number" step="0.1" inputmode="decimal" placeholder="напр. 38.7" />' +
-        '<label>Время</label>' +
-        '<input id="mt-time" type="datetime-local" value="' + nowLocalInputValue() + '" />';
+        dayGrid;
     } else {
       el.innerHTML =
         '<label>Название</label>' +
@@ -380,12 +476,27 @@
         '</div>' +
         '<label>Заметка (необязательно)</label>' +
         '<input id="mt-note" placeholder="" />' +
-        '<label>Время</label>' +
-        '<input id="mt-time" type="datetime-local" value="' + nowLocalInputValue() + '" />';
+        dayGrid;
     }
   }
 
-  window.mtSetType = function(t) { state.formType = t; render(); };
+  window.mtSetType = function(t) {
+    state.formType = t;
+    state.formDay = 0;
+    document.querySelectorAll(".mt-type-btn").forEach(function(b) { b.classList.remove("active"); });
+    renderFormFields();
+    var buttons = document.querySelectorAll(".mt-type-grid .mt-type-btn");
+    var order = ["Лекарство", "Ингаляция", "Другое", "Температура"];
+    var idx = order.indexOf(t);
+    if (buttons[idx]) buttons[idx].classList.add("active");
+  };
+
+  window.mtSetDay = function(offset) {
+    state.formDay = offset;
+    document.querySelectorAll(".mt-day-btn").forEach(function(b, i) {
+      b.classList.toggle("active", (2 - i) === offset);
+    });
+  };
 
   window.mtOnNameInput = function() {
     var nameEl = document.getElementById("mt-name");
@@ -397,10 +508,19 @@
 
   window.mtRefresh = function() { refresh(); };
 
+  function buildTimeISO() {
+    var timeVal = document.getElementById("mt-time-only").value;
+    if (!timeVal) return null;
+    var parts = timeVal.split(":");
+    var d = new Date();
+    d.setDate(d.getDate() - state.formDay);
+    d.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
+    return d.toISOString();
+  }
+
   window.mtAdd = async function() {
-    var timeVal = document.getElementById("mt-time").value;
-    if (!timeVal) { alert("Укажи время"); return; }
-    var time = new Date(timeVal).toISOString();
+    var time = buildTimeISO();
+    if (!time) { alert("Укажи время"); return; }
     var type = state.formType;
     var payload = null;
 
@@ -422,12 +542,14 @@
     btn.textContent = "Сохраняю...";
     try {
       await dbInsert(payload);
+      state.formDay = 0;
+      renderFormFields();
       await refresh();
     } catch (e) {
       alert("Не удалось сохранить — проверь интернет и попробуй ещё раз.");
-      btn.disabled = false;
-      btn.textContent = "Сохранить";
     }
+    btn.disabled = false;
+    btn.textContent = "Сохранить";
   };
 
   window.mtDelete = async function(id) {
@@ -440,8 +562,8 @@
   };
 
   refresh();
-  setInterval(function() { refresh(true); }, 20000);
-  window.addEventListener("focus", function() { refresh(true); });
+  setInterval(function() { refresh(); }, 20000);
+  window.addEventListener("focus", function() { refresh(); });
 })();
 </script>
 </body>
