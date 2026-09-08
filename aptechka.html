@@ -34,6 +34,17 @@
   .mt-sync-note { font-size: 11px; color: #8a8177; margin-bottom: 14px; }
   .mt-sync-note.err { color: var(--red); }
 
+  .mt-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .mt-tab {
+    flex: 1; padding: 10px 4px; text-align: center; border-radius: 10px;
+    background: var(--card); border: 1px solid var(--border);
+    font-weight: 600; font-size: 13px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .mt-tab.active { background: var(--purple); color: white; border-color: var(--purple); }
+
+  .mt-screen { display: none; }
+  .mt-screen.active { display: block; }
+
   .mt-section {
     background: var(--card); border-radius: 12px; padding: 12px;
     margin-bottom: 12px; border: 1px solid var(--border);
@@ -82,7 +93,7 @@
   .mt-day-btn.active { background: var(--purple); color: white; border-color: var(--purple); }
 
   .mt-form label { display: block; font-size: 12px; color: #6b6259; margin: 10px 0 3px 0; }
-  .mt-form input {
+  .mt-form input, .mt-form select {
     width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
     font-size: 16px; background: #FCFAF4; color: var(--dark);
   }
@@ -106,10 +117,41 @@
     background: none; border: none; color: #b0a595; font-size: 20px;
     cursor: pointer; padding: 0 6px; line-height: 1;
   }
+
+  .mt-guide-drug {
+    background: #FCFAF4; border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px; margin-top: 10px;
+  }
+  .mt-guide-drug-name { font-weight: 700; font-size: 14px; color: var(--purple); margin-bottom: 6px; }
+  .mt-guide-result {
+    font-size: 15px; font-weight: 700; color: var(--dark); margin-top: 8px;
+    padding-top: 8px; border-top: 1px dashed var(--border);
+  }
+  .mt-guide-result .mt-guide-sub { font-size: 11px; font-weight: 400; color: #6b6259; }
+  .mt-disclaimer {
+    font-size: 11px; color: #8a8177; margin-top: 10px; line-height: 1.5;
+    border-left: 3px solid var(--orange); padding-left: 8px;
+  }
+
+  .mt-growth-add { display: flex; gap: 6px; align-items: center; }
+  .mt-growth-input {
+    width: 76px; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+    font-size: 14px; background: #FCFAF4;
+  }
 </style>
 </head>
 <body>
 <div id="mt-root">
+  <div class="mt-head-row"><h1>Аптечка</h1><button class="mt-refresh" onclick="mtRefresh()">Обновить</button></div>
+  <div class="sub" id="mt-date"></div>
+  <div id="mt-sync"></div>
+
+  <div class="mt-tabs">
+    <div class="mt-tab active" id="mt-tabbtn-aptechka" onclick="mtSetScreen('aptechka')">Аптечка</div>
+    <div class="mt-tab" id="mt-tabbtn-guide" onclick="mtSetScreen('guide')">Справка</div>
+    <div class="mt-tab" id="mt-tabbtn-lila" onclick="mtSetScreen('lila')">Лила</div>
+  </div>
+
   <div id="mt-app"><div class="mt-empty">Загрузка...</div></div>
 </div>
 
@@ -121,7 +163,7 @@
   var TABLE = "med_log";
   var TEMP_THRESHOLD = 38.0;
 
-  var state = { entries: [], formType: "Лекарство", formDay: 0, syncError: null, loaded: false };
+  var state = { entries: [], formType: "Лекарство", formDay: 0, screen: "aptechka", syncError: null, loaded: false };
 
   var FAMILIES = {
     ibuprofen: { label: "Нурофен / ибупрофен", keywords: ["нурофен","ибупрофен","ибуфен","адвил","некст"] },
@@ -129,6 +171,55 @@
   };
   var SAME_INTERVAL_H = 6;
   var CROSS_INTERVAL_H = 1;
+
+  var DOSAGE_GUIDE = {
+    ibuprofen: {
+      label: "Ибупрофен (Нурофен и аналоги)",
+      mgPerKgLow: 5, mgPerKgHigh: 10,
+      maxTimesPerDay: 4,
+      concentrations: [
+        { label: "Таблетки 200мг", type: "tablet", mg: 200 },
+        { label: "Сусп. 100мг/5мл", type: "syrup", mg: 100 },
+        { label: "Капли 40мг/мл (200мг/5мл)", type: "syrup", mg: 200 },
+        { label: "Своя (укажи тип и дозу)", type: "custom", mg: null }
+      ]
+    },
+    paracetamol: {
+      label: "Парацетамол (Панадол и аналоги)",
+      mgPerKgLow: 10, mgPerKgHigh: 15,
+      maxTimesPerDay: 4,
+      concentrations: [
+        { label: "Таблетки 500мг", type: "tablet", mg: 500 },
+        { label: "Сусп. Панадол 120мг/5мл", type: "syrup", mg: 120 },
+        { label: "Сусп. Эффералган 150мг/5мл", type: "syrup", mg: 150 },
+        { label: "Своя (укажи тип и дозу)", type: "custom", mg: null }
+      ]
+    }
+  };
+  var guideCustomType = { ibuprofen: "syrup", paracetamol: "syrup" };
+
+  var GROWTH_METRICS = [
+    { key: "Рост", label: "Рост", unit: "см", placeholder: "см" },
+    { key: "Вес", label: "Вес", unit: "кг", placeholder: "кг" },
+    { key: "Нога", label: "Размер ноги", unit: "", placeholder: "напр. 24" },
+    { key: "Одежда", label: "Размер одежды", unit: "", placeholder: "напр. 92" }
+  ];
+
+  function formatFraction(n) {
+    if (isNaN(n) || n < 0) return "-";
+    var rounded = Math.round(n * 4) / 4;
+    var whole = Math.floor(rounded + 0.001);
+    var frac = rounded - whole;
+    var fracStr = "";
+    if (Math.abs(frac - 0.25) < 0.01) fracStr = "\u00BC";
+    else if (Math.abs(frac - 0.5) < 0.01) fracStr = "\u00BD";
+    else if (Math.abs(frac - 0.75) < 0.01) fracStr = "\u00BE";
+    var result = "";
+    if (whole > 0) result += whole;
+    if (fracStr) result += (whole > 0 ? " " : "") + fracStr;
+    if (!result) result = "0";
+    return result;
+  }
 
   function detectFamily(name) {
     var n = (name || "").toLowerCase();
@@ -187,7 +278,7 @@
   }
 
   async function dbList() {
-    var res = await fetch(SB + "/rest/v1/" + TABLE + "?order=time.desc&limit=200", { headers: SH });
+    var res = await fetch(SB + "/rest/v1/" + TABLE + "?order=time.desc&limit=300", { headers: SH });
     if (!res.ok) throw new Error("list failed: " + res.status);
     return res.json();
   }
@@ -218,7 +309,9 @@
       state.loaded = true;
     }
     renderShellIfNeeded();
-    renderData();
+    renderTopBar();
+    renderAptechkaData();
+    renderGrowthData();
   }
 
   function lastOf(entries, predicate) {
@@ -226,6 +319,8 @@
     if (filtered.length === 0) return null;
     return filtered.reduce(function(a, b) { return new Date(a.time) > new Date(b.time) ? a : b; });
   }
+
+  // ---------- Аптечка: расчёты ----------
 
   function renderAntipyreticBoard() {
     var entries = state.entries.filter(function(e) { return e.type === "Лекарство"; });
@@ -382,7 +477,7 @@
   }
 
   function renderHistory() {
-    var entries = state.entries.slice(0, 25);
+    var entries = state.entries.filter(function(e) { return e.type !== "Замер"; }).slice(0, 25);
     if (entries.length === 0) return '<div class="mt-empty">Записей ещё нет</div>';
     var html = "";
     entries.forEach(function(e) {
@@ -400,38 +495,152 @@
     return html;
   }
 
-  var shellBuilt = false;
+  // ---------- Лила: расчёты ----------
 
-  function renderShellIfNeeded() {
-    if (shellBuilt) return;
-    var app = document.getElementById("mt-app");
-    app.innerHTML =
-      '<div class="mt-head-row"><h1>Аптечка</h1><button class="mt-refresh" onclick="mtRefresh()">Обновить</button></div>' +
-      '<div class="sub">' + new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" }) + '</div>' +
-      '<div id="mt-sync"></div>' +
-      '<div id="mt-data"></div>' +
-      '<div class="mt-section">' +
-        '<h2>Добавить запись</h2>' +
-        '<div class="mt-type-grid">' +
-          '<div class="mt-type-btn ' + (state.formType === "Лекарство" ? "active" : "") + '" onclick="mtSetType(\'Лекарство\')">Лекарство</div>' +
-          '<div class="mt-type-btn ' + (state.formType === "Ингаляция" ? "active" : "") + '" onclick="mtSetType(\'Ингаляция\')">Ингаляция</div>' +
-          '<div class="mt-type-btn ' + (state.formType === "Другое" ? "active" : "") + '" onclick="mtSetType(\'Другое\')">Другое</div>' +
-          '<div class="mt-type-btn ' + (state.formType === "Температура" ? "active" : "") + '" onclick="mtSetType(\'Температура\')">Температура</div>' +
+  function renderGrowthHistory() {
+    var entries = state.entries.filter(function(e) { return e.type === "Замер"; }).slice(0, 25);
+    if (entries.length === 0) return '<div class="mt-empty">Записей ещё нет</div>';
+    var html = "";
+    entries.forEach(function(e) {
+      html += '<div class="mt-history-item">' +
+        '<div class="mt-history-left">' +
+          '<div>' + escapeHtml(e.name) + ': ' + escapeHtml(e.dose) + '</div>' +
+          '<div class="mt-history-time">' + fmtTime(e.time) + '</div>' +
         '</div>' +
-        '<div class="mt-form" id="mt-form-fields"></div>' +
-        '<button class="mt-btn" id="mt-save-btn" onclick="mtAdd()">Сохранить</button>' +
+        '<button class="mt-del" onclick="mtDelete(\'' + e.id + '\')">&times;</button>' +
       '</div>';
-    shellBuilt = true;
-    renderFormFields();
+    });
+    return html;
   }
 
-  function renderData() {
+  function renderGrowthLast() {
+    GROWTH_METRICS.forEach(function(m) {
+      var el = document.getElementById("mt-growth-last-" + m.key);
+      if (!el) return;
+      var entries = state.entries.filter(function(e) { return e.type === "Замер" && e.name === m.key; })
+        .sort(function(a, b) { return new Date(b.time) - new Date(a.time); });
+      if (entries.length === 0) {
+        el.textContent = "ещё нет данных";
+        return;
+      }
+      var last = entries[0];
+      var deltaStr = "";
+      if (entries.length > 1) {
+        var prevVal = parseFloat(entries[1].dose);
+        var lastVal = parseFloat(last.dose);
+        if (!isNaN(prevVal) && !isNaN(lastVal) && lastVal !== prevVal) {
+          deltaStr = lastVal > prevVal ? " (+" + (lastVal - prevVal).toFixed(1) + ")" : " (" + (lastVal - prevVal).toFixed(1) + ")";
+        }
+      }
+      el.textContent = last.dose + (m.unit ? " " + m.unit : "") + deltaStr + " · " + fmtTime(last.time);
+    });
+  }
+
+  function renderGrowthData() {
+    renderGrowthLast();
+    var histEl = document.getElementById("mt-growth-history");
+    if (histEl) histEl.innerHTML = renderGrowthHistory();
+  }
+
+  window.mtAddGrowth = async function(key) {
+    var input = document.getElementById("mt-growth-input-" + key);
+    var value = input ? input.value.trim() : "";
+    if (!value) { alert("Введи значение"); return; }
+    try {
+      await dbInsert({ type: "Замер", name: key, dose: value, time: new Date().toISOString() });
+      input.value = "";
+      await refresh();
+    } catch (e) {
+      alert("Не удалось сохранить — проверь интернет.");
+    }
+  };
+
+  // ---------- Оболочка и навигация ----------
+
+  var shellBuilt = false;
+
+  function renderTopBar() {
+    document.getElementById("mt-date").textContent =
+      new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
     var syncEl = document.getElementById("mt-sync");
     if (syncEl) {
       syncEl.innerHTML = state.syncError
         ? '<div class="mt-sync-note err">' + state.syncError + '</div>'
         : '<div class="mt-sync-note">синхронизировано, видно на всех устройствах по этой ссылке</div>';
     }
+  }
+
+  window.mtSetScreen = function(screen) {
+    state.screen = screen;
+    ["aptechka", "guide", "lila"].forEach(function(s) {
+      var el = document.getElementById("mt-screen-" + s);
+      var tab = document.getElementById("mt-tabbtn-" + s);
+      if (el) el.classList.toggle("active", s === screen);
+      if (tab) tab.classList.toggle("active", s === screen);
+    });
+  };
+
+  function renderShellIfNeeded() {
+    if (shellBuilt) return;
+    var app = document.getElementById("mt-app");
+
+    var aptechkaHtml =
+      '<div class="mt-screen active" id="mt-screen-aptechka">' +
+        '<div id="mt-data"></div>' +
+        '<div class="mt-section">' +
+          '<h2>Добавить запись</h2>' +
+          '<div class="mt-type-grid">' +
+            '<div class="mt-type-btn ' + (state.formType === "Лекарство" ? "active" : "") + '" onclick="mtSetType(\'Лекарство\')">Лекарство</div>' +
+            '<div class="mt-type-btn ' + (state.formType === "Ингаляция" ? "active" : "") + '" onclick="mtSetType(\'Ингаляция\')">Ингаляция</div>' +
+            '<div class="mt-type-btn ' + (state.formType === "Другое" ? "active" : "") + '" onclick="mtSetType(\'Другое\')">Другое</div>' +
+            '<div class="mt-type-btn ' + (state.formType === "Температура" ? "active" : "") + '" onclick="mtSetType(\'Температура\')">Температура</div>' +
+          '</div>' +
+          '<div class="mt-form" id="mt-form-fields"></div>' +
+          '<button class="mt-btn" id="mt-save-btn" onclick="mtAdd()">Сохранить</button>' +
+        '</div>' +
+      '</div>';
+
+    var guideHtml =
+      '<div class="mt-screen" id="mt-screen-guide">' +
+        '<div class="mt-section">' +
+          '<h2>Справка: сколько давать</h2>' +
+          '<label>Вес, кг</label>' +
+          '<input id="mt-guide-weight" type="number" step="0.1" inputmode="decimal" placeholder="напр. 14" oninput="mtRenderGuide()" />' +
+          '<div id="mt-guide-body"></div>' +
+          '<div class="mt-disclaimer">Диапазон общий (мг/кг по стандартным педиатрическим ориентирам), не назначение. Смотри инструкцию к конкретному препарату и держись схемы врача, если она отличается.</div>' +
+        '</div>' +
+      '</div>';
+
+    var lilaHtml =
+      '<div class="mt-screen" id="mt-screen-lila">' +
+        '<div class="mt-section">' +
+          '<h2>Лила растёт</h2>' +
+          GROWTH_METRICS.map(function(m) {
+            return '<div class="mt-status-row">' +
+              '<div>' +
+                '<div class="mt-status-name">' + m.label + '</div>' +
+                '<div class="mt-status-sub" id="mt-growth-last-' + m.key + '">—</div>' +
+              '</div>' +
+              '<div class="mt-growth-add">' +
+                '<input class="mt-growth-input" id="mt-growth-input-' + m.key + '" placeholder="' + m.placeholder + '" />' +
+                '<button class="mt-refresh" onclick="mtAddGrowth(\'' + m.key + '\')">+</button>' +
+              '</div>' +
+            '</div>';
+          }).join('') +
+        '</div>' +
+        '<div class="mt-section">' +
+          '<h2>История замеров</h2>' +
+          '<div id="mt-growth-history"></div>' +
+        '</div>' +
+      '</div>';
+
+    app.innerHTML = aptechkaHtml + guideHtml + lilaHtml;
+    shellBuilt = true;
+    renderFormFields();
+    renderGuideSelectors();
+  }
+
+  function renderAptechkaData() {
     var dataEl = document.getElementById("mt-data");
     if (!dataEl) return;
     dataEl.innerHTML =
@@ -441,6 +650,8 @@
       '<div class="mt-section"><h2>Частота подъёмов</h2>' + renderTempFrequency() + '</div>' +
       '<div class="mt-section"><h2>История</h2>' + renderHistory() + '</div>';
   }
+
+  // ---------- Форма добавления (Аптечка) ----------
 
   function renderFormFields() {
     var el = document.getElementById("mt-form-fields");
@@ -483,12 +694,11 @@
   window.mtSetType = function(t) {
     state.formType = t;
     state.formDay = 0;
-    document.querySelectorAll(".mt-type-btn").forEach(function(b) { b.classList.remove("active"); });
-    renderFormFields();
-    var buttons = document.querySelectorAll(".mt-type-grid .mt-type-btn");
     var order = ["Лекарство", "Ингаляция", "Другое", "Температура"];
-    var idx = order.indexOf(t);
-    if (buttons[idx]) buttons[idx].classList.add("active");
+    document.querySelectorAll(".mt-type-grid .mt-type-btn").forEach(function(b, i) {
+      b.classList.toggle("active", order[i] === t);
+    });
+    renderFormFields();
   };
 
   window.mtSetDay = function(offset) {
@@ -558,6 +768,99 @@
       await refresh();
     } catch (e) {
       alert("Не удалось удалить — проверь интернет.");
+    }
+  };
+
+  // ---------- Справка (расчёт доз) ----------
+
+  function renderGuideSelectors() {
+    var body = document.getElementById("mt-guide-body");
+    if (!body) return;
+    var html = "";
+    for (var key in DOSAGE_GUIDE) {
+      var d = DOSAGE_GUIDE[key];
+      var options = d.concentrations.map(function(c, i) {
+        return '<option value="' + i + '">' + escapeHtml(c.label) + '</option>';
+      }).join("");
+      html += '<div class="mt-guide-drug">' +
+        '<div class="mt-guide-drug-name">' + d.label + '</div>' +
+        '<div class="mt-status-sub">' + d.mgPerKgLow + '-' + d.mgPerKgHigh + ' мг/кг на приём, до ' + d.maxTimesPerDay + ' раз в сутки</div>' +
+        '<label>Форма</label>' +
+        '<select id="mt-guide-conc-' + key + '" onchange="mtRenderGuide()">' + options + '</select>' +
+        '<div id="mt-guide-custom-' + key + '" style="display:none;">' +
+          '<div class="mt-day-grid" style="grid-template-columns:1fr 1fr;margin-top:8px;">' +
+            '<div class="mt-day-btn active" id="mt-guide-ct-syrup-' + key + '" onclick="mtSetGuideCustomType(\'' + key + '\',\'syrup\')">Сироп, мг/5мл</div>' +
+            '<div class="mt-day-btn" id="mt-guide-ct-tablet-' + key + '" onclick="mtSetGuideCustomType(\'' + key + '\',\'tablet\')">Таблетка, мг/шт</div>' +
+          '</div>' +
+          '<label>Значение, мг</label>' +
+          '<input id="mt-guide-custom-input-' + key + '" type="number" step="1" inputmode="decimal" oninput="mtRenderGuide()" />' +
+        '</div>' +
+        '<div class="mt-guide-result" id="mt-guide-result-' + key + '"></div>' +
+      '</div>';
+    }
+    body.innerHTML = html;
+    mtRenderGuide();
+  }
+
+  window.mtSetGuideCustomType = function(key, type) {
+    guideCustomType[key] = type;
+    var syrupBtn = document.getElementById("mt-guide-ct-syrup-" + key);
+    var tabletBtn = document.getElementById("mt-guide-ct-tablet-" + key);
+    if (syrupBtn) syrupBtn.classList.toggle("active", type === "syrup");
+    if (tabletBtn) tabletBtn.classList.toggle("active", type === "tablet");
+    mtRenderGuide();
+  };
+
+  window.mtRenderGuide = function() {
+    var weightEl = document.getElementById("mt-guide-weight");
+    var weight = weightEl ? parseFloat(weightEl.value) : NaN;
+    for (var key in DOSAGE_GUIDE) {
+      var d = DOSAGE_GUIDE[key];
+      var concSelect = document.getElementById("mt-guide-conc-" + key);
+      var customBlock = document.getElementById("mt-guide-custom-" + key);
+      var resultEl = document.getElementById("mt-guide-result-" + key);
+      if (!concSelect || !resultEl) continue;
+
+      var idx = parseInt(concSelect.value, 10) || 0;
+      var chosen = d.concentrations[idx];
+      var effectiveType = chosen.type;
+      var mgVal = chosen.mg;
+
+      if (chosen.type === "custom") {
+        if (customBlock) customBlock.style.display = "block";
+        effectiveType = guideCustomType[key];
+        var customInput = document.getElementById("mt-guide-custom-input-" + key);
+        mgVal = customInput ? parseFloat(customInput.value) : NaN;
+      } else {
+        if (customBlock) customBlock.style.display = "none";
+      }
+
+      if (!weight || weight <= 0) {
+        resultEl.innerHTML = '<span class="mt-guide-sub">Укажи вес ребёнка</span>';
+        continue;
+      }
+      var mgLow = weight * d.mgPerKgLow;
+      var mgHigh = weight * d.mgPerKgHigh;
+      var mgLowRound = Math.round(mgLow);
+      var mgHighRound = Math.round(mgHigh);
+
+      if (!mgVal || mgVal <= 0) {
+        resultEl.innerHTML = mgLowRound + '-' + mgHighRound + ' мг на приём<br/>' +
+          '<span class="mt-guide-sub">укажи дозу формы, чтобы перевести в мл/таблетки</span>';
+        continue;
+      }
+
+      if (effectiveType === "tablet") {
+        var cLow = mgLow / mgVal;
+        var cHigh = mgHigh / mgVal;
+        resultEl.innerHTML = formatFraction(cLow) + '-' + formatFraction(cHigh) + ' табл на приём<br/>' +
+          '<span class="mt-guide-sub">' + mgLowRound + '-' + mgHighRound + ' мг на приём</span>';
+      } else {
+        var mlLow = (mgLow / mgVal) * 5;
+        var mlHigh = (mgHigh / mgVal) * 5;
+        resultEl.innerHTML = mlLow.toFixed(1) + '-' + mlHigh.toFixed(1) + ' мл на приём<br/>' +
+          '<span class="mt-guide-sub">' + mgLowRound + '-' + mgHighRound + ' мг на приём</span>';
+      }
     }
   };
 
