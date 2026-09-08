@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Аптечка</title>
+<style>
+  :root {
+    --bg: #F2EBDB;
+    --purple: #5D3A8E;
+    --orange: #FE702D;
+    --dark: #1A1410;
+    --green: #4C8C5A;
+    --red: #B23A3A;
+    --card: #FFFFFF;
+    --border: #E3D8C0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--dark);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    padding: 14px;
+  }
+  #mt-root { max-width: 480px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 2px 0; color: var(--purple); display: inline-block; }
+  .sub { font-size: 13px; color: #6b6259; margin-bottom: 14px; }
+  .mt-head-row { display: flex; justify-content: space-between; align-items: center; }
+  .mt-refresh {
+    font-size: 12px; color: var(--purple); border: 1px solid var(--purple);
+    border-radius: 20px; padding: 5px 10px; cursor: pointer; background: none;
+  }
+  .mt-sync-note { font-size: 11px; color: #8a8177; margin-bottom: 14px; }
+  .mt-sync-note.err { color: var(--red); }
+
+  .mt-section {
+    background: var(--card); border-radius: 12px; padding: 12px;
+    margin-bottom: 12px; border: 1px solid var(--border);
+  }
+  .mt-section h2 {
+    font-size: 14px; margin: 0 0 10px 0; color: var(--purple);
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+
+  .mt-status-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 0; border-bottom: 1px solid var(--border); gap: 8px;
+  }
+  .mt-status-row:last-child { border-bottom: none; }
+  .mt-status-name { font-weight: 600; font-size: 14px; }
+  .mt-status-sub { font-size: 11px; color: #6b6259; margin-top: 2px; }
+  .mt-chip {
+    padding: 5px 10px; border-radius: 20px; font-size: 12px;
+    font-weight: 700; white-space: nowrap;
+  }
+  .mt-chip.ok { background: #E4F0E5; color: var(--green); }
+  .mt-chip.wait { background: #FFE9DC; color: var(--orange); }
+  .mt-chip.warn { background: #F7DEDE; color: var(--red); }
+  .mt-empty { font-size: 13px; color: #8a8177; padding: 6px 0; }
+
+  .mt-temp-list { display: flex; flex-direction: column; gap: 2px; }
+  .mt-temp-item { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; }
+
+  .mt-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+  .mt-type-btn {
+    padding: 10px 6px; text-align: center; border-radius: 10px;
+    background: #FCFAF4; border: 1px solid var(--border);
+    font-size: 13px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .mt-type-btn.active { background: var(--orange); color: white; border-color: var(--orange); }
+
+  .mt-form label { display: block; font-size: 12px; color: #6b6259; margin: 10px 0 3px 0; }
+  .mt-form input {
+    width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+    font-size: 16px; background: #FCFAF4; color: var(--dark);
+  }
+  .mt-row2 { display: flex; gap: 8px; }
+  .mt-row2 > div { flex: 1; }
+
+  .mt-btn {
+    margin-top: 14px; width: 100%; padding: 13px; border-radius: 10px; border: none;
+    background: var(--purple); color: white; font-weight: 700; font-size: 16px; cursor: pointer;
+  }
+  .mt-btn:disabled { opacity: 0.5; }
+
+  .mt-history-item {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; gap: 8px;
+  }
+  .mt-history-item:last-child { border-bottom: none; }
+  .mt-history-left { flex: 1; }
+  .mt-history-time { color: #6b6259; font-size: 11px; }
+  .mt-del {
+    background: none; border: none; color: #b0a595; font-size: 20px;
+    cursor: pointer; padding: 0 6px; line-height: 1;
+  }
+</style>
+</head>
+<body>
+<div id="mt-root">
+  <div id="mt-app"><div class="mt-empty">Загрузка...</div></div>
+</div>
+
+<script>
+(function() {
+  var SB = "https://btgtgcwbrrnfbctchata.supabase.co";
+  var SK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Z3RnY3dicnJuZmJjdGNoYXRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTQ2OTgsImV4cCI6MjA5MjI5MDY5OH0.lyEWFcmsL3GIm0FrEZdGkK2uRSx26cNiBGFvCVsjdsY";
+  var SH = { "apikey": SK, "Authorization": "Bearer " + SK, "Content-Type": "application/json", "Prefer": "return=representation" };
+  var TABLE = "med_log";
+
+  var state = { entries: [], formType: "Лекарство", syncError: null, loaded: false };
+
+  var FAMILIES = {
+    ibuprofen: { label: "Нурофен / ибупрофен", keywords: ["нурофен","ибупрофен","ибуфен","адвил","некст"] },
+    paracetamol: { label: "Парацетамол / аналоги", keywords: ["парацетамол","панадол","panadol","эффералган","цефекон","калпол","тайленол"] }
+  };
+  var SAME_INTERVAL_H = 6;
+  var CROSS_INTERVAL_H = 1;
+
+  function detectFamily(name) {
+    var n = (name || "").toLowerCase();
+    for (var key in FAMILIES) {
+      var kws = FAMILIES[key].keywords;
+      for (var i = 0; i < kws.length; i++) {
+        if (n.indexOf(kws[i]) !== -1) return key;
+      }
+    }
+    return null;
+  }
+
+  function detectInterval(name) {
+    return detectFamily(name) ? SAME_INTERVAL_H : null;
+  }
+
+  function fmtTime(iso) {
+    var d = new Date(iso);
+    var hh = String(d.getHours()).padStart(2, "0");
+    var mm = String(d.getMinutes()).padStart(2, "0");
+    var day = d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+    var isToday = d.toDateString() === new Date().toDateString();
+    return (isToday ? "" : day + " ") + hh + ":" + mm;
+  }
+
+  function fmtDuration(ms) {
+    var neg = ms < 0;
+    ms = Math.abs(ms);
+    var totalMin = Math.round(ms / 60000);
+    var h = Math.floor(totalMin / 60);
+    var m = totalMin % 60;
+    var str = (h > 0 ? h + "ч " : "") + m + "м";
+    return neg ? "просрочено на " + str : str;
+  }
+
+  function nowLocalInputValue() {
+    var d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  }
+
+  function escapeHtml(s) {
+    if (s === undefined || s === null) return "";
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  async function dbList() {
+    var res = await fetch(SB + "/rest/v1/" + TABLE + "?order=time.desc&limit=200", { headers: SH });
+    if (!res.ok) throw new Error("list failed: " + res.status);
+    return res.json();
+  }
+
+  async function dbInsert(entry) {
+    var res = await fetch(SB + "/rest/v1/" + TABLE, {
+      method: "POST", headers: SH, body: JSON.stringify(entry)
+    });
+    if (!res.ok) throw new Error("insert failed: " + res.status);
+    return res.json();
+  }
+
+  async function dbDelete(id) {
+    var res = await fetch(SB + "/rest/v1/" + TABLE + "?id=eq." + id, {
+      method: "DELETE", headers: SH
+    });
+    if (!res.ok) throw new Error("delete failed: " + res.status);
+  }
+
+  async function refresh(silent) {
+    try {
+      var rows = await dbList();
+      state.entries = rows;
+      state.syncError = null;
+      state.loaded = true;
+    } catch (e) {
+      state.syncError = "Нет связи с базой — показаны последние загруженные данные";
+      state.loaded = true;
+    }
+    render();
+  }
+
+  function lastOf(entries, predicate) {
+    var filtered = entries.filter(predicate);
+    if (filtered.length === 0) return null;
+    return filtered.reduce(function(a, b) { return new Date(a.time) > new Date(b.time) ? a : b; });
+  }
+
+  function renderAntipyreticBoard() {
+    var entries = state.entries.filter(function(e) { return e.type === "Лекарство"; });
+    var now = new Date();
+    var html = "";
+    var lastByFamily = {};
+    for (var key in FAMILIES) {
+      lastByFamily[key] = lastOf(entries, function(e) { return detectFamily(e.name) === key; });
+    }
+    for (var famKey in FAMILIES) {
+      var own = lastByFamily[famKey];
+      var otherKey = famKey === "ibuprofen" ? "paracetamol" : "ibuprofen";
+      var other = lastByFamily[otherKey];
+      var constraints = [];
+      if (own) constraints.push(new Date(own.time).getTime() + SAME_INTERVAL_H * 3600000);
+      if (other) constraints.push(new Date(other.time).getTime() + CROSS_INTERVAL_H * 3600000);
+      var chipClass = "ok", chipText = "можно сейчас";
+      if (constraints.length > 0) {
+        var nextAllowed = Math.max.apply(null, constraints);
+        var remaining = nextAllowed - now;
+        if (remaining > 0) { chipClass = "wait"; chipText = "через " + fmtDuration(remaining); }
+      }
+      var count24 = entries.filter(function(e) {
+        return detectFamily(e.name) === famKey && (now - new Date(e.time)) < 24 * 3600000;
+      }).length;
+      var maxPerDay = Math.floor(24 / SAME_INTERVAL_H);
+      var warnLine = "";
+      if (count24 >= maxPerDay) {
+        chipClass = chipClass === "wait" ? "wait" : "warn";
+        warnLine = '<div class="mt-status-sub" style="color:var(--red);">' + count24 + ' раз за 24ч — обычно максимум ' + maxPerDay + '</div>';
+      }
+      var subLine = own
+        ? "последний: " + escapeHtml(own.name) + (own.dose ? " · " + escapeHtml(own.dose) : "") + " · " + fmtTime(own.time)
+        : "ещё не давали";
+      html += '<div class="mt-status-row">' +
+        '<div>' +
+          '<div class="mt-status-name">' + FAMILIES[famKey].label + '</div>' +
+          '<div class="mt-status-sub">' + subLine + '</div>' +
+          warnLine +
+        '</div>' +
+        '<div class="mt-chip ' + chipClass + '">' + chipText + '</div>' +
+      '</div>';
+    }
+    return html;
+  }
+
+  function renderOtherBoard() {
+    var entries = state.entries.filter(function(e) {
+      return (e.type === "Ингаляция" || e.type === "Другое") && e.interval_h && !detectFamily(e.name);
+    });
+    var groups = {};
+    entries.forEach(function(e) {
+      var key = e.name.trim().toLowerCase();
+      if (!groups[key] || new Date(e.time) > new Date(groups[key].last.time)) {
+        groups[key] = { last: e, name: e.name };
+      }
+    });
+    var keys = Object.keys(groups);
+    if (keys.length === 0) return '<div class="mt-empty">Нет записей с интервалом повтора</div>';
+    var now = new Date();
+    var html = "";
+    keys.forEach(function(key) {
+      var g = groups[key];
+      var last = g.last;
+      var nextTime = new Date(new Date(last.time).getTime() + last.interval_h * 3600000);
+      var remaining = nextTime - now;
+      var chipClass = remaining > 0 ? "wait" : "ok";
+      var chipText = remaining > 0 ? "через " + fmtDuration(remaining) : "можно сейчас";
+      html += '<div class="mt-status-row">' +
+        '<div>' +
+          '<div class="mt-status-name">' + escapeHtml(g.name) + '</div>' +
+          '<div class="mt-status-sub">последний: ' + fmtTime(last.time) + (last.dose ? " · " + escapeHtml(last.dose) : "") + '</div>' +
+        '</div>' +
+        '<div class="mt-chip ' + chipClass + '">' + chipText + '</div>' +
+      '</div>';
+    });
+    return html;
+  }
+
+  function renderTempList() {
+    var temps = state.entries.filter(function(e) { return e.type === "Температура"; })
+      .sort(function(a, b) { return new Date(b.time) - new Date(a.time); })
+      .slice(0, 6);
+    if (temps.length === 0) return '<div class="mt-empty">Пока нет замеров</div>';
+    var html = '<div class="mt-temp-list">';
+    temps.forEach(function(t, i) {
+      var arrow = "";
+      if (i < temps.length - 1) {
+        var diff = parseFloat(t.dose) - parseFloat(temps[i + 1].dose);
+        if (diff > 0.05) arrow = ' <span style="color:var(--red);">&#8593;</span>';
+        else if (diff < -0.05) arrow = ' <span style="color:var(--green);">&#8595;</span>';
+      }
+      html += '<div class="mt-temp-item"><span>' + escapeHtml(t.dose) + '&deg;' + arrow + '</span><span class="mt-history-time">' + fmtTime(t.time) + '</span></div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function renderHistory() {
+    var entries = state.entries.slice(0, 25);
+    if (entries.length === 0) return '<div class="mt-empty">Записей ещё нет</div>';
+    var html = "";
+    entries.forEach(function(e) {
+      var label = e.type === "Температура" ? "&#127777; " + escapeHtml(e.dose) + "&deg;" : escapeHtml(e.name) + (e.dose ? " · " + escapeHtml(e.dose) : "");
+      var typeTag = e.type !== "Температура" ? '<span style="color:#8a8177;"> · ' + e.type + '</span>' : "";
+      html += '<div class="mt-history-item">' +
+        '<div class="mt-history-left">' +
+          '<div>' + label + typeTag + '</div>' +
+          (e.note ? '<div class="mt-status-sub">' + escapeHtml(e.note) + '</div>' : '') +
+          '<div class="mt-history-time">' + fmtTime(e.time) + '</div>' +
+        '</div>' +
+        '<button class="mt-del" onclick="mtDelete(\'' + e.id + '\')">&times;</button>' +
+      '</div>';
+    });
+    return html;
+  }
+
+  function render() {
+    var app = document.getElementById("mt-app");
+    if (!state.loaded) { app.innerHTML = '<div class="mt-empty">Загрузка...</div>'; return; }
+    var t = state.formType;
+
+    app.innerHTML =
+      '<div class="mt-head-row"><h1>Аптечка</h1><button class="mt-refresh" onclick="mtRefresh()">Обновить</button></div>' +
+      '<div class="sub">' + new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" }) + '</div>' +
+      (state.syncError ? '<div class="mt-sync-note err">' + state.syncError + '</div>' : '<div class="mt-sync-note">синхронизировано, видно на всех устройствах по этой ссылке</div>') +
+
+      '<div class="mt-section"><h2>Жаропонижающие</h2>' + renderAntipyreticBoard() + '</div>' +
+      '<div class="mt-section"><h2>Другое (интервал)</h2>' + renderOtherBoard() + '</div>' +
+      '<div class="mt-section"><h2>Температура</h2>' + renderTempList() + '</div>' +
+
+      '<div class="mt-section">' +
+        '<h2>Добавить запись</h2>' +
+        '<div class="mt-type-grid">' +
+          '<div class="mt-type-btn ' + (t === "Лекарство" ? "active" : "") + '" onclick="mtSetType(\'Лекарство\')">Лекарство</div>' +
+          '<div class="mt-type-btn ' + (t === "Ингаляция" ? "active" : "") + '" onclick="mtSetType(\'Ингаляция\')">Ингаляция</div>' +
+          '<div class="mt-type-btn ' + (t === "Другое" ? "active" : "") + '" onclick="mtSetType(\'Другое\')">Другое</div>' +
+          '<div class="mt-type-btn ' + (t === "Температура" ? "active" : "") + '" onclick="mtSetType(\'Температура\')">Температура</div>' +
+        '</div>' +
+        '<div class="mt-form" id="mt-form-fields"></div>' +
+        '<button class="mt-btn" id="mt-save-btn" onclick="mtAdd()">Сохранить</button>' +
+      '</div>' +
+
+      '<div class="mt-section">' +
+        '<h2>История</h2>' +
+        renderHistory() +
+      '</div>';
+
+    renderFormFields();
+  }
+
+  function renderFormFields() {
+    var el = document.getElementById("mt-form-fields");
+    var t = state.formType;
+    if (t === "Температура") {
+      el.innerHTML =
+        '<label>Температура, °C</label>' +
+        '<input id="mt-temp" type="number" step="0.1" inputmode="decimal" placeholder="напр. 38.7" />' +
+        '<label>Время</label>' +
+        '<input id="mt-time" type="datetime-local" value="' + nowLocalInputValue() + '" />';
+    } else {
+      el.innerHTML =
+        '<label>Название</label>' +
+        '<input id="mt-name" list="mt-suggest" placeholder="напр. Нурофен" oninput="mtOnNameInput()" />' +
+        '<datalist id="mt-suggest">' +
+          '<option value="Нурофен">' +
+          '<option value="Парацетамол">' +
+          '<option value="Беродуал">' +
+          '<option value="Пульмикорт">' +
+        '</datalist>' +
+        '<div class="mt-row2">' +
+          '<div><label>Доза</label><input id="mt-dose" placeholder="напр. 5мл" /></div>' +
+          '<div><label>Интервал, ч</label><input id="mt-interval" type="number" step="0.5" placeholder="напр. 6" /></div>' +
+        '</div>' +
+        '<label>Заметка (необязательно)</label>' +
+        '<input id="mt-note" placeholder="" />' +
+        '<label>Время</label>' +
+        '<input id="mt-time" type="datetime-local" value="' + nowLocalInputValue() + '" />';
+    }
+  }
+
+  window.mtSetType = function(t) { state.formType = t; render(); };
+
+  window.mtOnNameInput = function() {
+    var nameEl = document.getElementById("mt-name");
+    var intervalEl = document.getElementById("mt-interval");
+    if (!nameEl || !intervalEl) return;
+    var detected = detectInterval(nameEl.value);
+    if (detected) intervalEl.value = detected;
+  };
+
+  window.mtRefresh = function() { refresh(); };
+
+  window.mtAdd = async function() {
+    var timeVal = document.getElementById("mt-time").value;
+    if (!timeVal) { alert("Укажи время"); return; }
+    var time = new Date(timeVal).toISOString();
+    var type = state.formType;
+    var payload = null;
+
+    if (type === "Температура") {
+      var temp = document.getElementById("mt-temp").value;
+      if (!temp) { alert("Укажи температуру"); return; }
+      payload = { type: type, name: "Температура", dose: temp, time: time };
+    } else {
+      var name = document.getElementById("mt-name").value.trim();
+      if (!name) { alert("Укажи название"); return; }
+      var dose = document.getElementById("mt-dose").value.trim();
+      var interval = parseFloat(document.getElementById("mt-interval").value) || null;
+      var note = document.getElementById("mt-note").value.trim();
+      payload = { type: type, name: name, dose: dose, interval_h: interval, note: note, time: time };
+    }
+
+    var btn = document.getElementById("mt-save-btn");
+    btn.disabled = true;
+    btn.textContent = "Сохраняю...";
+    try {
+      await dbInsert(payload);
+      await refresh();
+    } catch (e) {
+      alert("Не удалось сохранить — проверь интернет и попробуй ещё раз.");
+      btn.disabled = false;
+      btn.textContent = "Сохранить";
+    }
+  };
+
+  window.mtDelete = async function(id) {
+    try {
+      await dbDelete(id);
+      await refresh();
+    } catch (e) {
+      alert("Не удалось удалить — проверь интернет.");
+    }
+  };
+
+  refresh();
+  setInterval(function() { refresh(true); }, 20000);
+  window.addEventListener("focus", function() { refresh(true); });
+})();
+</script>
+</body>
+</html>
