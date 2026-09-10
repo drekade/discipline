@@ -84,6 +84,14 @@
   }
   .mt-type-btn.active { background: var(--orange); color: white; border-color: var(--orange); }
 
+  .mt-repeat-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .mt-repeat-chip {
+    padding: 7px 12px; border-radius: 20px; background: #FCFAF4;
+    border: 1px solid var(--purple); color: var(--purple);
+    font-size: 12px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .mt-repeat-label { font-size: 11px; color: #6b6259; margin-bottom: 6px; }
+
   .mt-day-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
   .mt-day-btn {
     padding: 9px 4px; text-align: center; border-radius: 10px;
@@ -311,6 +319,7 @@
     renderShellIfNeeded();
     renderTopBar();
     renderAptechkaData();
+    renderRepeatChips();
     renderGrowthData();
   }
 
@@ -589,6 +598,7 @@
         '<div id="mt-data"></div>' +
         '<div class="mt-section">' +
           '<h2>Добавить запись</h2>' +
+          '<div id="mt-repeat-wrap"></div>' +
           '<div class="mt-type-grid">' +
             '<div class="mt-type-btn ' + (state.formType === "Лекарство" ? "active" : "") + '" onclick="mtSetType(\'Лекарство\')">Лекарство</div>' +
             '<div class="mt-type-btn ' + (state.formType === "Ингаляция" ? "active" : "") + '" onclick="mtSetType(\'Ингаляция\')">Ингаляция</div>' +
@@ -639,6 +649,50 @@
     renderFormFields();
     renderGuideSelectors();
   }
+
+  function renderRepeatChips() {
+    var wrap = document.getElementById("mt-repeat-wrap");
+    if (!wrap) return;
+    var relevant = state.entries.filter(function(e) {
+      return e.type === "Лекарство" || e.type === "Ингаляция" || e.type === "Другое";
+    });
+    var seen = {};
+    var unique = [];
+    relevant.forEach(function(e) {
+      var key = e.type + "|" + e.name.trim().toLowerCase();
+      if (!seen[key]) {
+        seen[key] = true;
+        unique.push(e);
+      }
+    });
+    unique = unique.slice(0, 8);
+    if (unique.length === 0) { wrap.innerHTML = ""; return; }
+    var chips = unique.map(function(e) {
+      var suffix = e.type !== "Лекарство" ? " (" + e.type.toLowerCase() + ")" : "";
+      return '<div class="mt-repeat-chip" onclick="mtRepeat(\'' + e.id + '\')">' + escapeHtml(e.name) + suffix + '</div>';
+    }).join("");
+    wrap.innerHTML = '<div class="mt-repeat-label">Повторить:</div><div class="mt-repeat-wrap">' + chips + '</div>';
+  }
+
+  window.mtRepeat = function(id) {
+    var entry = state.entries.find(function(e) { return e.id === id; });
+    if (!entry) return;
+    state.formType = entry.type;
+    state.formDay = 0;
+    var order = ["Лекарство", "Ингаляция", "Другое", "Температура"];
+    document.querySelectorAll(".mt-type-grid .mt-type-btn").forEach(function(b, i) {
+      b.classList.toggle("active", order[i] === entry.type);
+    });
+    renderFormFields();
+    var nameEl = document.getElementById("mt-name");
+    var doseEl = document.getElementById("mt-dose");
+    var intervalEl = document.getElementById("mt-interval");
+    var noteEl = document.getElementById("mt-note");
+    if (nameEl) nameEl.value = entry.name || "";
+    if (doseEl) doseEl.value = entry.dose || "";
+    if (intervalEl) intervalEl.value = entry.interval_h || "";
+    if (noteEl) noteEl.value = entry.note || "";
+  };
 
   function renderAptechkaData() {
     var dataEl = document.getElementById("mt-data");
