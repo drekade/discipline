@@ -462,7 +462,7 @@ async function loadAll() {
 
 function collectionStatsOneTime(collectionId) {
   const payments = state.paymentsByCollection[collectionId] || [];
-  const paidCount = payments.filter(p => p.paid).length;
+  const paidCount = payments.filter(p => paymentTotal(p) > 0).length;
   const totalCount = state.students.length;
   const sum = payments.reduce((acc, p) => acc + paymentTotal(p), 0);
   return { paidCount, totalCount, sum };
@@ -483,7 +483,18 @@ function collectionStatsRecurring(c) {
   return { totalSum, debtorsCount, totalCount: state.students.length };
 }
 
+function isTypingActive() {
+  const el = document.activeElement;
+  if (!el) return false;
+  const tag = el.tagName;
+  if (tag !== "INPUT" && tag !== "TEXTAREA") return false;
+  const roster = document.getElementById("view-roster");
+  const collections = document.getElementById("view-collections");
+  return (roster && roster.contains(el)) || (collections && collections.contains(el));
+}
+
 function render() {
+  if (isTypingActive()) return;
   document.querySelectorAll(".tab").forEach(t => {
     t.classList.toggle("active", t.dataset.tab === state.tab);
   });
@@ -567,14 +578,11 @@ function renderOneTimeDetail(c, el) {
     const p = payByStudent[s.id];
     const cash = p ? p.amount_cash || "" : "";
     const card = p ? p.amount_card || "" : "";
-    const isPaid = p ? p.paid : false;
+    const isPaid = paymentTotal(p) > 0;
     return `
       <div class="student-row-one" data-student="${s.id}">
         <div class="top-line">
-          <label class="paid-toggle">
-            <input type="checkbox" class="paid-check" ${isPaid ? "checked" : ""} data-role="paid">
-            <span class="student-name ${isPaid ? "paid" : "unpaid"}">${escapeHtml(s.name)}</span>
-          </label>
+          <span class="student-name ${isPaid ? "paid" : "unpaid"}">${escapeHtml(s.name)}</span>
         </div>
         <div class="bottom-line">
           <div class="amount-pair">
@@ -624,19 +632,19 @@ function renderOneTimeDetail(c, el) {
 
   el.querySelectorAll(".student-row-one").forEach(row => {
     const studentId = row.dataset.student;
-    const checkbox = row.querySelector('[data-role="paid"]');
     const cashInput = row.querySelector('[data-role="cash"]');
     const cardInput = row.querySelector('[data-role="card"]');
 
     const savePayment = async (patch) => {
       const existing = payByStudent[studentId];
+      const nextCash = patch.amount_cash !== undefined ? patch.amount_cash : (existing ? existing.amount_cash || 0 : 0);
+      const nextCard = patch.amount_card !== undefined ? patch.amount_card : (existing ? existing.amount_card || 0 : 0);
       const body = {
         collection_id: c.id,
         student_id: studentId,
-        amount_cash: existing ? existing.amount_cash || 0 : 0,
-        amount_card: existing ? existing.amount_card || 0 : 0,
-        paid: existing ? existing.paid : false,
-        ...patch
+        amount_cash: nextCash,
+        amount_card: nextCard,
+        paid: (nextCash + nextCard) > 0
       };
       await sb.from("payments").upsert(body, { onConflict: "collection_id,student_id" });
       await loadAll();
@@ -644,13 +652,12 @@ function renderOneTimeDetail(c, el) {
       render();
     };
 
-    checkbox.addEventListener("change", () => savePayment({ paid: checkbox.checked }));
     cashInput.addEventListener("change", () => savePayment({ amount_cash: Number(cashInput.value) || 0 }));
     cardInput.addEventListener("change", () => savePayment({ amount_card: Number(cardInput.value) || 0 }));
   });
 
   document.getElementById("copyDebtorsBtn").addEventListener("click", () => {
-    const debtors = state.students.filter(s => !(payByStudent[s.id] && payByStudent[s.id].paid));
+    const debtors = state.students.filter(s => paymentTotal(payByStudent[s.id]) === 0);
     const text = 'Не сдали "' + c.title + '":\n' + debtors.map(s => "- " + s.name).join("\n");
     copyToClipboard(text);
   });
@@ -658,7 +665,7 @@ function renderOneTimeDetail(c, el) {
   document.getElementById("copyAllBtn").addEventListener("click", () => {
     const lines = state.students.map(s => {
       const p = payByStudent[s.id];
-      if (!p || !p.paid) return "- " + s.name + ": не сдал";
+      if (paymentTotal(p) === 0) return "- " + s.name + ": не сдал";
       const parts = [];
       if (p.amount_cash) parts.push("нал " + fmtMoney(p.amount_cash));
       if (p.amount_card) parts.push("карта " + fmtMoney(p.amount_card));
