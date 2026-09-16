@@ -313,6 +313,28 @@
   }
   .status-label.ok { background: #e4f3e0; color: #2f7a3d; }
   .status-label.debt { background: #fbe3e0; color: #b33; }
+  .amount-input-single {
+    width: 84px;
+    padding: 6px 8px;
+    font-size: 14px;
+    flex: 0 0 auto;
+  }
+  .method-checkboxes {
+    display: flex;
+    gap: 16px;
+  }
+  .method-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #7a6f5f;
+  }
+  .method-checkbox input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--orange);
+  }
   .method-values {
     display: flex;
     gap: 10px;
@@ -576,24 +598,27 @@ function renderOneTimeDetail(c, el) {
 
   const rows = state.students.map(s => {
     const p = payByStudent[s.id];
-    const cash = p ? p.amount_cash || "" : "";
-    const card = p ? p.amount_card || "" : "";
+    const cash = p ? p.amount_cash || 0 : 0;
+    const card = p ? p.amount_card || 0 : 0;
+    const amount = cash || card || "";
+    const method = card > 0 ? "card" : "cash";
     const isPaid = paymentTotal(p) > 0;
     return `
       <div class="student-row-one" data-student="${s.id}">
         <div class="top-line">
           <span class="student-name ${isPaid ? "paid" : "unpaid"}">${escapeHtml(s.name)}</span>
+          <input type="number" class="amount-input-single" placeholder="0" value="${amount}" data-role="amount">
         </div>
         <div class="bottom-line">
-          <div class="amount-pair">
-            <div class="amount-field">
-              <span>нал</span>
-              <input type="number" class="amount-input" placeholder="0" value="${cash}" data-role="cash">
-            </div>
-            <div class="amount-field">
-              <span>карта</span>
-              <input type="number" class="amount-input" placeholder="0" value="${card}" data-role="card">
-            </div>
+          <div class="method-checkboxes">
+            <label class="method-checkbox">
+              <input type="checkbox" data-role="method-cash" ${method === "cash" ? "checked" : ""}>
+              нал
+            </label>
+            <label class="method-checkbox">
+              <input type="checkbox" data-role="method-card" ${method === "card" ? "checked" : ""}>
+              карта
+            </label>
           </div>
         </div>
       </div>
@@ -632,19 +657,19 @@ function renderOneTimeDetail(c, el) {
 
   el.querySelectorAll(".student-row-one").forEach(row => {
     const studentId = row.dataset.student;
-    const cashInput = row.querySelector('[data-role="cash"]');
-    const cardInput = row.querySelector('[data-role="card"]');
+    const amountInput = row.querySelector('[data-role="amount"]');
+    const cashCheck = row.querySelector('[data-role="method-cash"]');
+    const cardCheck = row.querySelector('[data-role="method-card"]');
 
-    const savePayment = async (patch) => {
-      const existing = payByStudent[studentId];
-      const nextCash = patch.amount_cash !== undefined ? patch.amount_cash : (existing ? existing.amount_cash || 0 : 0);
-      const nextCard = patch.amount_card !== undefined ? patch.amount_card : (existing ? existing.amount_card || 0 : 0);
+    const saveFromRow = async () => {
+      const amount = Number(amountInput.value) || 0;
+      const method = cardCheck.checked ? "card" : "cash";
       const body = {
         collection_id: c.id,
         student_id: studentId,
-        amount_cash: nextCash,
-        amount_card: nextCard,
-        paid: (nextCash + nextCard) > 0
+        amount_cash: method === "cash" ? amount : 0,
+        amount_card: method === "card" ? amount : 0,
+        paid: amount > 0
       };
       await sb.from("payments").upsert(body, { onConflict: "collection_id,student_id" });
       await loadAll();
@@ -652,8 +677,17 @@ function renderOneTimeDetail(c, el) {
       render();
     };
 
-    cashInput.addEventListener("change", () => savePayment({ amount_cash: Number(cashInput.value) || 0 }));
-    cardInput.addEventListener("change", () => savePayment({ amount_card: Number(cardInput.value) || 0 }));
+    amountInput.addEventListener("change", saveFromRow);
+    cashCheck.addEventListener("change", () => {
+      if (cashCheck.checked) cardCheck.checked = false;
+      else cashCheck.checked = true;
+      saveFromRow();
+    });
+    cardCheck.addEventListener("change", () => {
+      if (cardCheck.checked) cashCheck.checked = false;
+      else cardCheck.checked = true;
+      saveFromRow();
+    });
   });
 
   document.getElementById("copyDebtorsBtn").addEventListener("click", () => {
