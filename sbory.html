@@ -1,0 +1,1029 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Сборы класса</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #F2EBDB;
+    --purple: #5D3A8E;
+    --orange: #FE702D;
+    --dark: #1A1410;
+    --border: #C87850;
+    --card: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--dark);
+    padding-bottom: 60px;
+  }
+  header {
+    padding: 18px 16px 14px;
+    background: var(--purple);
+    color: #fff;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 20px;
+  }
+  header .sub {
+    font-size: 13px;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #e3d9c4;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .tab.active {
+    background: var(--purple);
+    color: #fff;
+    border-color: var(--purple);
+  }
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(26,20,16,0.08);
+  }
+  .card h3 {
+    margin: 0 0 4px;
+    font-size: 16px;
+  }
+  .card .meta {
+    font-size: 13px;
+    color: #7a6f5f;
+    margin-bottom: 8px;
+  }
+  .badge {
+    font-size: 11px;
+    background: var(--orange);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 6px;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+  .progress-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: #eee2c9;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--orange);
+  }
+  .progress-text {
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+  }
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .btn {
+    background: var(--purple);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+  .btn.orange { background: var(--orange); }
+  .btn.ghost {
+    background: transparent;
+    color: var(--purple);
+    border: 1px solid var(--purple);
+  }
+  .btn.small {
+    padding: 6px 10px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+  .btn.danger {
+    background: transparent;
+    color: #b33;
+    border: 1px solid #e3b3b3;
+  }
+  .type-btn.active {
+    background: var(--purple);
+    color: #fff;
+  }
+  .fab {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--orange);
+    color: #fff;
+    border: none;
+    font-size: 28px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+  }
+  input, select, textarea {
+    font-family: inherit;
+    font-size: 15px;
+    padding: 9px 10px;
+    border: 1px solid #d9cbb0;
+    border-radius: 8px;
+    width: 100%;
+    background: #fff;
+    color: var(--dark);
+  }
+  label {
+    font-size: 13px;
+    color: #7a6f5f;
+    display: block;
+    margin: 10px 0 4px;
+  }
+  .modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(26,20,16,0.45);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 50;
+  }
+  .modal {
+    background: var(--bg);
+    width: 100%;
+    max-width: 640px;
+    border-radius: 16px 16px 0 0;
+    padding: 18px 16px 24px;
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+  .modal h2 {
+    margin-top: 0;
+    font-size: 18px;
+  }
+  .row {
+    display: flex;
+    gap: 8px;
+  }
+  .row > * { flex: 1; }
+  .roster-list .student-row { padding: 8px 0; }
+  .student-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee2c9;
+  }
+  .student-row:last-child { border-bottom: none; }
+  .student-name {
+    flex: 1;
+    font-size: 14px;
+  }
+  .student-name.unpaid { color: var(--dark); }
+  .student-name.paid { color: #8a8a8a; }
+  .top-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .top-summary .num {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--purple);
+  }
+  .empty {
+    text-align: center;
+    color: #9a8f7c;
+    padding: 40px 16px;
+    font-size: 14px;
+  }
+  .backlink {
+    background: none;
+    border: none;
+    color: var(--purple);
+    font-size: 14px;
+    padding: 0 0 12px;
+  }
+  .toast {
+    position: fixed;
+    bottom: 84px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--dark);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+  .config-warning {
+    background: #fff3cd;
+    border: 1px solid #ffe08a;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  code { background: #eee2c9; padding: 1px 5px; border-radius: 4px; }
+
+  .student-row-one, .student-row-recurring {
+    padding: 10px 0;
+    border-bottom: 1px solid #eee2c9;
+  }
+  .student-row-one:last-child, .student-row-recurring:last-child { border-bottom: none; }
+  .student-row-one .top-line, .student-row-recurring .top-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .student-row-one .bottom-line, .student-row-recurring .bottom-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .paid-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .paid-check {
+    width: 22px;
+    height: 22px;
+    accent-color: var(--orange);
+    flex: 0 0 auto;
+  }
+  .amount-pair {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+  }
+  .amount-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+  }
+  .amount-field span {
+    font-size: 11px;
+    color: #9a8f7c;
+  }
+  .amount-input {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 14px;
+  }
+  .status-label {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .status-label.ok { background: #e4f3e0; color: #2f7a3d; }
+  .status-label.debt { background: #fbe3e0; color: #b33; }
+  .method-values {
+    display: flex;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .method-values span {
+    cursor: pointer;
+    text-decoration: underline dotted;
+    color: var(--purple);
+  }
+  .add-pay-buttons {
+    display: flex;
+    gap: 6px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="classTitle">Сборы класса</h1>
+  <div class="sub" id="subTitle">учёт без тетрадки</div>
+</header>
+
+<div class="wrap">
+  <div id="configWarning" style="display:none" class="config-warning">
+    Не настроено подключение к базе. Открой файл и впиши SUPA_URL и SUPA_KEY
+    в начале блока <code>&lt;script&gt;</code> внизу страницы.
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="collections">Сборы</div>
+    <div class="tab" data-tab="roster">Список класса</div>
+  </div>
+
+  <div id="view-collections"></div>
+  <div id="view-roster" style="display:none"></div>
+</div>
+
+<button class="fab" id="fabBtn">+</button>
+<div class="toast" id="toast"></div>
+
+<script>
+// ====== НАСТРОЙКА ======
+// Вставь сюда данные своего Supabase проекта (Project Settings -> API)
+const SUPA_URL = "YOUR_SUPABASE_URL";
+const SUPA_KEY = "YOUR_SUPABASE_ANON_KEY";
+// ========================
+
+let sb = null;
+if (SUPA_URL.indexOf("YOUR_") === -1 && SUPA_KEY.indexOf("YOUR_") === -1) {
+  sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+} else {
+  document.getElementById("configWarning").style.display = "block";
+}
+
+const state = {
+  tab: "collections",
+  students: [],
+  collections: [],
+  paymentsByCollection: {},
+  openCollectionId: null
+};
+
+const RU_MONTHS = ["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 1800);
+}
+
+function fmtMoney(n) {
+  n = Number(n) || 0;
+  return n.toLocaleString("ru-RU");
+}
+
+function paymentTotal(p) {
+  if (!p) return 0;
+  return (Number(p.amount_cash) || 0) + (Number(p.amount_card) || 0);
+}
+
+function addMonths(dateStr, n) {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setMonth(d.getMonth() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function monthsElapsed(startMonthStr) {
+  const start = new Date(startMonthStr + "T00:00:00");
+  const now = new Date();
+  return (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()) + 1;
+}
+
+function formatMonthYear(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  return RU_MONTHS[d.getMonth()] + " " + d.getFullYear();
+}
+
+function statusForRecurring(c, payment) {
+  const amount = paymentTotal(payment);
+  const monthly = Number(c.monthly_amount) || 0;
+  if (!monthly || !c.start_month) {
+    return { text: "не настроено", amount, ok: true };
+  }
+  const monthsCovered = Math.floor(amount / monthly);
+  const elapsed = monthsElapsed(c.start_month);
+  if (monthsCovered === 0) {
+    return { text: "не платил", amount, ok: false };
+  }
+  const coveredThrough = addMonths(c.start_month, monthsCovered - 1);
+  const debtMonths = elapsed - monthsCovered;
+  if (debtMonths > 0) {
+    const firstUnpaid = addMonths(c.start_month, monthsCovered);
+    return { text: "должен за " + debtMonths + " мес. (с " + formatMonthYear(firstUnpaid) + ")", amount, ok: false };
+  }
+  return { text: "оплачено по " + formatMonthYear(coveredThrough), amount, ok: true };
+}
+
+async function loadAll() {
+  if (!sb) return;
+  const { data: students } = await sb.from("students").select("*").order("name");
+  state.students = students || [];
+
+  const { data: collections } = await sb
+    .from("collections")
+    .select("*")
+    .eq("archived", false)
+    .order("created_at", { ascending: false });
+  state.collections = collections || [];
+
+  if (state.collections.length) {
+    const ids = state.collections.map(c => c.id);
+    const { data: payments } = await sb.from("payments").select("*").in("collection_id", ids);
+    const grouped = {};
+    (payments || []).forEach(p => {
+      if (!grouped[p.collection_id]) grouped[p.collection_id] = [];
+      grouped[p.collection_id].push(p);
+    });
+    state.paymentsByCollection = grouped;
+  } else {
+    state.paymentsByCollection = {};
+  }
+
+  render();
+}
+
+function collectionStatsOneTime(collectionId) {
+  const payments = state.paymentsByCollection[collectionId] || [];
+  const paidCount = payments.filter(p => p.paid).length;
+  const totalCount = state.students.length;
+  const sum = payments.reduce((acc, p) => acc + paymentTotal(p), 0);
+  return { paidCount, totalCount, sum };
+}
+
+function collectionStatsRecurring(c) {
+  const payments = state.paymentsByCollection[c.id] || [];
+  const payByStudent = {};
+  payments.forEach(p => payByStudent[p.student_id] = p);
+  let totalSum = 0;
+  let debtorsCount = 0;
+  state.students.forEach(s => {
+    const p = payByStudent[s.id];
+    totalSum += paymentTotal(p);
+    const st = statusForRecurring(c, p);
+    if (!st.ok) debtorsCount++;
+  });
+  return { totalSum, debtorsCount, totalCount: state.students.length };
+}
+
+function render() {
+  document.querySelectorAll(".tab").forEach(t => {
+    t.classList.toggle("active", t.dataset.tab === state.tab);
+  });
+  document.getElementById("view-collections").style.display = state.tab === "collections" ? "" : "none";
+  document.getElementById("view-roster").style.display = state.tab === "roster" ? "" : "none";
+
+  if (state.openCollectionId) {
+    renderCollectionDetail(state.openCollectionId);
+  } else if (state.tab === "collections") {
+    renderCollectionsList();
+  } else {
+    renderRoster();
+  }
+}
+
+function renderCollectionsList() {
+  const el = document.getElementById("view-collections");
+  if (!state.collections.length) {
+    el.innerHTML = '<div class="empty">Пока сборов нет.<br>Нажми "+", чтобы создать первый.</div>';
+    return;
+  }
+  el.innerHTML = state.collections.map(c => {
+    if (c.type === "recurring") {
+      const stats = collectionStatsRecurring(c);
+      const pct = stats.totalCount ? Math.round(((stats.totalCount - stats.debtorsCount) / stats.totalCount) * 100) : 0;
+      return `
+        <div class="card" data-open="${c.id}">
+          <h3>${escapeHtml(c.title)}<span class="badge">ежемесячно</span></h3>
+          <div class="meta">${fmtMoney(c.monthly_amount)} грн/мес${stats.debtorsCount ? " &middot; должников: " + stats.debtorsCount : ""}</div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+          <div class="progress-text">
+            <span>собрано всего: ${fmtMoney(stats.totalSum)} грн</span>
+            <span>${pct}%</span>
+          </div>
+        </div>
+      `;
+    }
+    const { paidCount, totalCount, sum } = collectionStatsOneTime(c.id);
+    const target = c.target_amount ? Number(c.target_amount) : null;
+    const pct = target ? Math.min(100, Math.round((sum / target) * 100)) : (totalCount ? Math.round((paidCount / totalCount) * 100) : 0);
+    return `
+      <div class="card" data-open="${c.id}">
+        <h3>${escapeHtml(c.title)}</h3>
+        <div class="meta">${c.purpose ? escapeHtml(c.purpose) + " &middot; " : ""}${paidCount} из ${totalCount} сдали</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <div class="progress-text">
+          <span>${fmtMoney(sum)} грн${target ? " из " + fmtMoney(target) : ""}</span>
+          <span>${pct}%</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+  el.querySelectorAll("[data-open]").forEach(card => {
+    card.addEventListener("click", () => {
+      state.openCollectionId = card.dataset.open;
+      render();
+    });
+  });
+}
+
+function renderCollectionDetail(id) {
+  const c = state.collections.find(x => x.id === id);
+  const el = document.getElementById("view-collections");
+  if (!c) { state.openCollectionId = null; render(); return; }
+  if (c.type === "recurring") {
+    renderRecurringDetail(c, el);
+  } else {
+    renderOneTimeDetail(c, el);
+  }
+}
+
+function renderOneTimeDetail(c, el) {
+  const payments = state.paymentsByCollection[c.id] || [];
+  const payByStudent = {};
+  payments.forEach(p => payByStudent[p.student_id] = p);
+
+  const { paidCount, totalCount, sum } = collectionStatsOneTime(c.id);
+  const target = c.target_amount ? Number(c.target_amount) : null;
+
+  const rows = state.students.map(s => {
+    const p = payByStudent[s.id];
+    const cash = p ? p.amount_cash || "" : "";
+    const card = p ? p.amount_card || "" : "";
+    const isPaid = p ? p.paid : false;
+    return `
+      <div class="student-row-one" data-student="${s.id}">
+        <div class="top-line">
+          <label class="paid-toggle">
+            <input type="checkbox" class="paid-check" ${isPaid ? "checked" : ""} data-role="paid">
+            <span class="student-name ${isPaid ? "paid" : "unpaid"}">${escapeHtml(s.name)}</span>
+          </label>
+        </div>
+        <div class="bottom-line">
+          <div class="amount-pair">
+            <div class="amount-field">
+              <span>нал</span>
+              <input type="number" class="amount-input" placeholder="0" value="${cash}" data-role="cash">
+            </div>
+            <div class="amount-field">
+              <span>карта</span>
+              <input type="number" class="amount-input" placeholder="0" value="${card}" data-role="card">
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  el.innerHTML = `
+    <button class="backlink" id="backBtn">&larr; ко всем сборам</button>
+    <div class="card">
+      <div class="top-summary">
+        <div>
+          <div class="num">${fmtMoney(sum)} грн</div>
+          <div class="meta">${paidCount} из ${totalCount} сдали${target ? " &middot; цель " + fmtMoney(target) + " грн" : ""}</div>
+        </div>
+        <button class="btn ghost small" id="editCollectionBtn">изменить</button>
+      </div>
+      ${c.per_person_amount ? `<div class="meta">по ${fmtMoney(c.per_person_amount)} грн с человека</div>` : ""}
+      ${c.purpose ? `<div class="meta">${escapeHtml(c.purpose)}</div>` : ""}
+      ${c.deadline ? `<div class="meta">срок: ${c.deadline}</div>` : ""}
+    </div>
+    <div class="card">
+      ${rows}
+    </div>
+    <div class="row" style="margin-bottom:16px">
+      <button class="btn ghost" id="copyDebtorsBtn">скопировать должников</button>
+      <button class="btn ghost" id="copyAllBtn">скопировать всех</button>
+    </div>
+  `;
+
+  document.getElementById("backBtn").addEventListener("click", () => {
+    state.openCollectionId = null;
+    render();
+  });
+
+  document.getElementById("editCollectionBtn").addEventListener("click", () => openCollectionForm(c));
+
+  el.querySelectorAll(".student-row-one").forEach(row => {
+    const studentId = row.dataset.student;
+    const checkbox = row.querySelector('[data-role="paid"]');
+    const cashInput = row.querySelector('[data-role="cash"]');
+    const cardInput = row.querySelector('[data-role="card"]');
+
+    const savePayment = async (patch) => {
+      const existing = payByStudent[studentId];
+      const body = {
+        collection_id: c.id,
+        student_id: studentId,
+        amount_cash: existing ? existing.amount_cash || 0 : 0,
+        amount_card: existing ? existing.amount_card || 0 : 0,
+        paid: existing ? existing.paid : false,
+        ...patch
+      };
+      await sb.from("payments").upsert(body, { onConflict: "collection_id,student_id" });
+      await loadAll();
+      state.openCollectionId = c.id;
+      render();
+    };
+
+    checkbox.addEventListener("change", () => savePayment({ paid: checkbox.checked }));
+    cashInput.addEventListener("change", () => savePayment({ amount_cash: Number(cashInput.value) || 0 }));
+    cardInput.addEventListener("change", () => savePayment({ amount_card: Number(cardInput.value) || 0 }));
+  });
+
+  document.getElementById("copyDebtorsBtn").addEventListener("click", () => {
+    const debtors = state.students.filter(s => !(payByStudent[s.id] && payByStudent[s.id].paid));
+    const text = 'Не сдали "' + c.title + '":\n' + debtors.map(s => "- " + s.name).join("\n");
+    copyToClipboard(text);
+  });
+
+  document.getElementById("copyAllBtn").addEventListener("click", () => {
+    const lines = state.students.map(s => {
+      const p = payByStudent[s.id];
+      if (!p || !p.paid) return "- " + s.name + ": не сдал";
+      const parts = [];
+      if (p.amount_cash) parts.push("нал " + fmtMoney(p.amount_cash));
+      if (p.amount_card) parts.push("карта " + fmtMoney(p.amount_card));
+      return "- " + s.name + ": " + fmtMoney(paymentTotal(p)) + " грн (" + (parts.join(", ") || "0") + ")";
+    });
+    const text = '"' + c.title + '":\n' + lines.join("\n");
+    copyToClipboard(text);
+  });
+}
+
+function renderRecurringDetail(c, el) {
+  const payments = state.paymentsByCollection[c.id] || [];
+  const payByStudent = {};
+  payments.forEach(p => payByStudent[p.student_id] = p);
+
+  const stats = collectionStatsRecurring(c);
+
+  const rows = state.students.map(s => {
+    const p = payByStudent[s.id];
+    const st = statusForRecurring(c, p);
+    const cash = p ? p.amount_cash || 0 : 0;
+    const card = p ? p.amount_card || 0 : 0;
+    return `
+      <div class="student-row-recurring" data-student="${s.id}">
+        <div class="top-line">
+          <span class="student-name ${st.ok ? "paid" : "unpaid"}">${escapeHtml(s.name)}</span>
+          <span class="status-label ${st.ok ? "ok" : "debt"}">${st.text}</span>
+        </div>
+        <div class="bottom-line">
+          <div class="method-values">
+            <span data-editcash="${s.id}">нал: ${fmtMoney(cash)}</span>
+            <span data-editcard="${s.id}">карта: ${fmtMoney(card)}</span>
+          </div>
+          <div class="add-pay-buttons">
+            <button class="btn small ghost" data-addcash="${s.id}">+ нал</button>
+            <button class="btn small ghost" data-addcard="${s.id}">+ карта</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  el.innerHTML = `
+    <button class="backlink" id="backBtn">&larr; ко всем сборам</button>
+    <div class="card">
+      <div class="top-summary">
+        <div>
+          <div class="num">${fmtMoney(stats.totalSum)} грн</div>
+          <div class="meta">${stats.totalCount - stats.debtorsCount} из ${stats.totalCount} без долгов${stats.debtorsCount ? " &middot; должников: " + stats.debtorsCount : ""}</div>
+        </div>
+        <button class="btn ghost small" id="editCollectionBtn">изменить</button>
+      </div>
+      <div class="meta">${fmtMoney(c.monthly_amount)} грн/мес, считаем с ${formatMonthYear(c.start_month)}</div>
+      ${c.purpose ? `<div class="meta">${escapeHtml(c.purpose)}</div>` : ""}
+    </div>
+    <div class="card">
+      ${rows}
+    </div>
+    <div class="row" style="margin-bottom:16px">
+      <button class="btn ghost" id="copyDebtorsBtn">скопировать должников</button>
+      <button class="btn ghost" id="copyAllBtn">скопировать всех</button>
+    </div>
+  `;
+
+  document.getElementById("backBtn").addEventListener("click", () => {
+    state.openCollectionId = null;
+    render();
+  });
+
+  document.getElementById("editCollectionBtn").addEventListener("click", () => openCollectionForm(c));
+
+  const savePayment = async (studentId, patch) => {
+    const existing = payByStudent[studentId];
+    const body = {
+      collection_id: c.id,
+      student_id: studentId,
+      amount_cash: existing ? existing.amount_cash || 0 : 0,
+      amount_card: existing ? existing.amount_card || 0 : 0,
+      paid: true,
+      ...patch
+    };
+    await sb.from("payments").upsert(body, { onConflict: "collection_id,student_id" });
+    await loadAll();
+    state.openCollectionId = c.id;
+    render();
+  };
+
+  el.querySelectorAll("[data-addcash]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const studentId = btn.dataset.addcash;
+      const val = prompt("Сколько добавить наличными (грн)?");
+      if (val === null) return;
+      const delta = Number(val);
+      if (!delta || delta <= 0) { showToast("введи сумму больше нуля"); return; }
+      const existing = payByStudent[studentId];
+      const current = existing ? existing.amount_cash || 0 : 0;
+      savePayment(studentId, { amount_cash: current + delta });
+    });
+  });
+
+  el.querySelectorAll("[data-addcard]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const studentId = btn.dataset.addcard;
+      const val = prompt("Сколько добавить картой (грн)?");
+      if (val === null) return;
+      const delta = Number(val);
+      if (!delta || delta <= 0) { showToast("введи сумму больше нуля"); return; }
+      const existing = payByStudent[studentId];
+      const current = existing ? existing.amount_card || 0 : 0;
+      savePayment(studentId, { amount_card: current + delta });
+    });
+  });
+
+  el.querySelectorAll("[data-editcash]").forEach(span => {
+    span.addEventListener("click", () => {
+      const studentId = span.dataset.editcash;
+      const existing = payByStudent[studentId];
+      const current = existing ? existing.amount_cash || 0 : 0;
+      const val = prompt("Исправить сумму нал на (грн), сейчас: " + fmtMoney(current), current);
+      if (val === null) return;
+      savePayment(studentId, { amount_cash: Number(val) || 0 });
+    });
+  });
+
+  el.querySelectorAll("[data-editcard]").forEach(span => {
+    span.addEventListener("click", () => {
+      const studentId = span.dataset.editcard;
+      const existing = payByStudent[studentId];
+      const current = existing ? existing.amount_card || 0 : 0;
+      const val = prompt("Исправить сумму карта на (грн), сейчас: " + fmtMoney(current), current);
+      if (val === null) return;
+      savePayment(studentId, { amount_card: Number(val) || 0 });
+    });
+  });
+
+  document.getElementById("copyDebtorsBtn").addEventListener("click", () => {
+    const debtors = state.students.filter(s => !statusForRecurring(c, payByStudent[s.id]).ok);
+    const text = 'Должники по "' + c.title + '":\n' + debtors.map(s => "- " + s.name + ": " + statusForRecurring(c, payByStudent[s.id]).text).join("\n");
+    copyToClipboard(text);
+  });
+
+  document.getElementById("copyAllBtn").addEventListener("click", () => {
+    const lines = state.students.map(s => {
+      const p = payByStudent[s.id];
+      const st = statusForRecurring(c, p);
+      const cash = p ? p.amount_cash || 0 : 0;
+      const card = p ? p.amount_card || 0 : 0;
+      return "- " + s.name + ": " + st.text + " (нал " + fmtMoney(cash) + ", карта " + fmtMoney(card) + ")";
+    });
+    const text = '"' + c.title + '":\n' + lines.join("\n");
+    copyToClipboard(text);
+  });
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => showToast("скопировано")).catch(() => showToast("не вышло скопировать"));
+}
+
+function renderRoster() {
+  const el = document.getElementById("view-roster");
+  el.innerHTML = `
+    <div class="card roster-list">
+      ${state.students.length ? state.students.map(s => `
+        <div class="student-row" data-student="${s.id}">
+          <span class="student-name">${escapeHtml(s.name)}</span>
+          <button class="btn danger small" data-remove="${s.id}">убрать</button>
+        </div>
+      `).join("") : '<div class="empty">Список пока пуст. Добавь учеников по одному или списком.</div>'}
+    </div>
+    <div class="card">
+      <label>Добавить одного</label>
+      <div class="row">
+        <input type="text" id="newStudentName" placeholder="Фамилия Имя">
+        <button class="btn small" id="addStudentBtn" style="flex:0 0 auto">добавить</button>
+      </div>
+      <label>Или вставить список (каждое имя с новой строки)</label>
+      <textarea id="bulkStudents" rows="4" placeholder="Иванов Петя&#10;Сидорова Оля&#10;..."></textarea>
+      <button class="btn orange small" id="addBulkBtn" style="margin-top:8px">добавить список</button>
+    </div>
+  `;
+
+  el.querySelectorAll("[data-remove]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Убрать из списка класса?")) return;
+      await sb.from("students").delete().eq("id", btn.dataset.remove);
+      await loadAll();
+      state.tab = "roster";
+      render();
+    });
+  });
+
+  document.getElementById("addStudentBtn").addEventListener("click", async () => {
+    const input = document.getElementById("newStudentName");
+    const name = input.value.trim();
+    if (!name) return;
+    await sb.from("students").insert({ name });
+    input.value = "";
+    await loadAll();
+    state.tab = "roster";
+    render();
+  });
+
+  document.getElementById("addBulkBtn").addEventListener("click", async () => {
+    const raw = document.getElementById("bulkStudents").value;
+    const names = raw.split("\n").map(s => s.trim()).filter(Boolean);
+    if (!names.length) return;
+    await sb.from("students").insert(names.map(name => ({ name })));
+    await loadAll();
+    state.tab = "roster";
+    render();
+  });
+}
+
+function openCollectionForm(existing) {
+  const type = existing ? existing.type : "one_time";
+  const bg = document.createElement("div");
+  bg.className = "modal-bg";
+  bg.innerHTML = `
+    <div class="modal">
+      <h2>${existing ? "Изменить сбор" : "Новый сбор"}</h2>
+      ${existing ? "" : `
+      <label>Тип сбора</label>
+      <div class="row">
+        <button type="button" class="btn small type-btn active" data-type="one_time">разовый</button>
+        <button type="button" class="btn small ghost type-btn" data-type="recurring">ежемесячный</button>
+      </div>
+      `}
+      <label>Название</label>
+      <input type="text" id="f_title" value="${existing ? escapeHtml(existing.title) : ""}" placeholder="Например: на шторы">
+      <label>Комментарий (необязательно)</label>
+      <input type="text" id="f_purpose" value="${existing && existing.purpose ? escapeHtml(existing.purpose) : ""}" placeholder="куда пойдут деньги">
+
+      <div id="fields_one_time" style="${type === "recurring" ? "display:none" : ""}">
+        <div class="row">
+          <div>
+            <label>Сумма с человека</label>
+            <input type="number" id="f_per_person" value="${existing && existing.per_person_amount ? existing.per_person_amount : ""}" placeholder="0">
+          </div>
+          <div>
+            <label>Цель всего (необязательно)</label>
+            <input type="number" id="f_target" value="${existing && existing.target_amount ? existing.target_amount : ""}" placeholder="0">
+          </div>
+        </div>
+        <label>Срок (необязательно)</label>
+        <input type="date" id="f_deadline" value="${existing && existing.deadline ? existing.deadline : ""}">
+      </div>
+
+      <div id="fields_recurring" style="${type === "recurring" ? "" : "display:none"}">
+        <label>Сумма в месяц</label>
+        <input type="number" id="f_monthly" value="${existing && existing.monthly_amount ? existing.monthly_amount : ""}" placeholder="0">
+        <label>С какого месяца считаем</label>
+        <input type="month" id="f_start_month" value="${existing && existing.start_month ? existing.start_month.slice(0, 7) : ""}">
+      </div>
+
+      <div class="row" style="margin-top:16px">
+        <button class="btn ghost" id="f_cancel">отмена</button>
+        <button class="btn" id="f_save">${existing ? "сохранить" : "создать"}</button>
+      </div>
+      ${existing ? '<button class="btn danger" id="f_archive" style="margin-top:10px;width:100%">архивировать сбор</button>' : ""}
+    </div>
+  `;
+  document.body.appendChild(bg);
+
+  let currentType = type;
+  if (!existing) {
+    bg.querySelectorAll(".type-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        currentType = btn.dataset.type;
+        bg.querySelectorAll(".type-btn").forEach(b => {
+          b.classList.toggle("active", b.dataset.type === currentType);
+          b.classList.toggle("ghost", b.dataset.type !== currentType);
+        });
+        document.getElementById("fields_one_time").style.display = currentType === "one_time" ? "" : "none";
+        document.getElementById("fields_recurring").style.display = currentType === "recurring" ? "" : "none";
+      });
+    });
+  }
+
+  bg.querySelector("#f_cancel").addEventListener("click", () => bg.remove());
+
+  bg.querySelector("#f_save").addEventListener("click", async () => {
+    const title = document.getElementById("f_title").value.trim();
+    if (!title) { showToast("укажи название"); return; }
+    const purpose = document.getElementById("f_purpose").value.trim() || null;
+
+    let payload = { title, purpose, type: currentType };
+
+    if (currentType === "one_time") {
+      payload.per_person_amount = Number(document.getElementById("f_per_person").value) || null;
+      payload.target_amount = Number(document.getElementById("f_target").value) || null;
+      payload.deadline = document.getElementById("f_deadline").value || null;
+      payload.monthly_amount = null;
+      payload.start_month = null;
+    } else {
+      payload.monthly_amount = Number(document.getElementById("f_monthly").value) || null;
+      const sm = document.getElementById("f_start_month").value;
+      payload.start_month = sm ? sm + "-01" : null;
+      payload.per_person_amount = null;
+      payload.target_amount = null;
+      payload.deadline = null;
+      if (!payload.monthly_amount || !payload.start_month) {
+        showToast("укажи сумму в месяц и стартовый месяц");
+        return;
+      }
+    }
+
+    if (existing) {
+      await sb.from("collections").update(payload).eq("id", existing.id);
+    } else {
+      const { data } = await sb.from("collections").insert(payload).select().single();
+      if (data && state.students.length) {
+        const rows = state.students.map(s => ({
+          collection_id: data.id,
+          student_id: s.id,
+          amount_cash: 0,
+          amount_card: 0,
+          paid: false
+        }));
+        await sb.from("payments").insert(rows);
+      }
+    }
+
+    bg.remove();
+    await loadAll();
+    render();
+  });
+
+  if (existing) {
+    bg.querySelector("#f_archive").addEventListener("click", async () => {
+      if (!confirm("Архивировать этот сбор? Он уйдёт из списка.")) return;
+      await sb.from("collections").update({ archived: true }).eq("id", existing.id);
+      bg.remove();
+      state.openCollectionId = null;
+      await loadAll();
+      render();
+    });
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    state.tab = tab.dataset.tab;
+    state.openCollectionId = null;
+    render();
+  });
+});
+
+document.getElementById("fabBtn").addEventListener("click", () => {
+  if (state.tab === "roster") {
+    document.getElementById("newStudentName") && document.getElementById("newStudentName").focus();
+  } else {
+    openCollectionForm(null);
+  }
+});
+
+if (sb) {
+  loadAll();
+  setInterval(loadAll, 6000);
+}
+</script>
+</body>
+</html>
