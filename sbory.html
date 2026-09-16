@@ -516,7 +516,6 @@ function isTypingActive() {
 }
 
 function render() {
-  if (isTypingActive()) return;
   document.querySelectorAll(".tab").forEach(t => {
     t.classList.toggle("active", t.dataset.tab === state.tab);
   });
@@ -1063,7 +1062,9 @@ document.getElementById("fabBtn").addEventListener("click", () => {
 
 if (sb) {
   loadAll();
-  setInterval(loadAll, 6000);
+  setInterval(() => {
+    if (!isTypingActive()) loadAll();
+  }, 6000);
 }
 </script>
 </body>
