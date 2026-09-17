@@ -230,21 +230,6 @@ function formatMonthYear(dateStr) {
   return UA_MONTHS[d.getMonth()] + " " + d.getFullYear();
 }
 
-function statusForRecurring(c, totalAmount) {
-  const monthly = Number(c.monthly_amount) || 0;
-  if (!monthly || !c.start_month) return "не налаштовано";
-  const monthsCovered = Math.floor(totalAmount / monthly);
-  const elapsed = monthsElapsed(c.start_month);
-  if (monthsCovered === 0) return "не платив";
-  const coveredThrough = addMonths(c.start_month, monthsCovered - 1);
-  const debtMonths = elapsed - monthsCovered;
-  if (debtMonths > 0) {
-    const firstUnpaid = addMonths(c.start_month, monthsCovered);
-    return "винен за " + debtMonths + " міс. (з " + formatMonthYear(firstUnpaid) + ")";
-  }
-  return "сплачено по " + formatMonthYear(coveredThrough);
-}
-
 async function loadBaseData() {
   if (!sb) return;
   const { data: st } = await sb.from("students").select("*").order("name");
@@ -285,10 +270,19 @@ async function renderReport() {
   const student = students.find(s => s.id === selectedStudentId);
   if (!student) return;
 
-  const { data: logs } = await sb.from("payment_log").select("*").eq("student_id", selectedStudentId);
-  const { data: payments } = await sb.from("payments").select("*").eq("student_id", selectedStudentId);
+  const cohort = student.family_id
+    ? students.filter(s => s.family_id === student.family_id)
+    : [student];
+  const cohortIds = cohort.map(s => s.id);
+
+  const { data: logs } = await sb.from("payment_log").select("*").in("student_id", cohortIds);
+  const { data: payments } = await sb.from("payments").select("*").in("student_id", cohortIds);
+
   const paymentsByCollection = {};
-  (payments || []).forEach(p => paymentsByCollection[p.collection_id] = p);
+  (payments || []).forEach(p => {
+    if (!paymentsByCollection[p.collection_id]) paymentsByCollection[p.collection_id] = [];
+    paymentsByCollection[p.collection_id].push(p);
+  });
 
   const yearStart = academicYearStart();
   const yearLogs = (logs || []).filter(l => new Date(l.created_at) >= yearStart);
@@ -316,27 +310,30 @@ async function renderReport() {
   });
   const topicRows = Object.keys(topicMap).map(collectionId => {
     const c = collections.find(x => x.id === collectionId);
-    const p = paymentsByCollection[collectionId];
-    const total = p ? (Number(p.amount_cash) || 0) + (Number(p.amount_card) || 0) : 0;
-    let status = "";
-    if (c && c.type === "recurring") {
-      status = statusForRecurring(c, total);
-    } else {
-      status = total > 0 ? "здав" : "не здав";
+    const participantsHere = (paymentsByCollection[collectionId] || []).length;
+    let expected = null;
+    if (c) {
+      if (c.type === "recurring" && c.monthly_amount && c.start_month) {
+        expected = Number(c.monthly_amount) * participantsHere * monthsElapsed(c.start_month);
+      } else if (c.type === "one_time" && c.per_person_amount) {
+        expected = Number(c.per_person_amount) * participantsHere;
+      }
     }
     return {
       title: c ? c.title : "видалений збір",
       type: c ? c.type : "one_time",
       sumThisYear: topicMap[collectionId],
-      status
+      expected
     };
   }).sort((a, b) => b.sumThisYear - a.sumThisYear);
 
   const el = document.getElementById("reportView");
+  const others = cohort.filter(s => s.id !== student.id);
   el.innerHTML = `
     <button class="backlink" id="backBtn">&larr; інший пошук</button>
     <div class="card">
       <div class="student-header">${escapeHtml(student.name)}</div>
+      ${others.length ? `<div class="meta" style="margin-bottom:8px">Разом з ${others.map(s => escapeHtml(s.name)).join(", ")}</div>` : ""}
       <div class="top-summary">
         <div class="num">${fmtMoney(totalYear)} грн</div>
         <div class="meta">всього за навчальний рік</div>
@@ -360,7 +357,7 @@ async function renderReport() {
         <div class="topic-row">
           <div>
             <div class="title">${escapeHtml(t.title)}${t.type === "recurring" ? '<span class="badge">щомісячно</span>' : ""}</div>
-            <div class="status">${escapeHtml(t.status)}</div>
+            <div class="status">Зібрано${t.expected ? " із " + fmtMoney(t.expected) + " грн" : ""}</div>
           </div>
           <div class="amount-cell">${fmtMoney(t.sumThisYear)} грн</div>
         </div>
