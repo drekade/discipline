@@ -493,27 +493,40 @@ async function loadAll() {
   render();
 }
 
+function participantsFor(collectionId) {
+  const payments = state.paymentsByCollection[collectionId] || [];
+  const ids = new Set(payments.map(p => p.student_id));
+  return state.students.filter(s => ids.has(s.id));
+}
+
 function collectionStatsOneTime(collectionId) {
   const payments = state.paymentsByCollection[collectionId] || [];
   const paidCount = payments.filter(p => paymentTotal(p) > 0).length;
-  const totalCount = state.students.length;
+  const totalCount = payments.length;
   const sum = payments.reduce((acc, p) => acc + paymentTotal(p), 0);
   return { paidCount, totalCount, sum };
 }
 
+function expectedOneTime(c, totalCount) {
+  return c.per_person_amount ? Number(c.per_person_amount) * totalCount : null;
+}
+
 function collectionStatsRecurring(c) {
   const payments = state.paymentsByCollection[c.id] || [];
-  const payByStudent = {};
-  payments.forEach(p => payByStudent[p.student_id] = p);
   let totalSum = 0;
   let debtorsCount = 0;
-  state.students.forEach(s => {
-    const p = payByStudent[s.id];
+  payments.forEach(p => {
     totalSum += paymentTotal(p);
     const st = statusForRecurring(c, p);
     if (!st.ok) debtorsCount++;
   });
-  return { totalSum, debtorsCount, totalCount: state.students.length };
+  return { totalSum, debtorsCount, totalCount: payments.length };
+}
+
+function expectedRecurring(c, totalCount) {
+  if (!c.monthly_amount || !c.start_month) return null;
+  const elapsed = monthsElapsed(c.start_month);
+  return Number(c.monthly_amount) * totalCount * elapsed;
 }
 
 function isTypingActive() {
@@ -551,21 +564,22 @@ function renderCollectionsList() {
   el.innerHTML = state.collections.map(c => {
     if (c.type === "recurring") {
       const stats = collectionStatsRecurring(c);
-      const pct = stats.totalCount ? Math.round(((stats.totalCount - stats.debtorsCount) / stats.totalCount) * 100) : 0;
+      const expected = expectedRecurring(c, stats.totalCount);
+      const pct = expected ? Math.min(100, Math.round((stats.totalSum / expected) * 100)) : (stats.totalCount ? Math.round(((stats.totalCount - stats.debtorsCount) / stats.totalCount) * 100) : 0);
       return `
         <div class="card" data-open="${c.id}">
           <h3>${escapeHtml(c.title)}<span class="badge">щомісячно</span></h3>
           <div class="meta">${fmtMoney(c.monthly_amount)} грн/міс${stats.debtorsCount ? " &middot; боржників: " + stats.debtorsCount : ""}</div>
           <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
           <div class="progress-text">
-            <span>зібрано всього: ${fmtMoney(stats.totalSum)} грн</span>
+            <span>Зібрано: ${fmtMoney(stats.totalSum)} грн${expected ? " із " + fmtMoney(expected) : ""}</span>
             <span>${pct}%</span>
           </div>
         </div>
       `;
     }
     const { paidCount, totalCount, sum } = collectionStatsOneTime(c.id);
-    const target = c.target_amount ? Number(c.target_amount) : null;
+    const target = expectedOneTime(c, totalCount);
     const pct = target ? Math.min(100, Math.round((sum / target) * 100)) : (totalCount ? Math.round((paidCount / totalCount) * 100) : 0);
     return `
       <div class="card" data-open="${c.id}">
@@ -573,7 +587,7 @@ function renderCollectionsList() {
         <div class="meta">${c.purpose ? escapeHtml(c.purpose) + " &middot; " : ""}${paidCount} з ${totalCount} здали</div>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
         <div class="progress-text">
-          <span>${fmtMoney(sum)} грн${target ? " з " + fmtMoney(target) : ""}</span>
+          <span>Зібрано: ${fmtMoney(sum)} грн${target ? " із " + fmtMoney(target) : ""}</span>
           <span>${pct}%</span>
         </div>
       </div>
@@ -603,11 +617,12 @@ function renderOneTimeDetail(c, el) {
   const payments = state.paymentsByCollection[c.id] || [];
   const payByStudent = {};
   payments.forEach(p => payByStudent[p.student_id] = p);
+  const participants = participantsFor(c.id);
 
   const { paidCount, totalCount, sum } = collectionStatsOneTime(c.id);
-  const target = c.target_amount ? Number(c.target_amount) : null;
+  const target = expectedOneTime(c, totalCount);
 
-  const rows = state.students.map(s => {
+  const rows = participants.map(s => {
     const p = payByStudent[s.id];
     const amount = p ? paymentTotal(p) || "" : "";
     const isPaid = paymentTotal(p) > 0;
@@ -618,6 +633,7 @@ function renderOneTimeDetail(c, el) {
           <div style="display:flex;gap:6px;align-items:center">
             <input type="number" class="amount-input-single" placeholder="0" value="${amount}" data-role="amount">
             ${isPaid ? `<button class="btn danger small" data-role="reset" title="скинути оплату">&times;</button>` : ""}
+            ${s.family_id ? `<button class="btn ghost small" data-family="${s.id}" title="внести за сім'ю">сім'я</button>` : ""}
           </div>
         </div>
       </div>
@@ -629,8 +645,8 @@ function renderOneTimeDetail(c, el) {
     <div class="card">
       <div class="top-summary">
         <div>
-          <div class="num">${fmtMoney(sum)} грн</div>
-          <div class="meta">${paidCount} з ${totalCount} здали${target ? " &middot; ціль " + fmtMoney(target) + " грн" : ""}</div>
+          <div class="num">Зібрано: ${fmtMoney(sum)} грн${target ? " із " + fmtMoney(target) + " грн" : ""}</div>
+          <div class="meta">${paidCount} з ${totalCount} здали</div>
         </div>
         <button class="btn ghost small" id="editCollectionBtn">змінити</button>
       </div>
@@ -662,31 +678,35 @@ function renderOneTimeDetail(c, el) {
 
   document.getElementById("editCollectionBtn").addEventListener("click", () => openCollectionForm(c));
 
+  const saveOneTime = async (studentId, newAmount) => {
+    const existing = payByStudent[studentId];
+    const previousTotal = paymentTotal(existing);
+    const body = {
+      collection_id: c.id,
+      student_id: studentId,
+      amount_cash: newAmount,
+      amount_card: 0,
+      paid: newAmount > 0
+    };
+    await sb.from("payments").upsert(body, { onConflict: "collection_id,student_id" });
+    const delta = newAmount - previousTotal;
+    if (delta !== 0) {
+      await sb.from("payment_log").insert({
+        collection_id: c.id,
+        student_id: studentId,
+        amount: delta,
+        method: "cash"
+      });
+    }
+  };
+
   el.querySelectorAll(".student-row-one").forEach(row => {
     const studentId = row.dataset.student;
     const amountInput = row.querySelector('[data-role="amount"]');
+
     const saveFromRow = async () => {
       const amount = Number(amountInput.value) || 0;
-      const method = "cash";
-      const existing = payByStudent[studentId];
-      const previousTotal = paymentTotal(existing);
-      const body = {
-        collection_id: c.id,
-        student_id: studentId,
-        amount_cash: amount,
-        amount_card: 0,
-        paid: amount > 0
-      };
-      await sb.from("payments").upsert(body, { onConflict: "collection_id,student_id" });
-      const delta = amount - previousTotal;
-      if (delta !== 0) {
-        await sb.from("payment_log").insert({
-          collection_id: c.id,
-          student_id: studentId,
-          amount: delta,
-          method
-        });
-      }
+      await saveOneTime(studentId, amount);
       showToast("збережено");
       await loadAll();
       state.openCollectionId = c.id;
@@ -704,20 +724,43 @@ function renderOneTimeDetail(c, el) {
     }
   });
 
+  el.querySelectorAll("[data-family]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const studentId = btn.dataset.family;
+      const student = state.students.find(x => x.id === studentId);
+      const familyMembers = state.students.filter(x => x.family_id === student.family_id);
+      if (familyMembers.length < 2) return;
+      const total = await askAmount("Скільки внесено за сім'ю (" + familyMembers.length + " осіб), порівну поділю?");
+      if (total === null) return;
+      if (!total || total <= 0) { showToast("введи суму більше нуля"); return; }
+      const share = Math.floor(total / familyMembers.length);
+      const remainder = total - share * familyMembers.length;
+      for (let i = 0; i < familyMembers.length; i++) {
+        const m = familyMembers[i];
+        const addAmount = share + (i === familyMembers.length - 1 ? remainder : 0);
+        if (!addAmount) continue;
+        const existingPay = payByStudent[m.id];
+        const newAmount = paymentTotal(existingPay) + addAmount;
+        await saveOneTime(m.id, newAmount);
+      }
+      showToast("внесено за сім'ю");
+      await loadAll();
+      state.openCollectionId = c.id;
+      render();
+    });
+  });
+
   document.getElementById("copyDebtorsBtn").addEventListener("click", () => {
-    const debtors = state.students.filter(s => paymentTotal(payByStudent[s.id]) === 0);
+    const debtors = participants.filter(s => paymentTotal(payByStudent[s.id]) === 0);
     const text = 'Не здали "' + c.title + '":\n' + debtors.map(s => "- " + s.name).join("\n");
     copyToClipboard(text);
   });
 
   document.getElementById("copyAllBtn").addEventListener("click", () => {
-    const lines = state.students.map(s => {
+    const lines = participants.map(s => {
       const p = payByStudent[s.id];
       if (paymentTotal(p) === 0) return "- " + s.name + ": не здав";
-      const parts = [];
-      if (p.amount_cash) parts.push("готівка " + fmtMoney(p.amount_cash));
-      if (p.amount_card) parts.push("картка " + fmtMoney(p.amount_card));
-      return "- " + s.name + ": " + fmtMoney(paymentTotal(p)) + " грн (" + (parts.join(", ") || "0") + ")";
+      return "- " + s.name + ": " + fmtMoney(paymentTotal(p)) + " грн";
     });
     const text = '"' + c.title + '":\n' + lines.join("\n");
     copyToClipboard(text);
@@ -728,10 +771,12 @@ function renderRecurringDetail(c, el) {
   const payments = state.paymentsByCollection[c.id] || [];
   const payByStudent = {};
   payments.forEach(p => payByStudent[p.student_id] = p);
+  const participants = participantsFor(c.id);
 
   const stats = collectionStatsRecurring(c);
+  const expected = expectedRecurring(c, stats.totalCount);
 
-  const rows = state.students.map(s => {
+  const rows = participants.map(s => {
     const p = payByStudent[s.id];
     const st = statusForRecurring(c, p);
     const cash = p ? p.amount_cash || 0 : 0;
@@ -750,6 +795,7 @@ function renderRecurringDetail(c, el) {
           <div class="add-pay-buttons">
             <button class="btn small ghost" data-addcash="${s.id}">+ готівка</button>
             <button class="btn small ghost" data-addcard="${s.id}">+ картка</button>
+            ${s.family_id ? `<button class="btn ghost small" data-family="${s.id}">сім'я</button>` : ""}
           </div>
         </div>
       </div>
@@ -761,7 +807,7 @@ function renderRecurringDetail(c, el) {
     <div class="card">
       <div class="top-summary">
         <div>
-          <div class="num">${fmtMoney(stats.totalSum)} грн</div>
+          <div class="num">Зібрано: ${fmtMoney(stats.totalSum)} грн${expected ? " із " + fmtMoney(expected) + " грн" : ""}</div>
           <div class="meta">${stats.totalCount - stats.debtorsCount} з ${stats.totalCount} без боргів${stats.debtorsCount ? " &middot; боржників: " + stats.debtorsCount : ""}</div>
         </div>
         <button class="btn ghost small" id="editCollectionBtn">змінити</button>
@@ -811,6 +857,10 @@ function renderRecurringDetail(c, el) {
     if (newCash !== oldCash) logRows.push({ collection_id: c.id, student_id: studentId, amount: newCash - oldCash, method: "cash" });
     if (newCard !== oldCard) logRows.push({ collection_id: c.id, student_id: studentId, amount: newCard - oldCard, method: "card" });
     if (logRows.length) await sb.from("payment_log").insert(logRows);
+  };
+
+  const savePaymentAndRefresh = async (studentId, patch) => {
+    await savePayment(studentId, patch);
     showToast("збережено");
     await loadAll();
     state.openCollectionId = c.id;
@@ -825,7 +875,7 @@ function renderRecurringDetail(c, el) {
       if (!val || val <= 0) { showToast("введи суму більше нуля"); return; }
       const existing = payByStudent[studentId];
       const current = existing ? existing.amount_cash || 0 : 0;
-      savePayment(studentId, { amount_cash: current + val });
+      savePaymentAndRefresh(studentId, { amount_cash: current + val });
     });
   });
 
@@ -837,7 +887,7 @@ function renderRecurringDetail(c, el) {
       if (!val || val <= 0) { showToast("введи суму більше нуля"); return; }
       const existing = payByStudent[studentId];
       const current = existing ? existing.amount_card || 0 : 0;
-      savePayment(studentId, { amount_card: current + val });
+      savePaymentAndRefresh(studentId, { amount_card: current + val });
     });
   });
 
@@ -848,7 +898,7 @@ function renderRecurringDetail(c, el) {
       const current = existing ? existing.amount_cash || 0 : 0;
       const val = await askAmount("Виправити суму готівка (грн)", current);
       if (val === null) return;
-      savePayment(studentId, { amount_cash: val || 0 });
+      savePaymentAndRefresh(studentId, { amount_cash: val || 0 });
     });
   });
 
@@ -859,18 +909,44 @@ function renderRecurringDetail(c, el) {
       const current = existing ? existing.amount_card || 0 : 0;
       const val = await askAmount("Виправити суму картка (грн)", current);
       if (val === null) return;
-      savePayment(studentId, { amount_card: val || 0 });
+      savePaymentAndRefresh(studentId, { amount_card: val || 0 });
+    });
+  });
+
+  el.querySelectorAll("[data-family]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const studentId = btn.dataset.family;
+      const student = state.students.find(x => x.id === studentId);
+      const familyMembers = state.students.filter(x => x.family_id === student.family_id);
+      if (familyMembers.length < 2) return;
+      const total = await askAmount("Скільки внесено за сім'ю (" + familyMembers.length + " осіб), порівну поділю?");
+      if (total === null) return;
+      if (!total || total <= 0) { showToast("введи суму більше нуля"); return; }
+      const share = Math.floor(total / familyMembers.length);
+      const remainder = total - share * familyMembers.length;
+      for (let i = 0; i < familyMembers.length; i++) {
+        const m = familyMembers[i];
+        const addAmount = share + (i === familyMembers.length - 1 ? remainder : 0);
+        if (!addAmount) continue;
+        const existingPay = payByStudent[m.id];
+        const current = existingPay ? existingPay.amount_cash || 0 : 0;
+        await savePayment(m.id, { amount_cash: current + addAmount });
+      }
+      showToast("внесено за сім'ю");
+      await loadAll();
+      state.openCollectionId = c.id;
+      render();
     });
   });
 
   document.getElementById("copyDebtorsBtn").addEventListener("click", () => {
-    const debtors = state.students.filter(s => !statusForRecurring(c, payByStudent[s.id]).ok);
+    const debtors = participants.filter(s => !statusForRecurring(c, payByStudent[s.id]).ok);
     const text = 'Боржники по "' + c.title + '":\n' + debtors.map(s => "- " + s.name + ": " + statusForRecurring(c, payByStudent[s.id]).text).join("\n");
     copyToClipboard(text);
   });
 
   document.getElementById("copyAllBtn").addEventListener("click", () => {
-    const lines = state.students.map(s => {
+    const lines = participants.map(s => {
       const p = payByStudent[s.id];
       const st = statusForRecurring(c, p);
       const cash = p ? p.amount_cash || 0 : 0;
@@ -929,11 +1005,18 @@ function renderRoster() {
     <div class="card roster-list">
       ${state.students.length ? state.students.map(s => `
         <div class="student-row" data-student="${s.id}">
-          <span class="student-name">${escapeHtml(s.name)}</span>
+          <input type="checkbox" class="roster-select" value="${s.id}" style="width:20px;height:20px;flex:0 0 auto">
+          <span class="student-name">${escapeHtml(s.name)}${s.family_id ? "<span class=\"badge\">сім'я</span>" : ""}</span>
           <button class="btn danger small" data-remove="${s.id}">прибрати</button>
         </div>
       `).join("") : '<div class="empty">Список поки порожній. Додай учнів по одному або списком.</div>'}
     </div>
+    ${state.students.length > 1 ? `
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn ghost small" id="linkFamilyBtn">об'єднати в сім'ю</button>
+      <button class="btn ghost small" id="unlinkFamilyBtn">роз'єднати</button>
+    </div>
+    ` : ""}
     <div class="card">
       <label>Додати одного</label>
       <div class="row">
@@ -955,6 +1038,34 @@ function renderRoster() {
       render();
     });
   });
+
+  const linkBtn = document.getElementById("linkFamilyBtn");
+  if (linkBtn) {
+    linkBtn.addEventListener("click", async () => {
+      const ids = Array.from(el.querySelectorAll(".roster-select:checked")).map(cb => cb.value);
+      if (ids.length < 2) { showToast("вибери двох або більше"); return; }
+      const existingFamily = state.students.find(s => ids.includes(s.id) && s.family_id);
+      const familyId = existingFamily ? existingFamily.family_id : crypto.randomUUID();
+      await sb.from("students").update({ family_id: familyId }).in("id", ids);
+      showToast("об'єднано в сім'ю");
+      await loadAll();
+      state.tab = "roster";
+      render();
+    });
+  }
+
+  const unlinkBtn = document.getElementById("unlinkFamilyBtn");
+  if (unlinkBtn) {
+    unlinkBtn.addEventListener("click", async () => {
+      const ids = Array.from(el.querySelectorAll(".roster-select:checked")).map(cb => cb.value);
+      if (!ids.length) { showToast("вибери кого роз'єднати"); return; }
+      await sb.from("students").update({ family_id: null }).in("id", ids);
+      showToast("роз'єднано");
+      await loadAll();
+      state.tab = "roster";
+      render();
+    });
+  }
 
   document.getElementById("addStudentBtn").addEventListener("click", async () => {
     const input = document.getElementById("newStudentName");
@@ -998,16 +1109,8 @@ function openCollectionForm(existing) {
       <input type="text" id="f_purpose" value="${existing && existing.purpose ? escapeHtml(existing.purpose) : ""}" placeholder="куди підуть гроші">
 
       <div id="fields_one_time" style="${type === "recurring" ? "display:none" : ""}">
-        <div class="row">
-          <div>
-            <label>Сума з людини</label>
-            <input type="number" id="f_per_person" value="${existing && existing.per_person_amount ? existing.per_person_amount : ""}" placeholder="0">
-          </div>
-          <div>
-            <label>Ціль загалом (необов'язково)</label>
-            <input type="number" id="f_target" value="${existing && existing.target_amount ? existing.target_amount : ""}" placeholder="0">
-          </div>
-        </div>
+        <label>Сума з людини (необов'язково)</label>
+        <input type="number" id="f_per_person" value="${existing && existing.per_person_amount ? existing.per_person_amount : ""}" placeholder="0">
         <label>Термін (необов'язково)</label>
         <input type="date" id="f_deadline" value="${existing && existing.deadline ? existing.deadline : ""}">
       </div>
@@ -1018,6 +1121,13 @@ function openCollectionForm(existing) {
         <label>З якого місяця рахуємо</label>
         <input type="month" id="f_start_month" value="${existing && existing.start_month ? existing.start_month.slice(0, 7) : ""}">
       </div>
+
+      ${existing ? "" : `
+      <label>Учасники збору</label>
+      <div id="participants_list" style="max-height:180px;overflow-y:auto;border:1px solid #d9cbb0;border-radius:8px;padding:8px">
+        ${state.students.map(s => `<label style="display:flex;align-items:center;gap:8px;padding:4px 0"><input type="checkbox" class="participant-check" value="${s.id}" checked> ${escapeHtml(s.name)}</label>`).join("")}
+      </div>
+      `}
 
       <div class="row" style="margin-top:16px">
         <button class="btn ghost" id="f_cancel">скасувати</button>
@@ -1054,8 +1164,8 @@ function openCollectionForm(existing) {
 
     if (currentType === "one_time") {
       payload.per_person_amount = Number(document.getElementById("f_per_person").value) || null;
-      payload.target_amount = Number(document.getElementById("f_target").value) || null;
       payload.deadline = document.getElementById("f_deadline").value || null;
+      payload.target_amount = null;
       payload.monthly_amount = null;
       payload.start_month = null;
     } else {
@@ -1074,11 +1184,13 @@ function openCollectionForm(existing) {
     if (existing) {
       await sb.from("collections").update(payload).eq("id", existing.id);
     } else {
+      const participantIds = Array.from(bg.querySelectorAll(".participant-check:checked")).map(cb => cb.value);
+      if (!participantIds.length) { showToast("вибери хоча б одного учасника"); return; }
       const { data } = await sb.from("collections").insert(payload).select().single();
-      if (data && state.students.length) {
-        const rows = state.students.map(s => ({
+      if (data) {
+        const rows = participantIds.map(studentId => ({
           collection_id: data.id,
-          student_id: s.id,
+          student_id: studentId,
           amount_cash: 0,
           amount_card: 0,
           paid: false
