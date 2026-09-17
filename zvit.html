@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Звіт по оплатах</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #F2EBDB;
+    --purple: #5D3A8E;
+    --orange: #FE702D;
+    --dark: #1A1410;
+    --card: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--dark);
+    padding-bottom: 40px;
+  }
+  header {
+    padding: 18px 16px 14px;
+    background: var(--purple);
+    color: #fff;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 20px;
+  }
+  header .sub {
+    font-size: 13px;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  input {
+    font-family: inherit;
+    font-size: 15px;
+    padding: 10px 12px;
+    border: 1px solid #d9cbb0;
+    border-radius: 8px;
+    width: 100%;
+    background: #fff;
+    color: var(--dark);
+  }
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(26,20,16,0.08);
+  }
+  .match-list {
+    margin-top: 8px;
+  }
+  .match-item {
+    background: #fff;
+    border: 1px solid #e3d9c4;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .match-item:active { background: #f5eedc; }
+  .empty {
+    text-align: center;
+    color: #9a8f7c;
+    padding: 24px 16px;
+    font-size: 14px;
+  }
+  .backlink {
+    background: none;
+    border: none;
+    color: var(--purple);
+    font-size: 14px;
+    padding: 0 0 12px;
+    cursor: pointer;
+  }
+  .student-header {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .top-summary .num {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--purple);
+  }
+  .top-summary .meta {
+    font-size: 13px;
+    color: #7a6f5f;
+  }
+  .section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--dark);
+    margin: 20px 0 8px;
+  }
+  .month-row, .topic-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee2c9;
+    font-size: 14px;
+  }
+  .month-row:last-child, .topic-row:last-child { border-bottom: none; }
+  .topic-row .title { font-weight: 600; }
+  .topic-row .status {
+    font-size: 12px;
+    color: #7a6f5f;
+  }
+  .amount-cell {
+    font-weight: 600;
+    color: var(--purple);
+  }
+  .badge {
+    font-size: 11px;
+    background: var(--orange);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 6px;
+    margin-left: 6px;
+  }
+  .split {
+    font-size: 12px;
+    color: #9a8f7c;
+    margin-top: 4px;
+  }
+  .config-warning {
+    background: #fff3cd;
+    border: 1px solid #ffe08a;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  code { background: #eee2c9; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Звіт по оплатах</h1>
+  <div class="sub">введи прізвище дитини, щоб побачити підсумок</div>
+</header>
+
+<div class="wrap">
+  <div id="configWarning" style="display:none" class="config-warning">
+    Не налаштовано підключення до бази. Відкрий файл і впиши SUPA_URL і SUPA_KEY
+    на початку блоку <code>&lt;script&gt;</code> внизу сторінки.
+  </div>
+
+  <div id="searchView">
+    <input type="text" id="searchInput" placeholder="Прізвище або ім'я дитини">
+    <div class="match-list" id="matchList"></div>
+  </div>
+
+  <div id="reportView" style="display:none"></div>
+</div>
+
+<script>
+// ====== НАСТРОЙКА ======
+const SUPA_URL = "https://cgicdlrrpjwfvvkxkglx.supabase.co";
+const SUPA_KEY = "sb_publishable_GRan1uWwXXbFp27tOXvV4w_HHO57fkf";
+// ========================
+
+let sb = null;
+if (SUPA_URL.indexOf("YOUR_") === -1 && SUPA_KEY.indexOf("YOUR_") === -1) {
+  sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+} else {
+  document.getElementById("configWarning").style.display = "block";
+}
+
+const UA_MONTHS = ["січень","лютий","березень","квітень","травень","червень","липень","серпень","вересень","жовтень","листопад","грудень"];
+
+let students = [];
+let collections = [];
+let selectedStudentId = null;
+
+function fmtMoney(n) {
+  n = Number(n) || 0;
+  return n.toLocaleString("uk-UA");
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function academicYearStart() {
+  const now = new Date();
+  const y = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+  return new Date(y, 8, 1);
+}
+
+function monthKey(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+
+function monthLabel(d) {
+  return UA_MONTHS[d.getMonth()] + " " + d.getFullYear();
+}
+
+function addMonths(dateStr, n) {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setMonth(d.getMonth() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function monthsElapsed(startMonthStr) {
+  const start = new Date(startMonthStr + "T00:00:00");
+  const now = new Date();
+  return (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()) + 1;
+}
+
+function formatMonthYear(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  return UA_MONTHS[d.getMonth()] + " " + d.getFullYear();
+}
+
+function statusForRecurring(c, totalAmount) {
+  const monthly = Number(c.monthly_amount) || 0;
+  if (!monthly || !c.start_month) return "не налаштовано";
+  const monthsCovered = Math.floor(totalAmount / monthly);
+  const elapsed = monthsElapsed(c.start_month);
+  if (monthsCovered === 0) return "не платив";
+  const coveredThrough = addMonths(c.start_month, monthsCovered - 1);
+  const debtMonths = elapsed - monthsCovered;
+  if (debtMonths > 0) {
+    const firstUnpaid = addMonths(c.start_month, monthsCovered);
+    return "винен за " + debtMonths + " міс. (з " + formatMonthYear(firstUnpaid) + ")";
+  }
+  return "сплачено по " + formatMonthYear(coveredThrough);
+}
+
+async function loadBaseData() {
+  if (!sb) return;
+  const { data: st } = await sb.from("students").select("*").order("name");
+  students = st || [];
+  const { data: cols } = await sb.from("collections").select("*").order("created_at", { ascending: false });
+  collections = cols || [];
+}
+
+function isTypingActive() {
+  return document.activeElement && document.activeElement.id === "searchInput";
+}
+
+function renderMatches() {
+  const query = document.getElementById("searchInput").value.trim().toLowerCase();
+  const listEl = document.getElementById("matchList");
+  if (!query) {
+    listEl.innerHTML = "";
+    return;
+  }
+  const matches = students.filter(s => s.name.toLowerCase().includes(query));
+  if (!matches.length) {
+    listEl.innerHTML = '<div class="empty">Нікого не знайдено</div>';
+    return;
+  }
+  listEl.innerHTML = matches.map(s => `<div class="match-item" data-select="${s.id}">${escapeHtml(s.name)}</div>`).join("");
+  listEl.querySelectorAll("[data-select]").forEach(item => {
+    item.addEventListener("click", () => {
+      selectedStudentId = item.dataset.select;
+      document.getElementById("searchView").style.display = "none";
+      document.getElementById("reportView").style.display = "";
+      renderReport();
+    });
+  });
+}
+
+async function renderReport() {
+  if (!selectedStudentId) return;
+  const student = students.find(s => s.id === selectedStudentId);
+  if (!student) return;
+
+  const { data: logs } = await sb.from("payment_log").select("*").eq("student_id", selectedStudentId);
+  const { data: payments } = await sb.from("payments").select("*").eq("student_id", selectedStudentId);
+  const paymentsByCollection = {};
+  (payments || []).forEach(p => paymentsByCollection[p.collection_id] = p);
+
+  const yearStart = academicYearStart();
+  const yearLogs = (logs || []).filter(l => new Date(l.created_at) >= yearStart);
+
+  const totalYear = yearLogs.reduce((acc, l) => acc + Number(l.amount), 0);
+  const totalCash = yearLogs.filter(l => l.method === "cash").reduce((acc, l) => acc + Number(l.amount), 0);
+  const totalCard = yearLogs.filter(l => l.method === "card").reduce((acc, l) => acc + Number(l.amount), 0);
+
+  const monthsMap = {};
+  const now = new Date();
+  for (let d = new Date(yearStart); d <= now; d.setMonth(d.getMonth() + 1)) {
+    monthsMap[monthKey(d)] = { label: monthLabel(d), sum: 0 };
+  }
+  yearLogs.forEach(l => {
+    const d = new Date(l.created_at);
+    const key = monthKey(d);
+    if (monthsMap[key]) monthsMap[key].sum += Number(l.amount);
+  });
+  const monthRows = Object.keys(monthsMap).sort().reverse().map(key => monthsMap[key]);
+
+  const topicMap = {};
+  yearLogs.forEach(l => {
+    if (!topicMap[l.collection_id]) topicMap[l.collection_id] = 0;
+    topicMap[l.collection_id] += Number(l.amount);
+  });
+  const topicRows = Object.keys(topicMap).map(collectionId => {
+    const c = collections.find(x => x.id === collectionId);
+    const p = paymentsByCollection[collectionId];
+    const total = p ? (Number(p.amount_cash) || 0) + (Number(p.amount_card) || 0) : 0;
+    let status = "";
+    if (c && c.type === "recurring") {
+      status = statusForRecurring(c, total);
+    } else {
+      status = total > 0 ? "здав" : "не здав";
+    }
+    return {
+      title: c ? c.title : "видалений збір",
+      type: c ? c.type : "one_time",
+      sumThisYear: topicMap[collectionId],
+      status
+    };
+  }).sort((a, b) => b.sumThisYear - a.sumThisYear);
+
+  const el = document.getElementById("reportView");
+  el.innerHTML = `
+    <button class="backlink" id="backBtn">&larr; інший пошук</button>
+    <div class="card">
+      <div class="student-header">${escapeHtml(student.name)}</div>
+      <div class="top-summary">
+        <div class="num">${fmtMoney(totalYear)} грн</div>
+        <div class="meta">всього за навчальний рік</div>
+        <div class="split">готівка ${fmtMoney(totalCash)} грн &middot; картка ${fmtMoney(totalCard)} грн</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title" style="margin-top:0">По місяцях</div>
+      ${monthRows.map(m => `
+        <div class="month-row">
+          <span>${m.label}</span>
+          <span class="amount-cell">${m.sum ? fmtMoney(m.sum) + " грн" : "&mdash;"}</span>
+        </div>
+      `).join("")}
+    </div>
+
+    <div class="card">
+      <div class="section-title" style="margin-top:0">По зборах</div>
+      ${topicRows.length ? topicRows.map(t => `
+        <div class="topic-row">
+          <div>
+            <div class="title">${escapeHtml(t.title)}${t.type === "recurring" ? '<span class="badge">щомісячно</span>' : ""}</div>
+            <div class="status">${escapeHtml(t.status)}</div>
+          </div>
+          <div class="amount-cell">${fmtMoney(t.sumThisYear)} грн</div>
+        </div>
+      `).join("") : '<div class="empty">Оплат ще не було</div>'}
+    </div>
+  `;
+
+  document.getElementById("backBtn").addEventListener("click", () => {
+    selectedStudentId = null;
+    document.getElementById("reportView").style.display = "none";
+    document.getElementById("searchView").style.display = "";
+  });
+}
+
+document.getElementById("searchInput").addEventListener("input", renderMatches);
+
+if (sb) {
+  loadBaseData();
+  setInterval(async () => {
+    if (isTypingActive()) return;
+    await loadBaseData();
+    if (selectedStudentId) renderReport();
+  }, 8000);
+}
+</script>
+</body>
+</html>
