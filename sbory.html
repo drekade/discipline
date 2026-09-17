@@ -820,50 +820,48 @@ function renderRecurringDetail(c, el) {
   };
 
   el.querySelectorAll("[data-addcash]").forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const studentId = btn.dataset.addcash;
-      const val = prompt("Скільки додати готівкою (грн)?");
+      const val = await askAmount("Скільки додати готівкою (грн)?");
       if (val === null) return;
-      const delta = Number(val);
-      if (!delta || delta <= 0) { showToast("введи суму більше нуля"); return; }
+      if (!val || val <= 0) { showToast("введи суму більше нуля"); return; }
       const existing = payByStudent[studentId];
       const current = existing ? existing.amount_cash || 0 : 0;
-      savePayment(studentId, { amount_cash: current + delta });
+      savePayment(studentId, { amount_cash: current + val });
     });
   });
 
   el.querySelectorAll("[data-addcard]").forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const studentId = btn.dataset.addcard;
-      const val = prompt("Скільки додати карткою (грн)?");
+      const val = await askAmount("Скільки додати карткою (грн)?");
       if (val === null) return;
-      const delta = Number(val);
-      if (!delta || delta <= 0) { showToast("введи суму більше нуля"); return; }
+      if (!val || val <= 0) { showToast("введи суму більше нуля"); return; }
       const existing = payByStudent[studentId];
       const current = existing ? existing.amount_card || 0 : 0;
-      savePayment(studentId, { amount_card: current + delta });
+      savePayment(studentId, { amount_card: current + val });
     });
   });
 
   el.querySelectorAll("[data-editcash]").forEach(span => {
-    span.addEventListener("click", () => {
+    span.addEventListener("click", async () => {
       const studentId = span.dataset.editcash;
       const existing = payByStudent[studentId];
       const current = existing ? existing.amount_cash || 0 : 0;
-      const val = prompt("Виправити суму готівка на (грн), зараз: " + fmtMoney(current), current);
+      const val = await askAmount("Виправити суму готівка (грн)", current);
       if (val === null) return;
-      savePayment(studentId, { amount_cash: Number(val) || 0 });
+      savePayment(studentId, { amount_cash: val || 0 });
     });
   });
 
   el.querySelectorAll("[data-editcard]").forEach(span => {
-    span.addEventListener("click", () => {
+    span.addEventListener("click", async () => {
       const studentId = span.dataset.editcard;
       const existing = payByStudent[studentId];
       const current = existing ? existing.amount_card || 0 : 0;
-      const val = prompt("Виправити суму картка на (грн), зараз: " + fmtMoney(current), current);
+      const val = await askAmount("Виправити суму картка (грн)", current);
       if (val === null) return;
-      savePayment(studentId, { amount_card: Number(val) || 0 });
+      savePayment(studentId, { amount_card: val || 0 });
     });
   });
 
@@ -888,6 +886,43 @@ function renderRecurringDetail(c, el) {
 
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(() => showToast("скопійовано")).catch(() => showToast("не вдалося скопіювати"));
+}
+
+function askAmount(title, defaultValue) {
+  return new Promise(resolve => {
+    const bg = document.createElement("div");
+    bg.className = "modal-bg";
+    bg.innerHTML = `
+      <div class="modal">
+        <h2>${title}</h2>
+        <input type="number" id="amountPromptInput" inputmode="decimal" placeholder="0" value="${defaultValue !== undefined && defaultValue !== null && defaultValue !== "" ? defaultValue : ""}">
+        <div class="row" style="margin-top:16px">
+          <button class="btn ghost" id="amountPromptCancel">скасувати</button>
+          <button class="btn" id="amountPromptOk">гаразд</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(bg);
+    const input = bg.querySelector("#amountPromptInput");
+    setTimeout(() => { input.focus(); input.select(); }, 50);
+
+    const finish = (result) => {
+      bg.remove();
+      resolve(result);
+    };
+
+    bg.querySelector("#amountPromptCancel").addEventListener("click", () => finish(null));
+    bg.querySelector("#amountPromptOk").addEventListener("click", () => {
+      const val = Number(input.value);
+      finish(isNaN(val) ? null : val);
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const val = Number(input.value);
+        finish(isNaN(val) ? null : val);
+      }
+    });
+  });
 }
 
 function renderRoster() {
