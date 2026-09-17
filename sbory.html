@@ -608,7 +608,10 @@ function renderOneTimeDetail(c, el) {
       <div class="student-row-one" data-student="${s.id}">
         <div class="top-line">
           <span class="student-name ${isPaid ? "paid" : "unpaid"}">${escapeHtml(s.name)}</span>
-          <input type="number" class="amount-input-single" placeholder="0" value="${amount}" data-role="amount">
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="number" class="amount-input-single" placeholder="0" value="${amount}" data-role="amount">
+            ${isPaid ? `<button class="btn danger small" data-role="reset" title="скинути оплату">&times;</button>` : ""}
+          </div>
         </div>
         <div class="bottom-line">
           <div class="method-checkboxes">
@@ -691,6 +694,14 @@ function renderOneTimeDetail(c, el) {
     };
 
     amountInput.addEventListener("change", saveFromRow);
+    const resetBtn = row.querySelector('[data-role="reset"]');
+    if (resetBtn) {
+      resetBtn.addEventListener("click", () => {
+        if (!confirm("Скинути оплату для цієї людини?")) return;
+        amountInput.value = "";
+        saveFromRow();
+      });
+    }
     cashCheck.addEventListener("change", () => {
       if (cashCheck.checked) cardCheck.checked = false;
       else cashCheck.checked = true;
