@@ -397,8 +397,17 @@ const state = {
   students: [],
   collections: [],
   paymentsByCollection: {},
-  openCollectionId: null
+  openCollectionId: null,
+  studentSearchQuery: ""
 };
+
+function applyStudentFilter(el, query) {
+  const q = (query || "").trim().toLowerCase();
+  el.querySelectorAll("[data-search-row]").forEach(row => {
+    const name = row.dataset.searchRow || "";
+    row.style.display = !q || name.includes(q) ? "" : "none";
+  });
+}
 
 const RU_MONTHS = ["січень","лютий","березень","квітень","травень","червень","липень","серпень","вересень","жовтень","листопад","грудень"];
 
@@ -572,6 +581,7 @@ function renderCollectionsList() {
   }).join("");
   el.querySelectorAll("[data-open]").forEach(card => {
     card.addEventListener("click", () => {
+      state.studentSearchQuery = "";
       state.openCollectionId = card.dataset.open;
       render();
     });
@@ -599,30 +609,15 @@ function renderOneTimeDetail(c, el) {
 
   const rows = state.students.map(s => {
     const p = payByStudent[s.id];
-    const cash = p ? p.amount_cash || 0 : 0;
-    const card = p ? p.amount_card || 0 : 0;
-    const amount = cash || card || "";
-    const method = card > 0 ? "card" : "cash";
+    const amount = p ? paymentTotal(p) || "" : "";
     const isPaid = paymentTotal(p) > 0;
     return `
-      <div class="student-row-one" data-student="${s.id}">
+      <div class="student-row-one" data-student="${s.id}" data-search-row="${s.name.toLowerCase()}">
         <div class="top-line">
           <span class="student-name ${isPaid ? "paid" : "unpaid"}">${escapeHtml(s.name)}</span>
           <div style="display:flex;gap:6px;align-items:center">
             <input type="number" class="amount-input-single" placeholder="0" value="${amount}" data-role="amount">
             ${isPaid ? `<button class="btn danger small" data-role="reset" title="скинути оплату">&times;</button>` : ""}
-          </div>
-        </div>
-        <div class="bottom-line">
-          <div class="method-checkboxes">
-            <label class="method-checkbox">
-              <input type="checkbox" data-role="method-cash" ${method === "cash" ? "checked" : ""}>
-              готівка
-            </label>
-            <label class="method-checkbox">
-              <input type="checkbox" data-role="method-card" ${method === "card" ? "checked" : ""}>
-              картка
-            </label>
           </div>
         </div>
       </div>
@@ -643,6 +638,7 @@ function renderOneTimeDetail(c, el) {
       ${c.purpose ? `<div class="meta">${escapeHtml(c.purpose)}</div>` : ""}
       ${c.deadline ? `<div class="meta">термін: ${c.deadline}</div>` : ""}
     </div>
+    <input type="text" id="studentSearchInput" placeholder="Пошук за прізвищем" value="${escapeHtml(state.studentSearchQuery)}" style="margin-bottom:12px">
     <div class="card">
       ${rows}
     </div>
@@ -652,7 +648,14 @@ function renderOneTimeDetail(c, el) {
     </div>
   `;
 
+  applyStudentFilter(el, state.studentSearchQuery);
+  document.getElementById("studentSearchInput").addEventListener("input", (e) => {
+    state.studentSearchQuery = e.target.value;
+    applyStudentFilter(el, state.studentSearchQuery);
+  });
+
   document.getElementById("backBtn").addEventListener("click", () => {
+    state.studentSearchQuery = "";
     state.openCollectionId = null;
     render();
   });
@@ -662,19 +665,16 @@ function renderOneTimeDetail(c, el) {
   el.querySelectorAll(".student-row-one").forEach(row => {
     const studentId = row.dataset.student;
     const amountInput = row.querySelector('[data-role="amount"]');
-    const cashCheck = row.querySelector('[data-role="method-cash"]');
-    const cardCheck = row.querySelector('[data-role="method-card"]');
-
     const saveFromRow = async () => {
       const amount = Number(amountInput.value) || 0;
-      const method = cardCheck.checked ? "card" : "cash";
+      const method = "cash";
       const existing = payByStudent[studentId];
       const previousTotal = paymentTotal(existing);
       const body = {
         collection_id: c.id,
         student_id: studentId,
-        amount_cash: method === "cash" ? amount : 0,
-        amount_card: method === "card" ? amount : 0,
+        amount_cash: amount,
+        amount_card: 0,
         paid: amount > 0
       };
       await sb.from("payments").upsert(body, { onConflict: "collection_id,student_id" });
@@ -702,16 +702,6 @@ function renderOneTimeDetail(c, el) {
         saveFromRow();
       });
     }
-    cashCheck.addEventListener("change", () => {
-      if (cashCheck.checked) cardCheck.checked = false;
-      else cashCheck.checked = true;
-      saveFromRow();
-    });
-    cardCheck.addEventListener("change", () => {
-      if (cardCheck.checked) cashCheck.checked = false;
-      else cardCheck.checked = true;
-      saveFromRow();
-    });
   });
 
   document.getElementById("copyDebtorsBtn").addEventListener("click", () => {
@@ -747,7 +737,7 @@ function renderRecurringDetail(c, el) {
     const cash = p ? p.amount_cash || 0 : 0;
     const card = p ? p.amount_card || 0 : 0;
     return `
-      <div class="student-row-recurring" data-student="${s.id}">
+      <div class="student-row-recurring" data-student="${s.id}" data-search-row="${s.name.toLowerCase()}">
         <div class="top-line">
           <span class="student-name ${st.ok ? "paid" : "unpaid"}">${escapeHtml(s.name)}</span>
           <span class="status-label ${st.ok ? "ok" : "debt"}">${st.text}</span>
@@ -779,6 +769,7 @@ function renderRecurringDetail(c, el) {
       <div class="meta">${fmtMoney(c.monthly_amount)} грн/міс, рахуємо з ${formatMonthYear(c.start_month)}</div>
       ${c.purpose ? `<div class="meta">${escapeHtml(c.purpose)}</div>` : ""}
     </div>
+    <input type="text" id="studentSearchInput" placeholder="Пошук за прізвищем" value="${escapeHtml(state.studentSearchQuery)}" style="margin-bottom:12px">
     <div class="card">
       ${rows}
     </div>
@@ -788,7 +779,14 @@ function renderRecurringDetail(c, el) {
     </div>
   `;
 
+  applyStudentFilter(el, state.studentSearchQuery);
+  document.getElementById("studentSearchInput").addEventListener("input", (e) => {
+    state.studentSearchQuery = e.target.value;
+    applyStudentFilter(el, state.studentSearchQuery);
+  });
+
   document.getElementById("backBtn").addEventListener("click", () => {
+    state.studentSearchQuery = "";
     state.openCollectionId = null;
     render();
   });
