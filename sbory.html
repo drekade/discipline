@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="ru">
+<html lang="uk">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Сборы класса</title>
+<title>Збори класу</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
@@ -354,19 +354,19 @@
 <body>
 
 <header>
-  <h1 id="classTitle">Сборы класса</h1>
-  <div class="sub" id="subTitle">учёт без тетрадки</div>
+  <h1 id="classTitle">Збори класу</h1>
+  <div class="sub" id="subTitle">облік без зошита</div>
 </header>
 
 <div class="wrap">
   <div id="configWarning" style="display:none" class="config-warning">
-    Не настроено подключение к базе. Открой файл и впиши SUPA_URL и SUPA_KEY
-    в начале блока <code>&lt;script&gt;</code> внизу страницы.
+    Не налаштовано підключення до бази. Відкрий файл і впиши SUPA_URL і SUPA_KEY
+    на початку блоку <code>&lt;script&gt;</code> внизу сторінки.
   </div>
 
   <div class="tabs">
-    <div class="tab active" data-tab="collections">Сборы</div>
-    <div class="tab" data-tab="roster">Список класса</div>
+    <div class="tab active" data-tab="collections">Збори</div>
+    <div class="tab" data-tab="roster">Список класу</div>
   </div>
 
   <div id="view-collections"></div>
@@ -398,7 +398,7 @@ const state = {
   openCollectionId: null
 };
 
-const RU_MONTHS = ["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+const RU_MONTHS = ["січень","лютий","березень","квітень","травень","червень","липень","серпень","вересень","жовтень","листопад","грудень"];
 
 function showToast(msg) {
   const t = document.getElementById("toast");
@@ -409,7 +409,7 @@ function showToast(msg) {
 
 function fmtMoney(n) {
   n = Number(n) || 0;
-  return n.toLocaleString("ru-RU");
+  return n.toLocaleString("uk-UA");
 }
 
 function paymentTotal(p) {
@@ -438,20 +438,20 @@ function statusForRecurring(c, payment) {
   const amount = paymentTotal(payment);
   const monthly = Number(c.monthly_amount) || 0;
   if (!monthly || !c.start_month) {
-    return { text: "не настроено", amount, ok: true };
+    return { text: "не налаштовано", amount, ok: true };
   }
   const monthsCovered = Math.floor(amount / monthly);
   const elapsed = monthsElapsed(c.start_month);
   if (monthsCovered === 0) {
-    return { text: "не платил", amount, ok: false };
+    return { text: "не платив", amount, ok: false };
   }
   const coveredThrough = addMonths(c.start_month, monthsCovered - 1);
   const debtMonths = elapsed - monthsCovered;
   if (debtMonths > 0) {
     const firstUnpaid = addMonths(c.start_month, monthsCovered);
-    return { text: "должен за " + debtMonths + " мес. (с " + formatMonthYear(firstUnpaid) + ")", amount, ok: false };
+    return { text: "винен за " + debtMonths + " міс. (з " + formatMonthYear(firstUnpaid) + ")", amount, ok: false };
   }
-  return { text: "оплачено по " + formatMonthYear(coveredThrough), amount, ok: true };
+  return { text: "сплачено по " + formatMonthYear(coveredThrough), amount, ok: true };
 }
 
 async function loadAll() {
@@ -534,7 +534,7 @@ function render() {
 function renderCollectionsList() {
   const el = document.getElementById("view-collections");
   if (!state.collections.length) {
-    el.innerHTML = '<div class="empty">Пока сборов нет.<br>Нажми "+", чтобы создать первый.</div>';
+    el.innerHTML = '<div class="empty">Поки зборів немає.<br>Натисни "+", щоб створити перший.</div>';
     return;
   }
   el.innerHTML = state.collections.map(c => {
@@ -543,11 +543,11 @@ function renderCollectionsList() {
       const pct = stats.totalCount ? Math.round(((stats.totalCount - stats.debtorsCount) / stats.totalCount) * 100) : 0;
       return `
         <div class="card" data-open="${c.id}">
-          <h3>${escapeHtml(c.title)}<span class="badge">ежемесячно</span></h3>
-          <div class="meta">${fmtMoney(c.monthly_amount)} грн/мес${stats.debtorsCount ? " &middot; должников: " + stats.debtorsCount : ""}</div>
+          <h3>${escapeHtml(c.title)}<span class="badge">щомісячно</span></h3>
+          <div class="meta">${fmtMoney(c.monthly_amount)} грн/міс${stats.debtorsCount ? " &middot; боржників: " + stats.debtorsCount : ""}</div>
           <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
           <div class="progress-text">
-            <span>собрано всего: ${fmtMoney(stats.totalSum)} грн</span>
+            <span>зібрано всього: ${fmtMoney(stats.totalSum)} грн</span>
             <span>${pct}%</span>
           </div>
         </div>
@@ -559,10 +559,10 @@ function renderCollectionsList() {
     return `
       <div class="card" data-open="${c.id}">
         <h3>${escapeHtml(c.title)}</h3>
-        <div class="meta">${c.purpose ? escapeHtml(c.purpose) + " &middot; " : ""}${paidCount} из ${totalCount} сдали</div>
+        <div class="meta">${c.purpose ? escapeHtml(c.purpose) + " &middot; " : ""}${paidCount} з ${totalCount} здали</div>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
         <div class="progress-text">
-          <span>${fmtMoney(sum)} грн${target ? " из " + fmtMoney(target) : ""}</span>
+          <span>${fmtMoney(sum)} грн${target ? " з " + fmtMoney(target) : ""}</span>
           <span>${pct}%</span>
         </div>
       </div>
@@ -612,11 +612,11 @@ function renderOneTimeDetail(c, el) {
           <div class="method-checkboxes">
             <label class="method-checkbox">
               <input type="checkbox" data-role="method-cash" ${method === "cash" ? "checked" : ""}>
-              нал
+              готівка
             </label>
             <label class="method-checkbox">
               <input type="checkbox" data-role="method-card" ${method === "card" ? "checked" : ""}>
-              карта
+              картка
             </label>
           </div>
         </div>
@@ -625,25 +625,25 @@ function renderOneTimeDetail(c, el) {
   }).join("");
 
   el.innerHTML = `
-    <button class="backlink" id="backBtn">&larr; ко всем сборам</button>
+    <button class="backlink" id="backBtn">&larr; до всіх зборів</button>
     <div class="card">
       <div class="top-summary">
         <div>
           <div class="num">${fmtMoney(sum)} грн</div>
-          <div class="meta">${paidCount} из ${totalCount} сдали${target ? " &middot; цель " + fmtMoney(target) + " грн" : ""}</div>
+          <div class="meta">${paidCount} з ${totalCount} здали${target ? " &middot; ціль " + fmtMoney(target) + " грн" : ""}</div>
         </div>
-        <button class="btn ghost small" id="editCollectionBtn">изменить</button>
+        <button class="btn ghost small" id="editCollectionBtn">змінити</button>
       </div>
-      ${c.per_person_amount ? `<div class="meta">по ${fmtMoney(c.per_person_amount)} грн с человека</div>` : ""}
+      ${c.per_person_amount ? `<div class="meta">по ${fmtMoney(c.per_person_amount)} грн з людини</div>` : ""}
       ${c.purpose ? `<div class="meta">${escapeHtml(c.purpose)}</div>` : ""}
-      ${c.deadline ? `<div class="meta">срок: ${c.deadline}</div>` : ""}
+      ${c.deadline ? `<div class="meta">термін: ${c.deadline}</div>` : ""}
     </div>
     <div class="card">
       ${rows}
     </div>
     <div class="row" style="margin-bottom:16px">
-      <button class="btn ghost" id="copyDebtorsBtn">скопировать должников</button>
-      <button class="btn ghost" id="copyAllBtn">скопировать всех</button>
+      <button class="btn ghost" id="copyDebtorsBtn">скопіювати боржників</button>
+      <button class="btn ghost" id="copyAllBtn">скопіювати всіх</button>
     </div>
   `;
 
@@ -671,6 +671,7 @@ function renderOneTimeDetail(c, el) {
         paid: amount > 0
       };
       await sb.from("payments").upsert(body, { onConflict: "collection_id,student_id" });
+      showToast("збережено");
       await loadAll();
       state.openCollectionId = c.id;
       render();
@@ -691,17 +692,17 @@ function renderOneTimeDetail(c, el) {
 
   document.getElementById("copyDebtorsBtn").addEventListener("click", () => {
     const debtors = state.students.filter(s => paymentTotal(payByStudent[s.id]) === 0);
-    const text = 'Не сдали "' + c.title + '":\n' + debtors.map(s => "- " + s.name).join("\n");
+    const text = 'Не здали "' + c.title + '":\n' + debtors.map(s => "- " + s.name).join("\n");
     copyToClipboard(text);
   });
 
   document.getElementById("copyAllBtn").addEventListener("click", () => {
     const lines = state.students.map(s => {
       const p = payByStudent[s.id];
-      if (paymentTotal(p) === 0) return "- " + s.name + ": не сдал";
+      if (paymentTotal(p) === 0) return "- " + s.name + ": не здав";
       const parts = [];
-      if (p.amount_cash) parts.push("нал " + fmtMoney(p.amount_cash));
-      if (p.amount_card) parts.push("карта " + fmtMoney(p.amount_card));
+      if (p.amount_cash) parts.push("готівка " + fmtMoney(p.amount_cash));
+      if (p.amount_card) parts.push("картка " + fmtMoney(p.amount_card));
       return "- " + s.name + ": " + fmtMoney(paymentTotal(p)) + " грн (" + (parts.join(", ") || "0") + ")";
     });
     const text = '"' + c.title + '":\n' + lines.join("\n");
@@ -729,12 +730,12 @@ function renderRecurringDetail(c, el) {
         </div>
         <div class="bottom-line">
           <div class="method-values">
-            <span data-editcash="${s.id}">нал: ${fmtMoney(cash)}</span>
-            <span data-editcard="${s.id}">карта: ${fmtMoney(card)}</span>
+            <span data-editcash="${s.id}">готівка: ${fmtMoney(cash)}</span>
+            <span data-editcard="${s.id}">картка: ${fmtMoney(card)}</span>
           </div>
           <div class="add-pay-buttons">
-            <button class="btn small ghost" data-addcash="${s.id}">+ нал</button>
-            <button class="btn small ghost" data-addcard="${s.id}">+ карта</button>
+            <button class="btn small ghost" data-addcash="${s.id}">+ готівка</button>
+            <button class="btn small ghost" data-addcard="${s.id}">+ картка</button>
           </div>
         </div>
       </div>
@@ -742,24 +743,24 @@ function renderRecurringDetail(c, el) {
   }).join("");
 
   el.innerHTML = `
-    <button class="backlink" id="backBtn">&larr; ко всем сборам</button>
+    <button class="backlink" id="backBtn">&larr; до всіх зборів</button>
     <div class="card">
       <div class="top-summary">
         <div>
           <div class="num">${fmtMoney(stats.totalSum)} грн</div>
-          <div class="meta">${stats.totalCount - stats.debtorsCount} из ${stats.totalCount} без долгов${stats.debtorsCount ? " &middot; должников: " + stats.debtorsCount : ""}</div>
+          <div class="meta">${stats.totalCount - stats.debtorsCount} з ${stats.totalCount} без боргів${stats.debtorsCount ? " &middot; боржників: " + stats.debtorsCount : ""}</div>
         </div>
-        <button class="btn ghost small" id="editCollectionBtn">изменить</button>
+        <button class="btn ghost small" id="editCollectionBtn">змінити</button>
       </div>
-      <div class="meta">${fmtMoney(c.monthly_amount)} грн/мес, считаем с ${formatMonthYear(c.start_month)}</div>
+      <div class="meta">${fmtMoney(c.monthly_amount)} грн/міс, рахуємо з ${formatMonthYear(c.start_month)}</div>
       ${c.purpose ? `<div class="meta">${escapeHtml(c.purpose)}</div>` : ""}
     </div>
     <div class="card">
       ${rows}
     </div>
     <div class="row" style="margin-bottom:16px">
-      <button class="btn ghost" id="copyDebtorsBtn">скопировать должников</button>
-      <button class="btn ghost" id="copyAllBtn">скопировать всех</button>
+      <button class="btn ghost" id="copyDebtorsBtn">скопіювати боржників</button>
+      <button class="btn ghost" id="copyAllBtn">скопіювати всіх</button>
     </div>
   `;
 
@@ -781,6 +782,7 @@ function renderRecurringDetail(c, el) {
       ...patch
     };
     await sb.from("payments").upsert(body, { onConflict: "collection_id,student_id" });
+    showToast("збережено");
     await loadAll();
     state.openCollectionId = c.id;
     render();
@@ -789,10 +791,10 @@ function renderRecurringDetail(c, el) {
   el.querySelectorAll("[data-addcash]").forEach(btn => {
     btn.addEventListener("click", () => {
       const studentId = btn.dataset.addcash;
-      const val = prompt("Сколько добавить наличными (грн)?");
+      const val = prompt("Скільки додати готівкою (грн)?");
       if (val === null) return;
       const delta = Number(val);
-      if (!delta || delta <= 0) { showToast("введи сумму больше нуля"); return; }
+      if (!delta || delta <= 0) { showToast("введи суму більше нуля"); return; }
       const existing = payByStudent[studentId];
       const current = existing ? existing.amount_cash || 0 : 0;
       savePayment(studentId, { amount_cash: current + delta });
@@ -802,10 +804,10 @@ function renderRecurringDetail(c, el) {
   el.querySelectorAll("[data-addcard]").forEach(btn => {
     btn.addEventListener("click", () => {
       const studentId = btn.dataset.addcard;
-      const val = prompt("Сколько добавить картой (грн)?");
+      const val = prompt("Скільки додати карткою (грн)?");
       if (val === null) return;
       const delta = Number(val);
-      if (!delta || delta <= 0) { showToast("введи сумму больше нуля"); return; }
+      if (!delta || delta <= 0) { showToast("введи суму більше нуля"); return; }
       const existing = payByStudent[studentId];
       const current = existing ? existing.amount_card || 0 : 0;
       savePayment(studentId, { amount_card: current + delta });
@@ -817,7 +819,7 @@ function renderRecurringDetail(c, el) {
       const studentId = span.dataset.editcash;
       const existing = payByStudent[studentId];
       const current = existing ? existing.amount_cash || 0 : 0;
-      const val = prompt("Исправить сумму нал на (грн), сейчас: " + fmtMoney(current), current);
+      const val = prompt("Виправити суму готівка на (грн), зараз: " + fmtMoney(current), current);
       if (val === null) return;
       savePayment(studentId, { amount_cash: Number(val) || 0 });
     });
@@ -828,7 +830,7 @@ function renderRecurringDetail(c, el) {
       const studentId = span.dataset.editcard;
       const existing = payByStudent[studentId];
       const current = existing ? existing.amount_card || 0 : 0;
-      const val = prompt("Исправить сумму карта на (грн), сейчас: " + fmtMoney(current), current);
+      const val = prompt("Виправити суму картка на (грн), зараз: " + fmtMoney(current), current);
       if (val === null) return;
       savePayment(studentId, { amount_card: Number(val) || 0 });
     });
@@ -836,7 +838,7 @@ function renderRecurringDetail(c, el) {
 
   document.getElementById("copyDebtorsBtn").addEventListener("click", () => {
     const debtors = state.students.filter(s => !statusForRecurring(c, payByStudent[s.id]).ok);
-    const text = 'Должники по "' + c.title + '":\n' + debtors.map(s => "- " + s.name + ": " + statusForRecurring(c, payByStudent[s.id]).text).join("\n");
+    const text = 'Боржники по "' + c.title + '":\n' + debtors.map(s => "- " + s.name + ": " + statusForRecurring(c, payByStudent[s.id]).text).join("\n");
     copyToClipboard(text);
   });
 
@@ -846,7 +848,7 @@ function renderRecurringDetail(c, el) {
       const st = statusForRecurring(c, p);
       const cash = p ? p.amount_cash || 0 : 0;
       const card = p ? p.amount_card || 0 : 0;
-      return "- " + s.name + ": " + st.text + " (нал " + fmtMoney(cash) + ", карта " + fmtMoney(card) + ")";
+      return "- " + s.name + ": " + st.text + " (готівка " + fmtMoney(cash) + ", картка " + fmtMoney(card) + ")";
     });
     const text = '"' + c.title + '":\n' + lines.join("\n");
     copyToClipboard(text);
@@ -854,7 +856,7 @@ function renderRecurringDetail(c, el) {
 }
 
 function copyToClipboard(text) {
-  navigator.clipboard.writeText(text).then(() => showToast("скопировано")).catch(() => showToast("не вышло скопировать"));
+  navigator.clipboard.writeText(text).then(() => showToast("скопійовано")).catch(() => showToast("не вдалося скопіювати"));
 }
 
 function renderRoster() {
@@ -864,25 +866,25 @@ function renderRoster() {
       ${state.students.length ? state.students.map(s => `
         <div class="student-row" data-student="${s.id}">
           <span class="student-name">${escapeHtml(s.name)}</span>
-          <button class="btn danger small" data-remove="${s.id}">убрать</button>
+          <button class="btn danger small" data-remove="${s.id}">прибрати</button>
         </div>
-      `).join("") : '<div class="empty">Список пока пуст. Добавь учеников по одному или списком.</div>'}
+      `).join("") : '<div class="empty">Список поки порожній. Додай учнів по одному або списком.</div>'}
     </div>
     <div class="card">
-      <label>Добавить одного</label>
+      <label>Додати одного</label>
       <div class="row">
-        <input type="text" id="newStudentName" placeholder="Фамилия Имя">
-        <button class="btn small" id="addStudentBtn" style="flex:0 0 auto">добавить</button>
+        <input type="text" id="newStudentName" placeholder="Прізвище Ім'я">
+        <button class="btn small" id="addStudentBtn" style="flex:0 0 auto">додати</button>
       </div>
-      <label>Или вставить список (каждое имя с новой строки)</label>
-      <textarea id="bulkStudents" rows="4" placeholder="Иванов Петя&#10;Сидорова Оля&#10;..."></textarea>
-      <button class="btn orange small" id="addBulkBtn" style="margin-top:8px">добавить список</button>
+      <label>Або вставити список (кожне ім'я з нового рядка)</label>
+      <textarea id="bulkStudents" rows="4" placeholder="Іванов Петро&#10;Сидорова Оля&#10;..."></textarea>
+      <button class="btn orange small" id="addBulkBtn" style="margin-top:8px">додати список</button>
     </div>
   `;
 
   el.querySelectorAll("[data-remove]").forEach(btn => {
     btn.addEventListener("click", async () => {
-      if (!confirm("Убрать из списка класса?")) return;
+      if (!confirm("Прибрати зі списку класу?")) return;
       await sb.from("students").delete().eq("id", btn.dataset.remove);
       await loadAll();
       state.tab = "roster";
@@ -918,46 +920,46 @@ function openCollectionForm(existing) {
   bg.className = "modal-bg";
   bg.innerHTML = `
     <div class="modal">
-      <h2>${existing ? "Изменить сбор" : "Новый сбор"}</h2>
+      <h2>${existing ? "Змінити збір" : "Новий збір"}</h2>
       ${existing ? "" : `
-      <label>Тип сбора</label>
+      <label>Тип збору</label>
       <div class="row">
-        <button type="button" class="btn small type-btn active" data-type="one_time">разовый</button>
-        <button type="button" class="btn small ghost type-btn" data-type="recurring">ежемесячный</button>
+        <button type="button" class="btn small type-btn active" data-type="one_time">разовий</button>
+        <button type="button" class="btn small ghost type-btn" data-type="recurring">щомісячний</button>
       </div>
       `}
-      <label>Название</label>
-      <input type="text" id="f_title" value="${existing ? escapeHtml(existing.title) : ""}" placeholder="Например: на шторы">
-      <label>Комментарий (необязательно)</label>
-      <input type="text" id="f_purpose" value="${existing && existing.purpose ? escapeHtml(existing.purpose) : ""}" placeholder="куда пойдут деньги">
+      <label>Назва</label>
+      <input type="text" id="f_title" value="${existing ? escapeHtml(existing.title) : ""}" placeholder="Наприклад: на штори">
+      <label>Коментар (необов'язково)</label>
+      <input type="text" id="f_purpose" value="${existing && existing.purpose ? escapeHtml(existing.purpose) : ""}" placeholder="куди підуть гроші">
 
       <div id="fields_one_time" style="${type === "recurring" ? "display:none" : ""}">
         <div class="row">
           <div>
-            <label>Сумма с человека</label>
+            <label>Сума з людини</label>
             <input type="number" id="f_per_person" value="${existing && existing.per_person_amount ? existing.per_person_amount : ""}" placeholder="0">
           </div>
           <div>
-            <label>Цель всего (необязательно)</label>
+            <label>Ціль загалом (необов'язково)</label>
             <input type="number" id="f_target" value="${existing && existing.target_amount ? existing.target_amount : ""}" placeholder="0">
           </div>
         </div>
-        <label>Срок (необязательно)</label>
+        <label>Термін (необов'язково)</label>
         <input type="date" id="f_deadline" value="${existing && existing.deadline ? existing.deadline : ""}">
       </div>
 
       <div id="fields_recurring" style="${type === "recurring" ? "" : "display:none"}">
-        <label>Сумма в месяц</label>
+        <label>Сума на місяць</label>
         <input type="number" id="f_monthly" value="${existing && existing.monthly_amount ? existing.monthly_amount : ""}" placeholder="0">
-        <label>С какого месяца считаем</label>
+        <label>З якого місяця рахуємо</label>
         <input type="month" id="f_start_month" value="${existing && existing.start_month ? existing.start_month.slice(0, 7) : ""}">
       </div>
 
       <div class="row" style="margin-top:16px">
-        <button class="btn ghost" id="f_cancel">отмена</button>
-        <button class="btn" id="f_save">${existing ? "сохранить" : "создать"}</button>
+        <button class="btn ghost" id="f_cancel">скасувати</button>
+        <button class="btn" id="f_save">${existing ? "зберегти" : "створити"}</button>
       </div>
-      ${existing ? '<button class="btn danger" id="f_archive" style="margin-top:10px;width:100%">архивировать сбор</button>' : ""}
+      ${existing ? '<button class="btn danger" id="f_archive" style="margin-top:10px;width:100%">архівувати збір</button>' : ""}
     </div>
   `;
   document.body.appendChild(bg);
@@ -981,7 +983,7 @@ function openCollectionForm(existing) {
 
   bg.querySelector("#f_save").addEventListener("click", async () => {
     const title = document.getElementById("f_title").value.trim();
-    if (!title) { showToast("укажи название"); return; }
+    if (!title) { showToast("вкажи назву"); return; }
     const purpose = document.getElementById("f_purpose").value.trim() || null;
 
     let payload = { title, purpose, type: currentType };
@@ -1000,7 +1002,7 @@ function openCollectionForm(existing) {
       payload.target_amount = null;
       payload.deadline = null;
       if (!payload.monthly_amount || !payload.start_month) {
-        showToast("укажи сумму в месяц и стартовый месяц");
+        showToast("вкажи суму на місяць і стартовий місяць");
         return;
       }
     }
@@ -1028,7 +1030,7 @@ function openCollectionForm(existing) {
 
   if (existing) {
     bg.querySelector("#f_archive").addEventListener("click", async () => {
-      if (!confirm("Архивировать этот сбор? Он уйдёт из списка.")) return;
+      if (!confirm("Архівувати цей збір? Він зникне зі списку.")) return;
       await sb.from("collections").update({ archived: true }).eq("id", existing.id);
       bg.remove();
       state.openCollectionId = null;
