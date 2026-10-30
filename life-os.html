@@ -4,7 +4,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiMxQTE0MTAiLz4KICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSI5IiBmaWxsPSIjMkU3RDNBIi8+CiAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iNSIgZmlsbD0iIzUyQzQ1QSIvPgo8L3N2Zz4=">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ЖИЗНЬ</title>
+<title>ЖИЗНЬ · 30.10-av3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -627,7 +627,7 @@ body.show-extra .nb-extra{display:flex}
 
     <!-- REPORT -->
     <div class="page" id="page-report">
-      <div class="page-title">Отчёт</div>
+      <div class="page-title">Отчёт <span style="font-size:12px;color:var(--a);vertical-align:middle">версия 30.10-av3 · авансы</span></div>
       <div class="page-sub">Проделанная работа по прайсу за период</div>
 
       <div class="cal-wrap" style="margin-bottom:16px">
@@ -3079,7 +3079,9 @@ function renderReport(){
     .map(([k,v])=>`<span style="display:inline-block;padding:4px 10px;background:var(--s2);border:1px solid var(--b);border-radius:20px;font-size:12px;margin:0 6px 6px 0">${k}: <b>${fmtMoney(v)}</b></span>`).join('');
   document.getElementById('rp-summary').innerHTML=`<div class="cal-wrap" style="margin-bottom:16px">
     <div style="font-size:13px;color:var(--t3)">${fmtShort(from)} — ${fmtShort(to)}</div>
-    <div style="font-size:30px;font-weight:700;font-family:var(--fi);margin:4px 0">${fmtMoney(total)}</div>
+    <div style="font-size:13px;color:var(--t2);margin-top:8px">Всего к оплате</div>
+    <div style="font-size:30px;font-weight:700;font-family:var(--fi);margin:4px 0">${fmtMoney(reportPaymentTotals(total,from,to).totalDue)}</div>
+    <div style="font-size:13px;color:var(--t2);margin-bottom:8px">Выполненные работы: ${fmtMoney(total)} · Авансы к оплате: ${fmtMoney(reportPaymentTotals(total,from,to).advanceDue)}</div>
     <div style="font-size:13px;color:var(--t2);margin-bottom:10px">${items.length} работ${noPrice?` · <span style="color:#C4552A">${noPrice} без цены</span>`:''}</div>
     ${whoHtml}
   </div>`;
@@ -3189,7 +3191,9 @@ function reportAsText(){
   const items=collectWork(from,to);
   const total=items.reduce((s,w)=>s+(w.amount||0),0);
   const lines=[`Отчёт о проделанной работе`,`${fmtLong(from)} — ${fmtLong(to)}`,
-               `Итого: ${fmtMoney(total)} · ${items.length} работ`];
+               `Всего к оплате: ${fmtMoney(reportPaymentTotals(total,from,to).totalDue)}`,
+               `Выполненные работы: ${fmtMoney(total)} · ${items.length} работ`,
+               `Авансы к оплате: ${fmtMoney(reportPaymentTotals(total,from,to).advanceDue)}`];
   const groups={};
   items.forEach(w=>{const sec=priceItem(w.code)?priceSecName(w.code):'Вне прайса';(groups[sec]=groups[sec]||[]).push(w);});
   [...PRICE_SECTIONS,'Вне прайса'].forEach(sec=>{
@@ -3274,7 +3278,9 @@ td{padding:7px 6px;border-bottom:1px solid #eee;font-size:14px;vertical-align:to
 </style></head><body><div class="wrap">
 <h1>Отчёт о проделанной работе</h1>
 <div class="period">${fmtLong(from)} — ${fmtLong(to)} · Катерина · оператор, монтажёр, дизайнер</div>
-<div class="total">${fmtMoney(total)}</div>
+<div>Всего к оплате</div>
+<div class="total">${fmtMoney(reportPaymentTotals(total,from,to).totalDue)}</div>
+<div class="period">Выполненные работы: ${fmtMoney(total)} · Авансы к оплате: ${fmtMoney(reportPaymentTotals(total,from,to).advanceDue)}</div>
 <div class="period">${items.length} работ</div>
 ${blocks}
 ${advanceReportHtml(from,to)}
@@ -3301,6 +3307,10 @@ function advanceRows(from,to){return (DB.advances||[]).filter(a=>{
   const date=(a.status==='оплачен'?a.done_date:a.date)||'';
   return date>=from&&date<=to;
 });}
+function reportPaymentTotals(workTotal,from,to){
+  const advanceDue=advanceRows(from,to).filter(a=>a.status!=='оплачен').reduce((s,a)=>s+Number(a.amount||0),0);
+  return {workTotal,advanceDue,totalDue:workTotal+advanceDue};
+}
 function advanceReportLines(from,to){
   const rows=advanceRows(from,to);if(!rows.length)return [];
   const requested=rows.filter(a=>a.status!=='оплачен').reduce((s,a)=>s+Number(a.amount||0),0);
@@ -3771,4 +3781,5 @@ boot();
 
 </body>
 </html>
+
 
