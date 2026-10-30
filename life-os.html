@@ -654,8 +654,15 @@ body.show-extra .nb-extra{display:flex}
         </div>
       </div>
 
-      <div id="rp-check"></div>
-      <div id="rp-summary"></div>
+      <div class="cal-wrap" style="margin-bottom:16px">
+  <b>Авансы по проектам</b>
+  <p style="font-size:13px;color:var(--t2);margin:8px 0">Отдельно от стоимости выполненных работ. Полученный аванс нужно учесть при окончательном расчёте.</p>
+  <button class="btn-primary" onclick="openAdvance()">+ Аванс</button>
+  <button class="btn-ghost" onclick="openCourseAdvance()">Курс: аванс 23 500 ₴</button>
+  <div id="advance-list" style="margin-top:12px"></div>
+</div>
+<div id="rp-check"></div>
+      <div id="rp-summary"></div><div id="rp-advances"></div>
       <div class="cal-wrap" id="rp-cal-wrap" style="margin-bottom:16px">
         <div class="cal-row"><div class="cal-month" id="rp-cal-title"></div></div>
         <div class="cal-week-header">
@@ -1088,6 +1095,17 @@ body.show-extra .nb-extra{display:flex}
   </div>
 </div>
 
+<div class="modal-bg hidden" id="modal-advance"><div class="modal">
+<div class="modal-head"><span class="modal-title">Аванс по проекту</span><button class="modal-close" onclick="hideModal('modal-advance')">✕</button></div>
+<input type="hidden" id="av-id">
+<div class="form-row"><label class="field-label">Назначение платежа</label><input id="av-title" type="text"></div>
+<div class="form-row"><label class="field-label">Кому на оплату</label><input id="av-who" type="text" placeholder="Валера"></div>
+<div class="form-row"><label class="field-label">Сумма аванса, ₴</label><input id="av-amount" type="number" min="0.01" step="0.01"></div>
+<div class="form-row"><label class="field-label">Дата запроса оплаты (для периода отчёта)</label><input id="av-date" type="date"></div>
+<div class="form-row"><label class="field-label">Статус</label><select id="av-status"><option value="ожидает оплаты">К оплате</option><option value="оплачен">Получен</option></select></div>
+<div class="form-row"><label class="field-label">Дата получения (только после поступления денег)</label><input id="av-paid" type="date"></div>
+<div style="display:flex;gap:8px"><button id="av-save" class="btn-primary" onclick="saveAdvance()">Сохранить</button><button class="btn-ghost" onclick="deleteAdvance()">Удалить аванс</button></div>
+</div></div>
 <script>
 const SB='https://btgtgcwbrrnfbctchata.supabase.co';
 const SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Z3RnY3dicnJuZmJjdGNoYXRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTQ2OTgsImV4cCI6MjA5MjI5MDY5OH0.lyEWFcmsL3GIm0FrEZdGkK2uRSx26cNiBGFvCVsjdsY';
@@ -1336,7 +1354,12 @@ async function loadData(){
     const results=await Promise.allSettled(tables.map(t=>dbGet(t)));
     const failures=[];
     results.forEach((r,i)=>{
-      if(r.status==='fulfilled')DB[tables[i]]=r.value;
+      if(r.status==='fulfilled'){
+        if(tables[i]==='tasks'){
+          DB.advances=r.value.filter(t=>t.kind==='аванс');
+          DB.tasks=r.value.filter(t=>t.kind!=='аванс');
+        }else DB[tables[i]]=r.value;
+      }
       else failures.push(r.reason.message||String(r.reason));
     });
     applyPriceList(DB.price_list||[]);
@@ -3044,6 +3067,7 @@ function renderReport(){
   const from=document.getElementById('rp-from').value;
   const to=document.getElementById('rp-to').value;
   if(!from||!to){setReportPreset('month');return;}
+  renderAdvances(from,to);
   const items=collectWork(from,to);
   const total=items.reduce((s,w)=>s+(w.amount||0),0);
   const noPrice=items.filter(w=>w.amount===null).length;
@@ -3186,6 +3210,7 @@ function reportAsText(){
                  (extra.length?`\n   ${extra.join(' · ')}`:''));
     });
   });
+  lines.push(...advanceReportLines(from,to));
   return lines.join('\n');
 }
 async function copyReportText(){
@@ -3252,6 +3277,7 @@ td{padding:7px 6px;border-bottom:1px solid #eee;font-size:14px;vertical-align:to
 <div class="total">${fmtMoney(total)}</div>
 <div class="period">${items.length} работ</div>
 ${blocks}
+${advanceReportHtml(from,to)}
 <h2>По заказчикам</h2><table>${whoRows}</table>
 <div class="foot">Сформировано ${fmtShort(localDateStr(new Date()))}. Расчёт по прайсу.</div>
 </div></body></html>`;
@@ -3269,6 +3295,80 @@ function renderReportSafe(){
   if(!el.value){setReportPreset('month');return;}
   renderReport();
 }
+
+function avEscape(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function advanceRows(from,to){return (DB.advances||[]).filter(a=>{
+  const date=(a.status==='оплачен'?a.done_date:a.date)||'';
+  return date>=from&&date<=to;
+});}
+function advanceReportLines(from,to){
+  const rows=advanceRows(from,to);if(!rows.length)return [];
+  const requested=rows.filter(a=>a.status!=='оплачен').reduce((s,a)=>s+Number(a.amount||0),0);
+  const received=rows.filter(a=>a.status==='оплачен').reduce((s,a)=>s+Number(a.amount||0),0);
+  return ['', 'АВАНСЫ ПО ПРОЕКТАМ (отдельно от выполненных работ)',
+    ...rows.map(a=>'• '+(a.status==='оплачен'?'Получен '+fmtShort(a.done_date):'К оплате '+fmtShort(a.date))+': '+a.title+' — '+fmtMoney(a.amount)+(a.assigned_by?' · плательщик: '+a.assigned_by:'')),
+    'Авансы к оплате за период: '+fmtMoney(requested),
+    'Авансы получены за период: '+fmtMoney(received),
+    'Авансы не включены в итог выполненных работ. Полученные авансы учитываются при окончательном расчёте.'];
+}
+function advanceReportHtml(from,to){
+  const lines=advanceReportLines(from,to);if(!lines.length)return '';
+  return '<div class="cal-wrap" style="margin-bottom:16px"><h2>Авансы по проектам</h2>'+lines.slice(2).map(s=>'<p style="margin:8px 0">'+avEscape(s)+'</p>').join('')+'</div>';
+}
+function renderAdvances(from,to){
+  document.getElementById('rp-advances').innerHTML=advanceReportHtml(from,to);
+  document.getElementById('advance-list').innerHTML=(DB.advances||[]).map(a=>'<div style="padding:8px 0;border-bottom:1px solid var(--b)"><button class="btn-ghost" style="max-width:100%;white-space:normal;text-align:left;overflow-wrap:anywhere" data-advance-id="'+avEscape(a.id)+'">'+avEscape(a.title)+' · '+fmtMoney(a.amount)+' · '+(a.status==='оплачен'?'получен':'к оплате')+'</button></div>').join('')||'<span style="font-size:13px;color:var(--t3)">Авансов пока нет.</span>';
+  document.querySelectorAll('[data-advance-id]').forEach(b=>b.onclick=()=>openAdvance(Number(b.dataset.advanceId)));
+}
+function openAdvance(id){
+  const a=(DB.advances||[]).find(a=>a.id===id)||{};
+  const values={id:a.id||'',title:a.title||'',who:a.assigned_by||'',amount:a.amount??'',date:a.date||localDateStr(new Date()),status:a.status||'ожидает оплаты',paid:a.done_date||''};
+  Object.entries(values).forEach(([k,v])=>document.getElementById('av-'+k).value=v);
+  showModal('modal-advance');
+}
+function openCourseAdvance(){
+  const title='Аванс 50% за производство курса по адаптации собак к громким звукам (предварительная смета 47 000 ₴)';
+  const existing=(DB.advances||[]).find(a=>a.title===title);
+  openAdvance(existing?.id);
+  if(existing)return;
+  document.getElementById('av-title').value=title;
+  document.getElementById('av-who').value='Валера';
+  document.getElementById('av-amount').value=23500;
+}
+let advanceSaving=false;
+async function saveAdvance(){
+  if(advanceSaving)return;
+  const get=k=>document.getElementById('av-'+k).value.trim();
+  const amount=Number(get('amount')),paid=get('status')==='оплачен';
+  if(!get('title')||!get('date')||!Number.isFinite(amount)||amount<=0){alert('Укажи назначение, дату и сумму больше нуля.');return;}
+  if(paid&&!get('paid')){alert('Укажи дату получения аванса.');return;}
+  const row={kind:'аванс',project_id:null,title:get('title'),assigned_by:get('who')||null,amount,date:get('date'),status:get('status'),done_date:paid?get('paid'):null};
+  advanceSaving=true;document.getElementById('av-save').disabled=true;
+  try{
+    const id=get('id');
+    const r=await apiFetch(SB+'/rest/v1/tasks'+(id?'?id=eq.'+encodeURIComponent(id):''),{method:id?'PATCH':'POST',body:JSON.stringify(row)});
+    if(!await dbNote(r)){alert('Аванс не сохранён.'+dbErrHint());return;}
+    const rows=await r.json();
+    if(!Array.isArray(rows)||!rows.length){alert('Сохранение не подтверждено: проверь доступ к записи.');return;}
+    hideModal('modal-advance');
+    if(!await load())alert('Аванс сохранён, но синхронизация не завершена. Не создавай его повторно.');
+  }catch(e){alert('Не удалось подтвердить сохранение: '+e.message+'. Проверь список перед повторной отправкой.');}
+  finally{advanceSaving=false;document.getElementById('av-save').disabled=false;}
+}
+async function deleteAdvance(){
+  const id=document.getElementById('av-id').value;
+  if(!id||advanceSaving||!confirm('Удалить этот аванс?'))return;
+  advanceSaving=true;
+  try{
+    const r=await apiFetch(SB+'/rest/v1/tasks?id=eq.'+encodeURIComponent(id),{method:'DELETE'});
+    if(!await dbNote(r)){alert('Не удалено.'+dbErrHint());return;}
+    const rows=await r.json();
+    if(!Array.isArray(rows)||!rows.length){alert('Удаление не подтверждено.');return;}
+    hideModal('modal-advance');await load();
+  }catch(e){alert('Ошибка удаления: '+e.message);}
+  finally{advanceSaving=false;}
+}
+
 // ── ПРАЙС ─────────────────────────────────────────────
 function renderPriceList(){
   const el=document.getElementById('price-list');
@@ -3671,3 +3771,4 @@ boot();
 
 </body>
 </html>
+
