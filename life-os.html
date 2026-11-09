@@ -319,10 +319,13 @@ body.show-extra .nb-extra{display:flex}
 :is(#page-life-cal,#page-all-cal) #events-list { margin-top:8px; }
 :is(#page-life-cal,#page-all-cal) .life-sync { font-size:12px; margin:0 0 9px; color:#77503c; }
 :is(#page-life-cal,#page-all-cal) :focus-visible { outline:2px solid #65407b; outline-offset:2px; }
-body.life-calendar-only { background:#fbf1e3; }
-body.life-calendar-only .sidebar, body.life-calendar-only .mob-header, body.life-calendar-only .mob-fab { display:none !important; }
-body.life-calendar-only .main { margin:0 auto; min-height:0; width:100%; }
-body.life-calendar-only #page-life-cal { margin:0 auto; padding:14px 14px 24px; }
+body:has(#page-life-cal.active,#page-all-cal.active,#page-projects.active){background:#fbf1e3}
+body:has(#page-life-cal.active,#page-all-cal.active,#page-projects.active) :is(.sidebar,.mob-header,.mob-fab){display:none!important}
+body:has(#page-life-cal.active,#page-all-cal.active,#page-projects.active) .main{margin:0 auto;width:100%;min-width:0}
+:is(#page-life-cal,#page-all-cal,#page-projects){margin-inline:auto;padding:24px 14px 36px}
+@media(max-width:768px){
+  :is(#page-life-cal,#page-all-cal,#page-projects){padding:8px 14px 24px}
+}
 @media (max-width:350px) {
   #page-life-cal .cal-month { font-size:17px; }
   #page-life-cal .life-add { padding-inline:8px; }
@@ -437,7 +440,6 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 }
 </style>
 <style>
-body:has(#page-all-cal.active){background:#fbf1e3}
 #page-all-cal .calendar-sources{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 11px}
 .calendar-sources button{border:1.3px solid #887865;background:#fff9ef;border-radius:20px;min-height:33px;padding:4px 10px;color:#231d17;font:700 12px var(--ff);cursor:pointer}
 .calendar-sources button[aria-pressed="true"]{background:#e3d4ee;border-color:#231d17}
@@ -454,10 +456,6 @@ body:has(#page-all-cal.active){background:#fbf1e3}
 #page-all-cal .calendar-entry small{display:block}
 #modal-event .modal{border:1.6px solid #231d17;background:#fff9ef}
 #modal-event .modal-title{font:700 22px Georgia,serif}
-@media(max-width:768px){
-  body:has(#page-all-cal.active) :is(.mob-header,.mob-fab){display:none!important}
-  #page-all-cal{padding:8px 14px 24px}
-}
 </style>
 <style>
 #page-projects{max-width:820px;color:#231d17}
@@ -480,7 +478,6 @@ body:has(#page-all-cal.active){background:#fbf1e3}
 #page-projects .task-date{color:#574c42}
 .projects-empty{background:#fff9ee;border:1px dashed #b5a58e;border-radius:10px;padding:12px;color:#655b50;font-size:13px}
 #page-projects :focus-visible{outline:2px solid #704d83;outline-offset:2px}
-@media(max-width:768px){#page-projects{padding:8px 14px 24px}}
 </style>
 <style>
 .jl-intro{display:grid;grid-template-columns:clamp(98px,27vw,132px) minmax(0,1fr);align-items:stretch;gap:10px;margin:0 0 11px}
@@ -4328,7 +4325,7 @@ function showPage(id,btn,isMob){
   if(btn)btn.classList.add('active');
   if(location.hash && location.hash !== '#'+id) history.replaceState(null,'','#'+id);
   if(id==='ritual')renderRitualRoom();
-  const workPages=['page-shoots-cal','page-report','page-all-cal','page-projects','page-overview','page-ritual'];
+  const workPages=['page-shoots-cal','page-report','page-life-cal','page-all-cal','page-projects','page-overview','page-ritual'];
   if(previous!=='page-'+id&&(workPages.includes(previous)||workPages.includes('page-'+id))){
     window.scrollTo(0,0);
   }
