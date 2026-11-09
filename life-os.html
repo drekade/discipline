@@ -462,7 +462,7 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 .projects-head{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;flex-wrap:wrap;padding:14px;margin-bottom:12px;background:#f4e0a5;border:1.6px solid #231d17;border-radius:17px}
 .projects-head .page-title{font:700 clamp(29px,7vw,40px)/1 Georgia,serif;letter-spacing:-.04em;color:#231d17;margin:0}
 .projects-head .page-sub{margin:6px 0 0;color:#514941}
-.projects-panel{background:#fff9ee;border:1.6px solid #231d17;border-radius:17px;padding:13px;margin-bottom:16px}
+.work-tasks-panel{background:#fff9ee;border:1.6px solid #231d17;border-radius:17px;padding:13px;margin-bottom:16px}
 .projects-row{gap:8px;flex-wrap:wrap;margin-bottom:9px}
 .projects-row .sec-title{font:700 21px Georgia,serif;color:#231d17;margin:0}
 #page-projects :is(.btn-primary,.btn-ghost,.add-task-btn){box-shadow:none;border:1.3px solid #231d17;border-radius:10px;min-height:34px;font-weight:700;line-height:1.2;padding:7px 9px;white-space:normal;transform:none;color:#231d17}
@@ -473,9 +473,9 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 #page-projects .proj-card{background:#fff9ee;border-color:#231d17;border-top-width:4px;box-shadow:none;transform:none;padding:12px;min-width:0;overflow-wrap:anywhere}
 #page-projects .proj-name{font:700 21px Georgia,serif;color:#231d17}
 #page-projects .proj-meta{color:#574c42}
-#page-projects .task-item{background:#f3ead9;flex-wrap:wrap}
-#page-projects .task-text{min-width:110px;overflow-wrap:anywhere}
-#page-projects .task-date{color:#574c42}
+:is(#page-projects,.work-tasks-panel) .task-item{background:#f3ead9;flex-wrap:wrap}
+:is(#page-projects,.work-tasks-panel) .task-text{min-width:110px;overflow-wrap:anywhere}
+:is(#page-projects,.work-tasks-panel) .task-date{color:#574c42}
 .projects-empty{background:#fff9ee;border:1px dashed #b5a58e;border-radius:10px;padding:12px;color:#655b50;font-size:13px}
 #page-projects :focus-visible{outline:2px solid #704d83;outline-offset:2px}
 </style>
@@ -487,6 +487,9 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 .jl-daily h2{font:700 19px/1.05 Georgia,serif;margin:3px 0 5px}
 #daily-result{font:13px/1.25 var(--ff);display:flex;align-items:center;gap:7px;overflow-wrap:anywhere}
 #daily-result strong{display:block;margin-bottom:2px}
+.daily-tarot-link{display:flex;align-items:center;gap:7px;padding:0;border:0;border-radius:4px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.daily-tarot-link:hover strong{text-decoration:underline}
+.daily-tarot-link:focus-visible{outline:2px solid #65407b;outline-offset:3px}
 .daily-hexagram{flex-shrink:0;width:25px;display:grid;gap:3px}
 .daily-hexagram i{height:3px;background:var(--ink);border-radius:2px}
 .daily-hexagram i.yin{background:linear-gradient(to right,var(--ink) 43%,transparent 43% 57%,var(--ink) 57%)}
@@ -850,6 +853,12 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
         </div>
       </div>
       <div id="sc-day-detail"></div>
+      <section class="work-tasks-panel" aria-labelledby="standalone-title">
+        <div class="sec-row work-list-head">
+          <h2 class="sec-title" id="standalone-title">Задачи и дизайн</h2>
+        </div>
+        <div id="standalone-tasks"></div>
+      </section>
       <div class="sec-row work-list-head">
         <h2 class="sec-title">Все съёмки</h2>
         <div class="work-actions">
@@ -893,20 +902,10 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
     <div class="page" id="page-projects">
       <nav class="work-nav" aria-label="Навигация проектов"><button type="button" onclick="goToPage('home')">← Главная</button></nav>
       <header class="projects-head">
-        <div><h1 class="page-title">Мои проекты</h1><p class="page-sub">Проекты, задачи и дизайн</p></div>
+        <div><h1 class="page-title">Мои проекты</h1><p class="page-sub">Проекты и задачи внутри них</p></div>
         <button class="btn-primary" type="button" onclick="showModal('modal-project')">+ Проект</button>
       </header>
       <p class="work-sync" id="projects-sync" role="status" hidden></p>
-      <section class="projects-panel" aria-labelledby="standalone-title">
-        <div class="sec-row projects-row">
-          <h2 class="sec-title" id="standalone-title">Задачи и дизайн</h2>
-          <div class="work-actions">
-            <button class="btn-ghost" type="button" onclick="openAddStandaloneTask('задача')">+ Задача</button>
-            <button class="btn-ghost" type="button" onclick="openAddStandaloneTask('дизайн')">+ Дизайн</button>
-          </div>
-        </div>
-        <div id="standalone-tasks"></div>
-      </section>
       <section aria-labelledby="project-list-title">
         <div class="sec-row projects-row"><h2 class="sec-title" id="project-list-title">Проекты</h2></div>
         <div class="proj-grid" id="projects-list"></div>
@@ -3229,7 +3228,17 @@ function renderDaily(){
   image.classList.add('daily-tarot-img');
   const label=document.createElement('strong');
   label.append(tarotCardLabel(result,reversed));
-  output.append(image,label);
+  const link=document.createElement('button');
+  link.type='button';
+  link.className='daily-tarot-link';
+  link.title='Открыть карту в справке';
+  link.append(image,label);
+  link.addEventListener('click',()=>{
+    openRitual('tarot');
+    showTarotReference(true);
+    selectTarotOption(result,reversed);
+  });
+  output.append(link);
 }
 
 let ritualMode='tarot';
@@ -3289,7 +3298,7 @@ function closeTarotOptions(){
   tarotSearch.removeAttribute('aria-activedescendant');
   tarotActiveOption=-1;
 }
-function selectTarotOption(index){
+function selectTarotOption(index,isReversed=false){
   const name=tarotNames[index];
   tarotSearch.value=name;
   closeTarotOptions();
@@ -3321,7 +3330,7 @@ function selectTarotOption(index){
   }
   upright.onclick=()=>showPosition(false);
   reversed.onclick=()=>showPosition(true);
-  showPosition(false);
+  showPosition(isReversed);
   const source=document.createElement('a');
   source.href='https://en.wikisource.org/wiki/The_Pictorial_Key_to_the_Tarot/Part_3';
   source.target='_blank';source.rel='noopener';source.textContent='Книга Уэйта';
@@ -4546,7 +4555,7 @@ function openLinkedPage(){
 }
 window.addEventListener('hashchange',openLinkedPage);
 renderHomeShell();
-window.addEventListener('focus',renderDaily);
+window.addEventListener('focus',()=>{if(dailyState?.date!==dailyDate())renderDaily();});
 openLinkedPage();
 boot();
 </script>
