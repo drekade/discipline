@@ -43,6 +43,14 @@
   #money-entries .receipt:first-child{border-top:0}
   #money-usd-panel>p,#money-other-panel>p{margin:5px 0}
   #tax-caption{margin-top:9px}
+  .tax-actions{padding-left:19px;margin:9px 0 0;font-size:13px}
+  .tax-actions li+li{margin-top:5px}
+  .tax-block{margin-top:13px;border-top:1px solid #cbbfae;padding-top:9px}
+  .check{display:flex;align-items:center;gap:7px}
+  .check input{width:auto;min-height:auto;margin:0}
+  .tax-nav{margin-top:10px}
+  .tax-block form{margin-bottom:9px}
+  #tax-import{max-width:100%}
 
   .month-trigger{gap:7px;background:var(--lilac);border-radius:20px;padding:6px 10px}
   .month-trigger svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -65,6 +73,7 @@
 <header class="card hero">
   <h1>Финансы / ФОП</h1>
   <p class="sub">Записи хранятся в этом браузере.</p>
+  <button class="tax-nav" type="button" id="tax-jump">ФОП / Налоги ↓</button>
   <p class="status" id="storage-status" role="status" hidden></p>
 </header>
 <section class="card" aria-labelledby="money-title">
@@ -88,20 +97,24 @@
   <dl class="figures money-summary" id="money-summary"></dl>
   <div class="money-forms">
     <nav class="money-switch" aria-label="Тип записи">
-      <button type="button" data-money-mode="usd" aria-pressed="true">USD на ФОП</button>
+      <button type="button" data-money-mode="usd" aria-pressed="true">Поступление на ФОП</button>
       <button type="button" data-money-mode="uah" aria-pressed="false">Оплата в грн</button>
       <button type="button" data-money-mode="savings" aria-pressed="false">В подушку</button>
       <button type="button" data-money-mode="balance" aria-pressed="false">Сколько осталось</button>
     </nav>
     <div id="money-usd-panel">
-    <p class="sub">Дата зачисления на валютный счёт ФОП из Приват24 Бизнес.</p>
+    <p class="sub">Доход по дате зачисления на счёт ФОП. Продажу валюты и переводы между своими счетами сюда не записывай.</p>
     <form id="receipt-form">
     <div class="row">
       <label>Дата зачисления<input id="date" type="date" min="2026-01-01" required></label>
-      <label>Сумма, USD<input id="usd" inputmode="decimal" required></label>
+      <label>Сумма<input id="usd" inputmode="decimal" required></label>
     </div>
     <div class="row">
-      <label>Курс НБУ, грн за $1<input id="rate" inputmode="decimal" required></label>
+      <label>Валюта<select id="receipt-currency"><option>USD</option><option>EUR</option><option>UAH</option></select></label>
+      <label id="rate-label">Курс НБУ, грн за единицу<input id="rate" inputmode="decimal"></label>
+    </div>
+    <label class="check" id="rate-check-label"><input id="rate-checked" type="checkbox">Ручной курс сверен с НБУ</label>
+    <div class="row">
       <label>Инвойс / плательщик<input id="ref" maxlength="120" placeholder="Необязательно"></label>
     </div>
     <p class="status" id="rate-status" role="status"></p>
@@ -139,8 +152,8 @@
     <div id="money-entries"></div>
   </details>
 </section>
-<section class="card hero" aria-labelledby="quarter-title">
-  <div class="section-head"><h2 id="quarter-title">Расчёт за квартал</h2>
+<section class="card hero" id="tax-control" aria-labelledby="quarter-title">
+  <div class="section-head"><h2 id="quarter-title">ФОП / Налоги</h2>
     <label>Период
       <select id="quarter">
         <option value="1">I квартал · янв–мар</option><option value="2">II квартал · апр–июн</option>
@@ -148,22 +161,71 @@
       </select>
     </label>
   </div>
-  <p id="tax-caption" class="sub">ФОП · 2026 · 3-я группа · 5% без НДС</p>
+  <p id="tax-caption" class="sub">2026 · 3-я группа · 5% без НДС</p>
   <dl class="figures" id="taxes"></dl>
-  <details>
-    <summary>Уже уплачено</summary>
-    <form id="paid-form">
+  <p class="sub" id="tax-note"></p>
+  <div id="month-tax" aria-live="polite"></div>
+  <ul class="tax-actions" id="tax-next"></ul>
+  <details class="tax-block">
+    <summary>Платежи и авансы</summary>
+    <p class="sub">В расчёте учитываются платежи с датой и банковским подтверждением. Переплата из Дії хранится отдельно.</p>
+    <div id="payment-list"></div>
+    <form id="payment-form">
       <div class="row">
-        <label>Единый налог, грн<input id="paid-unified" inputmode="decimal"></label>
-        <label>Военный сбор, грн<input id="paid-military" inputmode="decimal"></label>
-        <label>ЕСВ, грн<input id="paid-esv" inputmode="decimal"></label>
-        <label>Месяцев ЕСВ
-          <select id="months"><option>3</option><option>2</option><option>1</option><option>0</option></select>
-        </label>
+        <label>Налог<select name="tax"><option value="unified">Единый налог</option><option value="military">Военный сбор</option><option value="esv">ЕСВ</option></select></label>
+        <label>Месяц аванса<input type="month" name="month" min="2026-01" max="2026-12"></label>
+        <label>Расчётная сумма, грн<input name="planned" inputmode="decimal" required></label>
+        <label>Срок уплаты<input name="due" type="date"></label>
+        <label>Статус<select name="status"><option value="calculated">Рассчитано</option><option value="planned">Запланировано</option><option value="sent">Отправлено</option><option value="confirmed">Подтверждено</option></select></label>
+        <label>Фактически уплачено, грн<input name="actual" inputmode="decimal"></label>
+        <label>Дата оплаты<input name="date" type="date"></label>
+        <label>Подтверждение банка<input name="proof" maxlength="180" placeholder="Номер или ссылка на квитанцию"></label>
       </div>
-      <div class="actions"><button class="lilac" type="submit">Сохранить суммы</button></div>
-      <p class="status" id="paid-status" role="status"></p>
+      <div class="actions"><button class="lilac" type="submit">Сохранить платёж</button><button type="reset" hidden>Отменить правку</button></div>
+      <p class="status" role="status"></p>
     </form>
+    <p class="sub" id="legacy-payments" hidden></p>
+  </details>
+  <details class="tax-block">
+    <summary>Декларации</summary>
+    <div id="declaration-list"></div>
+    <form id="declaration-form">
+      <div class="row">
+        <label>Период<select name="period"><option value="q1">I квартал</option><option value="q2">Полугодие</option><option value="q3">9 месяцев</option><option value="q4" selected>Год</option></select></label>
+        <label>Форма<input name="form" maxlength="30" placeholder="Например, F0103309"></label>
+        <label>Статус<select name="status"><option value="draft">Не подана</option><option value="sent">Отправлена</option><option value="received">Получена</option><option value="accepted">Принята</option><option value="rejected">Отклонена</option></select></label>
+        <label>Дата подачи<input type="date" name="date"></label>
+        <label>Регистрационный номер<input name="number" maxlength="60"></label>
+        <label>Квитанция № 2<input name="proof" maxlength="180" placeholder="Дата, номер или ссылка"></label>
+        <label>Срок подачи<input type="date" name="due"></label>
+      </div>
+      <div class="actions"><button class="lilac" type="submit">Сохранить декларацию</button></div>
+      <p class="status" role="status"></p>
+    </form>
+  </details>
+  <details class="tax-block">
+    <summary>Сверка с ДПС и ЕСВ</summary>
+    <p class="sub">Сохраняй показатели из Дії или кабинета ДПС на дату просмотра. Они не подтверждают отдельные платежи.</p>
+    <div id="balance-list"></div>
+    <form id="tax-balance-form">
+      <div class="row">
+        <label>Дата сверки<input type="date" name="date" required></label>
+        <label>Источник<select name="source"><option>Дія</option><option>Кабинет ДПС</option></select></label>
+        <label>Налог<select name="tax"><option value="unified">Единый налог</option><option value="military">Военный сбор</option><option value="esv">ЕСВ</option></select></label>
+        <label>Переплата, грн<input name="credit" inputmode="decimal" required></label>
+        <label>Долг, грн<input name="debt" inputmode="decimal" required></label>
+        <label>Периоды / заметка<input name="note" maxlength="180"></label>
+      </div>
+      <label class="check" id="esv-check"><input name="reconciled" type="checkbox">Периоды ЕСВ сверены с ДПС</label>
+      <div class="actions"><button class="lilac" type="submit">Сохранить сверку</button></div>
+      <p class="status" role="status"></p>
+    </form>
+  </details>
+  <details class="tax-block">
+    <summary>Импорт личных записей</summary>
+    <p class="sub">Выбери локальный файл. Записи останутся в этом браузере.</p>
+    <input type="file" id="tax-import" accept=".json,application/json">
+    <p class="status" id="import-status" role="status"></p>
   </details>
 </section>
 <section class="card">
@@ -171,7 +233,7 @@
   <p class="sub" id="receipt-count"></p>
   <div id="entries"></div>
 </section>
-<p class="sub">Расчёт по внесённым данным. <a href="https://kyivobl.tax.gov.ua/media-ark/news-ark/965745.html" target="_blank" rel="noopener">Ставки ДПС</a> · <a href="https://bank.gov.ua/ua/markets/exchangerates" target="_blank" rel="noopener">Курсы НБУ</a></p>
+<p class="sub">Расчёт по внесённым данным. <a href="https://kyivobl.tax.gov.ua/media-ark/news-ark/965745.html" target="_blank" rel="noopener">Ставки ДПС</a> · <a href="https://ck.tax.gov.ua/media-ark/local-news/996309.html" target="_blank" rel="noopener">Сроки ДПС</a> · <a href="https://bank.gov.ua/ua/markets/exchangerates" target="_blank" rel="noopener">Курсы НБУ</a></p>
 </main>
 <script>
 (() => {
@@ -184,7 +246,6 @@
   const today = new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Kyiv'}).format(new Date());
   const maxDate = today < '2026-12-31' ? today : '2026-12-31';
   const quarterOf = date => Math.ceil(Number(date.slice(5,7))/3);
-  const emptyPaid = () => ({unified:0,military:0,esv:0,months:3});
   const validDate = date => /^2026-\d{2}-\d{2}$/.test(date) && date <= maxDate && Number.isFinite(Date.parse(date)) &&
     new Date(date).toISOString().slice(0,10) === date;
   const decimal = (value, places) => {
@@ -198,6 +259,20 @@
   const rateText = rate => (rate/10000).toFixed(4).replace('.',',');
   const dateText = date => date.split('-').reverse().join('.');
   const esvPerMonth = 190234;
+  const taxNames={unified:'Единый налог',military:'Военный сбор',esv:'ЕСВ'};
+  const paymentStatuses={calculated:'Рассчитано',planned:'Запланировано',sent:'Отправлено',confirmed:'Подтверждено'};
+  const declarationStatuses={draft:'Не подана',sent:'Отправлена',received:'Получена',accepted:'Принята',rejected:'Отклонена'};
+  const periods={q1:'I квартал',q2:'Полугодие',q3:'9 месяцев',q4:'Год'};
+  const validIso=date=>typeof date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&
+    Number.isFinite(Date.parse(date))&&new Date(date).toISOString().slice(0,10)===date;
+  const validPast=date=>validIso(date)&&date<=today;
+  const cleanText=(value,max)=>typeof value==='string'&&value.length<=max;
+  const validCents=value=>Number.isSafeInteger(value)&&value>=0&&value<=100000000;
+  const uid=()=>crypto.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
+  const receiptCurrency=row=>row.currency||'USD';
+  const receiptAmount=row=>row.amount??row.usd;
+  const confirmedRate=row=>row.uah!=null&&['nbu','checked','uah'].includes(row.source);
+  const receiptValue=row=>currencyFormatters[receiptCurrency(row).toLowerCase()](receiptAmount(row));
   let state = { receipts:[], paid:{}, money:[] };
   let available = true, editId = null, rateSource = 'manual', request = 0;
 
@@ -221,61 +296,82 @@
     return true;
   }
 
-  function currentPaid(){
-    return state.paid[$('quarter').value]||emptyPaid();
-  }
-
-  function loadPayments(){
-    const paid=currentPaid();
-    for(const field of ['unified','military','esv'])$('paid-'+field).value=paid[field]?(paid[field]/100).toFixed(2):'';
-    $('months').value=String(paid.months);
-    $('paid-status').textContent='';
-  }
+  state.payments=Array.isArray(state.payments)?state.payments:[];
+  state.declarations=Array.isArray(state.declarations)?state.declarations:[];
+  state.balances=Array.isArray(state.balances)?state.balances:[];
+  let paymentEdit=null;
+  const incomeTaxes=(income,prior=0)=>({
+    unified:Math.round((prior+income)*5/100)-Math.round(prior*5/100),
+    military:Math.round((prior+income)/100)-Math.round(prior/100)
+  });
 
   function render(){
     renderMoney();
     const q=Number($('quarter').value);
     const rows=state.receipts.filter(entry=>quarterOf(entry.date)===q).sort((a,b)=>b.date.localeCompare(a.date));
-    const income=rows.reduce((total,entry)=>total+entry.uah,0);
-    const prior=state.receipts.filter(entry=>quarterOf(entry.date)<q).reduce((total,entry)=>total+entry.uah,0);
-    const paid=currentPaid();
-    const obligations={
-      unified: Math.round((prior+income)*5/100)-Math.round(prior*5/100),
-      military: Math.round((prior+income)/100)-Math.round(prior/100),
-      esv: esvPerMonth*paid.months
-    };
-    const charges=obligations.unified+obligations.military+obligations.esv;
-    const remaining=Object.keys(obligations).reduce((sum,k)=>sum+Math.max(0,obligations[k]-paid[k]),0);
+    const verified=rows.filter(confirmedRate);
+    const pending=rows.length-verified.length;
+    const income=verified.reduce((total,entry)=>total+entry.uah,0);
+    const baseline=state.declarations.find(row=>row.period==='q3'&&row.status==='accepted'&&validCents(row.reportedIncome));
+    const prior=q===4&&baseline?baseline.reportedIncome:state.receipts
+      .filter(entry=>quarterOf(entry.date)<q&&confirmedRate(entry)).reduce((total,entry)=>total+entry.uah,0);
+    const obligations=incomeTaxes(income,prior);
+    const payments=state.payments.filter(row=>row.quarter===q);
+    const paid=Object.fromEntries(Object.keys(taxNames).map(tax=>[tax,payments
+      .filter(row=>row.tax===tax&&row.status==='confirmed'&&validPast(row.date)&&row.proof&&row.actual>0)
+      .reduce((sum,row)=>sum+row.actual,0)]));
+    const remaining=Object.keys(obligations).reduce((sum,tax)=>sum+Math.max(0,obligations[tax]-paid[tax]),0);
     const lines=[
-      ['Доход в гривнах',uah(income)],
+      ['Доход с подтверждённым курсом',uah(income)],
       ['Единый налог · 5%',uah(obligations.unified)],
       ['Военный сбор · 1%',uah(obligations.military)],
-      ['ЕСВ · месяцев: '+paid.months,uah(obligations.esv)],
-      ['Начислено',uah(charges),'grand'],
-      ['Остаток к уплате',uah(remaining),'due']
+      ['Подтверждённые платежи по ЕН и ВС',uah(paid.unified+paid.military),'grand'],
+      ['По расчёту осталось · ЕН и ВС',pending?'Уточнить курс':uah(remaining),'due'],
+      ['ЕСВ · подтверждённые платежи',uah(paid.esv)]
     ];
     $('taxes').replaceChildren(...lines.map(([label,value,cls])=>{
       const row=document.createElement('div'); row.className=cls||'';
       const dt=document.createElement('dt'),dd=document.createElement('dd');
       dt.textContent=label;dd.textContent=value;row.append(dt,dd);return row;
     }));
-    $('receipt-count').textContent=rows.length ? 'USD '+amount(rows.reduce((sum,row)=>sum+row.usd,0))+' · '+uah(income) : 'Пока нет записей';
+    $('tax-note').textContent='Расчёт по внесённым данным. Минимальный ЕСВ за месяц в 2026 году — '+uah(esvPerMonth)+'. Зачёт по периодам проверяется отдельно.';
+    const month=$('money-month').value;
+    const monthRows=rows.filter(entry=>entry.date.startsWith(month+'-'));
+    const monthIncome=monthRows.filter(confirmedRate).reduce((sum,row)=>sum+row.uah,0);
+    const monthPrior=prior+verified.filter(row=>row.date<month+'-01').reduce((sum,row)=>sum+row.uah,0);
+    const monthTaxes=incomeTaxes(monthIncome,monthPrior);
+    $('month-tax').replaceChildren(...(monthRows.length?[recordCard(
+      'Для аванса · '+monthNames[Number(month.slice(5))-1].toLowerCase(),
+      ['ЕН '+uah(monthTaxes.unified)+' · ВС '+uah(monthTaxes.military),
+       monthRows.some(row=>!confirmedRate(row))?'Есть поступления, по которым нужно сверить курс.':''])]:[]));
+    renderTaxRecords(q,payments,pending,remaining);
+    $('receipt-count').textContent=rows.length ? 'Записей: '+rows.length+(pending?' · нужен курс: '+pending:'') : 'Пока нет записей';
     $('entries').replaceChildren(...rows.map(entry=>{
       const row=document.createElement('article');row.className='receipt';
       const title=document.createElement('strong');
-      title.textContent=dateText(entry.date)+' · $'+amount(entry.usd);
+      title.textContent=dateText(entry.date)+' · '+receiptValue(entry);
       const line=document.createElement('p');line.className='sub';
-      line.textContent='Курс '+rateText(entry.rate)+' · '+uah(entry.uah)+(entry.source==='manual'?' · курс введён вручную':' · НБУ');
+      line.textContent=entry.rate==null?'Курс ещё не подтверждён':receiptCurrency(entry)==='UAH'?uah(entry.uah):
+        'Курс '+rateText(entry.rate)+' · '+uah(entry.uah)+(entry.source==='nbu'?' · НБУ':entry.source==='checked'?' · сверен вручную':' · предварительно');
       row.append(title,line);
+      if(entry.uah!=null){
+        const taxes=incomeTaxes(entry.uah);
+        const detail=document.createElement('p');detail.className='sub';
+        detail.textContent='ЕН '+uah(taxes.unified)+' · ВС '+uah(taxes.military)+(confirmedRate(entry)?'':' · предварительно');
+        row.append(detail);
+      }
       if(entry.ref){const ref=document.createElement('p');ref.textContent=entry.ref;row.append(ref);}
       const actions=document.createElement('div');actions.className='actions';
       const edit=document.createElement('button');edit.type='button';edit.textContent='Изменить';
       edit.onclick=()=>{
         selectMoneyMode('usd');
         request++; $('lookup').disabled=false; editId=entry.id; rateSource=entry.source;
-        $('date').value=entry.date;$('usd').value=(entry.usd/100).toFixed(2);
-        $('rate').value=rateText(entry.rate);$('ref').value=entry.ref;
-        $('rate-status').textContent=entry.source==='manual'?'Курс введён вручную.':'Курс НБУ сохранён с поступлением.';
+        $('date').value=entry.date;$('usd').value=(receiptAmount(entry)/100).toFixed(2);
+        $('receipt-currency').value=receiptCurrency(entry);
+        $('rate').value=entry.rate==null?'':rateText(entry.rate);$('ref').value=entry.ref||'';
+        $('rate-checked').checked=entry.source==='checked';
+        updateRateFields();
+        $('rate-status').textContent=entry.source==='nbu'?'Курс НБУ сохранён с поступлением.':'';
         $('save-receipt').textContent='Сохранить изменения';$('cancel').hidden=false;$('form-status').textContent='';
         $('date').focus();
       };
@@ -291,12 +387,27 @@
     }));
   }
 
+  function updateRateFields(){
+    const hryvnia=$('receipt-currency').value==='UAH';
+    $('rate-label').hidden=hryvnia;
+    $('rate-check-label').hidden=hryvnia||rateSource==='nbu';
+    $('lookup').hidden=hryvnia;
+  }
+
+  function changeQuote(){
+    $('rate').value='';
+    $('rate-checked').checked=false;
+    rateSource='manual';
+    updateRateFields();
+    lookup();
+  }
+
   async function lookup(){
     const date=$('date').value;
+    const currency=$('receipt-currency').value;
     const id=++request;
-    $('rate').value='';
-    rateSource='manual';
     $('lookup').disabled=false;
+    if(currency==='UAH'){$('rate-status').textContent='';return;}
     if(!validDate(date)){
       $('rate-status').textContent='Укажи дату зачисления в 2026 году.';
       return;
@@ -304,16 +415,18 @@
     $('lookup').disabled=true;
     $('rate-status').textContent='Загружаю курс НБУ…';
     try{
-      const url='https://bank.gov.ua/NBUStatService/v1/statdirectory/exchangenew?json&valcode=USD&date='+date.replaceAll('-','');
+      const url='https://bank.gov.ua/NBUStatService/v1/statdirectory/exchangenew?json&valcode='+currency+'&date='+date.replaceAll('-','');
       const response=await fetch(url,{signal:AbortSignal.timeout(8000)});
       if(!response.ok)throw new Error('rate request');
       const rows=await response.json();
-      const quote=rows.find(item=>item.cc==='USD'&&item.exchangedate===dateText(date));
-      const rate=quote&&decimal(String(quote.rate),4);
+      const quote=rows.find(item=>item.cc===currency&&item.exchangedate===dateText(date));
+      const rate=quote&&decimal(String(quote.rate_per_unit??quote.rate),4);
       if(!rate)throw new Error('rate not found');
       if(id!==request)return;
       $('rate').value=rateText(rate);
       rateSource='nbu';
+      $('rate-checked').checked=false;
+      updateRateFields();
       $('rate-status').textContent='Официальный курс НБУ на '+dateText(date)+'.';
     }catch{
       if(id===request)$('rate-status').textContent='НБУ не ответил. Можно ввести официальный курс вручную.';
@@ -332,22 +445,26 @@
   $('date').max=maxDate;
   $('date').value=maxDate>='2026-01-01'?maxDate:'';
   $('quarter').value=String($('date').value?quarterOf($('date').value):1);
-  $('date').addEventListener('change',lookup);
+  $('date').addEventListener('change',changeQuote);
+  $('receipt-currency').addEventListener('change',changeQuote);
   $('lookup').addEventListener('click',lookup);
   $('rate').addEventListener('input',()=>{
-    request++;$('lookup').disabled=false;rateSource='manual';
+    request++;$('lookup').disabled=false;rateSource='manual';$('rate-checked').checked=false;updateRateFields();
     $('rate-status').textContent='Курс введён вручную.';
   });
   $('cancel').addEventListener('click',()=>{clearEdit();$('form-status').textContent='';});
-  $('quarter').addEventListener('change',()=>{loadPayments();render();});
+  $('quarter').addEventListener('change',()=>{resetPayment();render();});
   $('receipt-form').addEventListener('submit',event=>{
     event.preventDefault();
-    const date=$('date').value,usd=decimal($('usd').value,2),rate=decimal($('rate').value,4);
-    if(!validDate(date)||!usd||!rate){
-      $('form-status').textContent='Проверь дату, сумму в USD и курс НБУ.';
+    const date=$('date').value,sum=decimal($('usd').value,2),currency=$('receipt-currency').value;
+    const rateInput=$('rate').value.trim();
+    const rate=currency==='UAH'?10000:rateInput?decimal(rateInput,4):null;
+    if(!validDate(date)||!sum||(currency!=='UAH'&&rateInput&&!rate)){
+      $('form-status').textContent='Проверь дату, сумму и формат курса.';
       return;
     }
-    const entry={id:editId||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),date,usd,rate,source:rateSource,uah:toUah(usd,rate),ref:$('ref').value.trim()};
+    const source=currency==='UAH'?'uah':!rate?'pending':rateSource==='nbu'?'nbu':$('rate-checked').checked?'checked':'manual';
+    const entry={id:editId||uid(),date,amount:sum,currency,rate,source,uah:rate?toUah(sum,rate):null,ref:$('ref').value.trim()};
     const receipts=editId?state.receipts.map(row=>row.id===editId?entry:row):[...state.receipts,entry];
     if(!persist({...state,receipts})){
       $('form-status').textContent='Запись не сохранена. Проверь доступ к хранилищу браузера.';
@@ -355,22 +472,8 @@
     }
     $('quarter').value=String(quarterOf(date));
     $('money-month').value=date.slice(0,7);
-    loadPayments();render();clearEdit();
+    resetPayment();render();clearEdit();
     $('form-status').textContent='Поступление сохранено.';
-  });
-  $('paid-form').addEventListener('submit',event=>{
-    event.preventDefault();
-    const paid={months:Number($('months').value)};
-    for(const field of ['unified','military','esv']){
-      const input=$('paid-'+field).value.trim();
-      paid[field]=input?decimal(input,2):0;
-      if(paid[field]===null){$('paid-status').textContent='Проверь суммы в гривнах.';return;}
-    }
-    if(!persist({...state,paid:{...state.paid,[$('quarter').value]:paid}})){
-      $('paid-status').textContent='Суммы не сохранены. Проверь доступ к хранилищу браузера.';
-      return;
-    }
-    render();$('paid-status').textContent='Суммы сохранены.';
   });
   const modes = {
     uah: ['Записать оплату', 'Оплата в гривнах', 'Полученная оплата в гривнах. Учитывается в личном журнале.'],
@@ -435,10 +538,12 @@
   function renderMoney(){
     const month=$('money-month').value;
     renderMonthCaption(month);
-    const usdRows=state.receipts.filter(row=>row.date.slice(0,7)===month);
+    const receipts=state.receipts.filter(row=>row.date.slice(0,7)===month);
     const rows=state.money.filter(row=>row.date.slice(0,7)===month)
       .sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created);
-    const receivedUsd=usdRows.reduce((sum,row)=>sum+row.usd,0);
+    const received=receipts.reduce((totals,row)=>{
+      totals[receiptCurrency(row).toLowerCase()]+=receiptAmount(row);return totals;
+    },{uah:0,usd:0,eur:0});
     const receivedUah=rows.filter(row=>row.type==='uah').reduce((sum,row)=>sum+row.amount,0);
     const savings=state.money.filter(row=>row.type==='savings');
     const savingsTotal=items=>items.reduce((sum,row)=>{
@@ -448,7 +553,7 @@
     const savedThisMonth=savingsTotal(savings.filter(row=>row.date.slice(0,7)===month));
     const latest=rows.find(row=>row.type==='balance');
     const lines=[
-      ['Поступило на ФОП',dollars(receivedUsd)],
+      ['Поступило на ФОП',savingsText(received)],
       ['Оплата в гривнах',uah(receivedUah)],
       ['Отложено за месяц',savingsText(savedThisMonth)],
       ['Подушка · всего',savingsText(cushion)],
@@ -463,7 +568,7 @@
       number.textContent=value;line.append(label,number);return line;
     }));
 
-    const combined=[...rows,...usdRows.map(row=>({...row,type:'usd'}))]
+    const combined=[...rows,...receipts.map(row=>({...row,type:'usd'}))]
       .sort((a,b)=>b.date.localeCompare(a.date));
     if(!combined.length){
       $('money-entries').textContent='Пока нет записей';
@@ -472,9 +577,9 @@
     $('money-entries').replaceChildren(...combined.map(entry=>{
       const row=document.createElement('article');row.className='receipt';
       const name=document.createElement('strong');
-      const value=entry.type==='usd'?dollars(entry.usd):
+      const value=entry.type==='usd'?receiptValue(entry):
         entry.type==='balance'?balanceText(entry):currencyFormatters[entry.currency](entry.amount);
-      name.textContent=(entry.type==='usd'?'USD на ФОП':modes[entry.type][1])+' · '+value;
+      name.textContent=(entry.type==='usd'?'Поступление на ФОП':modes[entry.type][1])+' · '+value;
       const detail=document.createElement('p');detail.className='sub';
       const comment=entry.type==='usd'?entry.ref:entry.note;
       detail.textContent=dateText(entry.date)+(comment?' · '+comment:'');
@@ -592,7 +697,249 @@
     resetMoneyForm();renderMoney();
     $('money-status').textContent='Запись сохранена.';
   });
-  loadPayments();render();if($('date').value)lookup();
+  function recordCard(title,lines,edit){
+    const row=document.createElement('article');
+    row.className='receipt';
+    const heading=document.createElement('strong');
+    heading.textContent=title;
+    row.append(heading);
+    for(const line of lines.filter(Boolean)){
+      const detail=document.createElement('p');
+      detail.className='sub';
+      detail.textContent=line;
+      row.append(detail);
+    }
+    if(edit){
+      const button=document.createElement('button');
+      button.type='button';
+      button.textContent='Изменить';
+      button.addEventListener('click',edit);
+      row.append(button);
+    }
+    return row;
+  }
+
+  const fields=form=>Object.fromEntries(new FormData(form).entries());
+  const setStatus=(form,message)=>{form.querySelector('[role="status"]').textContent=message;};
+  const moneyInput=value=>value==null?'':(value/100).toFixed(2);
+  const daysTo=date=>Math.round((Date.parse(date)-Date.parse(today))/86400000);
+  const q4PaymentDue='2027-02-19';
+  const q4EsvDue='2027-01-19';
+  const q4DeclarationDue='2027-02-09';
+  const declarationFor=period=>state.declarations.find(row=>row.period===period);
+  const declarationDue=row=>row.due||(row.period==='q4'?q4DeclarationDue:'');
+  const draftDeclaration={period:'q4',status:'draft',due:q4DeclarationDue};
+  const sortDates=(a,b)=>b.date.localeCompare(a.date);
+
+  function renderTaxRecords(q,payments,pending,remaining){
+    const paymentRows=payments.map(row=>recordCard(
+      taxNames[row.tax]+' · '+paymentStatuses[row.status],
+      [(row.month?row.month+' · ':'')+'Расчёт '+uah(row.planned),
+       row.due?'Срок '+dateText(row.due):'',
+       row.actual!=null?'Факт '+uah(row.actual)+(row.date?' · '+dateText(row.date):''):'',
+       row.proof?'Подтверждение: '+row.proof:''],
+      ()=>editPayment(row)));
+    $('payment-list').replaceChildren(...(paymentRows.length?paymentRows:[recordCard('Платежей за квартал пока нет',[])]));
+    const legacy=state.paid[q];
+    const legacyAmounts=Object.keys(taxNames).filter(tax=>legacy?.[tax]>0).map(tax=>taxNames[tax]+' '+uah(legacy[tax]));
+    $('legacy-payments').hidden=!legacyAmounts.length;
+    $('legacy-payments').textContent='Старые суммы без квитанций: '+legacyAmounts.join(' · ')+'. В подтверждённые платежи не включены.';
+
+    const declarations=[...state.declarations.filter(row=>row.period!=='q4'),declarationFor('q4')||draftDeclaration];
+    declarations.sort((a,b)=>b.period.localeCompare(a.period));
+    $('declaration-list').replaceChildren(...declarations.map(row=>recordCard(
+      periods[row.period]+' 2026 · '+declarationStatuses[row.status],
+      [row.form,row.date?'Подана '+dateText(row.date):'',row.number?'Рег. № '+row.number:'',
+       row.proof?'Квитанция № 2 · '+row.proof:'',
+       row.reportedIncome!=null?'Доход по декларации '+uah(row.reportedIncome):'',
+       row.reportedUnified!=null?'ЕН '+uah(row.reportedUnified)+' · ВС '+uah(row.reportedMilitary):'',
+       declarationDue(row)?'Срок '+dateText(declarationDue(row)):''],
+      ()=>fillDeclaration(row))));
+
+    const latest={};
+    for(const row of [...state.balances].sort(sortDates))latest[row.tax]??=row;
+    const snapshots=Object.keys(taxNames).filter(tax=>latest[tax]).map(tax=>{
+      const row=latest[tax];
+      return recordCard(taxNames[tax]+' · '+dateText(row.date),
+        [row.source+' · переплата '+uah(row.credit)+' · долг '+uah(row.debt),row.note],
+        ()=>fillBalance(row));
+    });
+    $('balance-list').replaceChildren(...(snapshots.length?snapshots:[recordCard('Сверок пока нет',[])]));
+    const next=[];
+    if(pending)next.push('Сверить курс НБУ для '+pending+' поступлений.');
+    if(remaining>0)next.push('Подтвердить оплату ЕН и ВС'+(!pending?' на '+uah(remaining):' по поступлениям с проверенным курсом')+'.');
+    if(q===4&&remaining>0&&daysTo(q4PaymentDue)<=14)next.push('Срок уплаты ЕН и ВС за IV квартал — '+dateText(q4PaymentDue)+'.');
+    for(const row of payments){
+      if(row.status!=='confirmed'&&row.due&&daysTo(row.due)<=14){
+        next.push(taxNames[row.tax]+' · срок платежа '+dateText(row.due)+'.');
+      }
+    }
+    for(const row of declarations){
+      if(row.status==='sent'||row.status==='received')next.push('Проверить квитанцию № 2 · '+periods[row.period].toLowerCase()+'.');
+      if(row.status==='rejected')next.push('Проверить причину отклонения · '+periods[row.period].toLowerCase()+'.');
+      if(row.status==='draft'&&declarationDue(row)&&daysTo(declarationDue(row))<=14){
+        next.push('Подать декларацию · '+periods[row.period].toLowerCase()+' · срок '+dateText(declarationDue(row))+'.');
+      }
+    }
+    if(latest.esv&&!latest.esv.reconciled)next.push('Сверить, за какие периоды зачтён ЕСВ.');
+    if(q===4&&daysTo(q4EsvDue)>=0&&daysTo(q4EsvDue)<=14&&(!latest.esv?.reconciled||latest.esv.debt>0)){
+      next.push('Сверить ЕСВ до срока за IV квартал · '+dateText(q4EsvDue)+'.');
+    }
+    $('tax-next').replaceChildren(...[...new Set(next)].map(message=>{
+      const item=document.createElement('li');item.textContent=message;return item;
+    }));
+  }
+
+  function fillForm(form,row){
+    for(const [field,value] of Object.entries(row)){
+      const input=form.elements.namedItem(field);
+      if(!input)continue;
+      if(input.type==='checkbox')input.checked=Boolean(value);
+      else input.value=value??'';
+    }
+  }
+
+  function resetPayment(){
+    const form=$('payment-form');
+    form.reset();
+  }
+
+  function editPayment(row){
+    const form=$('payment-form');
+    paymentEdit=row.id;
+    fillForm(form,{...row,planned:moneyInput(row.planned),actual:moneyInput(row.actual)});
+    form.querySelector('[type="reset"]').hidden=false;
+    form.elements.namedItem('tax').focus();
+    setStatus(form,'Редактирование платежа.');
+  }
+
+  function fillDeclaration(row){
+    const form=$('declaration-form');
+    fillForm(form,{form:'',date:'',number:'',proof:'',...row,due:declarationDue(row)});
+    setStatus(form,'');
+  }
+
+  function fillBalance(row){
+    const form=$('tax-balance-form');
+    fillForm(form,{...row,credit:moneyInput(row.credit),debt:moneyInput(row.debt)});
+    $('esv-check').hidden=row.tax!=='esv';
+    setStatus(form,'');
+  }
+
+  function initTaxes(){
+    const payment=$('payment-form'), declaration=$('declaration-form'), balance=$('tax-balance-form');
+    payment.addEventListener('reset',()=>{
+      paymentEdit=null;
+      payment.querySelector('[type="reset"]').hidden=true;
+      setStatus(payment,'');
+    });
+    payment.addEventListener('submit',event=>{
+      event.preventDefault();
+      const data=fields(payment);
+      const quarter=Number($('quarter').value);
+      const planned=decimal(data.planned,2);
+      const actual=data.actual.trim()?decimal(data.actual,2):null;
+      const proof=data.proof.trim();
+      if(!planned||(data.actual.trim()&&(!actual))||(data.date&&!validPast(data.date))||
+        (data.due&&!validIso(data.due))||(data.month&&quarterOf(data.month+'-01')!==quarter)){
+        setStatus(payment,'Проверь суммы, даты и месяц выбранного квартала.');return;
+      }
+      if(data.status==='confirmed'&&(!actual||!data.date||!proof)){
+        setStatus(payment,'Для подтверждения нужны фактическая сумма, дата и квитанция банка.');return;
+      }
+      if(data.status==='confirmed'&&state.payments.some(row=>row.id!==paymentEdit&&row.status==='confirmed'&&
+        row.tax===data.tax&&row.date===data.date&&row.proof===proof)){
+        setStatus(payment,'Платёж с таким подтверждением уже есть.');return;
+      }
+      const row={...data,id:paymentEdit||uid(),quarter,planned,actual,proof};
+      const payments=paymentEdit?state.payments.map(item=>item.id===paymentEdit?row:item):[...state.payments,row];
+      if(!persist({...state,payments})){setStatus(payment,'Не удалось сохранить платёж.');return;}
+      resetPayment();render();setStatus(payment,'Платёж сохранён.');
+    });
+
+    declaration.elements.namedItem('period').addEventListener('change',event=>{
+      const period=event.target.value;
+      fillDeclaration(declarationFor(period)||{period,status:'draft'});
+    });
+    declaration.addEventListener('submit',event=>{
+      event.preventDefault();
+      const row=fields(declaration);
+      for(const key of ['form','number','proof'])row[key]=row[key].trim();
+      if((row.date&&!validPast(row.date))||(row.due&&!validIso(row.due))||
+        (row.status!=='draft'&&!row.date)||(row.status==='accepted'&&!row.proof)){
+        setStatus(declaration,'Проверь дату подачи. Для статуса «Принята» нужна квитанция № 2.');return;
+      }
+      const prior=declarationFor(row.period);
+      const declarations=[...state.declarations.filter(item=>item.period!==row.period),{...prior,...row}];
+      if(!persist({...state,declarations})){setStatus(declaration,'Не удалось сохранить декларацию.');return;}
+      render();setStatus(declaration,'Декларация сохранена.');
+    });
+    fillDeclaration(declarationFor('q4')||draftDeclaration);
+
+    balance.elements.namedItem('tax').addEventListener('change',event=>{
+      $('esv-check').hidden=event.target.value!=='esv';
+      balance.elements.namedItem('reconciled').checked=false;
+    });
+    balance.addEventListener('submit',event=>{
+      event.preventDefault();
+      const data=fields(balance);
+      const credit=decimal(data.credit,2), debt=decimal(data.debt,2);
+      if(!validPast(data.date)||credit===null||debt===null){
+        setStatus(balance,'Проверь дату и суммы сверки.');return;
+      }
+      const row={...data,credit,debt,note:data.note.trim(),reconciled:data.tax==='esv'&&data.reconciled==='on'};
+      const balances=[...state.balances.filter(item=>item.date!==row.date||item.tax!==row.tax),row];
+      if(!persist({...state,balances})){setStatus(balance,'Не удалось сохранить сверку.');return;}
+      render();setStatus(balance,'Сверка сохранена.');
+    });
+    fillBalance({date:today,tax:'unified'});
+    $('tax-import').addEventListener('change',importTaxes);
+    $('tax-jump').addEventListener('click',()=>{$('tax-control').scrollIntoView();$('quarter').focus({preventScroll:true});});
+  }
+
+  async function importTaxes(event){
+    const input=event.target, file=input.files[0];
+    if(!file)return;
+    const status=$('import-status');
+    try{
+      if(file.size>50000)throw new Error('size');
+      const data=JSON.parse(await file.text());
+      const validReceipt=row=>row&&cleanText(row.id,80)&&validDate(row.date)&&['USD','EUR'].includes(row.currency)&&
+        validCents(row.amount)&&row.amount>0&&cleanText(row.ref,120)&&(
+          row.source==='pending'&&row.rate===null&&row.uah===null||
+          row.source==='manual'&&validCents(row.rate)&&row.rate>0&&row.uah===toUah(row.amount,row.rate));
+      const validDeclaration=row=>row&&Object.hasOwn(periods,row.period)&&Object.hasOwn(declarationStatuses,row.status)&&
+        (row.date===''?row.status==='draft':validPast(row.date))&&(!row.due||validIso(row.due))&&
+        cleanText(row.form,30)&&cleanText(row.number,60)&&cleanText(row.proof,180)&&(row.status!=='accepted'||row.proof)&&
+        ['reportedIncome','reportedUnified','reportedMilitary'].every(key=>row[key]==null||validCents(row[key]));
+      const validBalance=row=>row&&validPast(row.date)&&Object.hasOwn(taxNames,row.tax)&&
+        ['Дія','Кабинет ДПС'].includes(row.source)&&validCents(row.credit)&&validCents(row.debt)&&
+        cleanText(row.note,180)&&typeof row.reconciled==='boolean';
+      if(data.version!==1||!Array.isArray(data.receipts)||!data.receipts.every(validReceipt)||
+        !Array.isArray(data.declarations)||!data.declarations.every(validDeclaration)||
+        !Array.isArray(data.balances)||!data.balances.every(validBalance))throw new Error('format');
+      const receipts=[...state.receipts];
+      for(const row of data.receipts){
+        if(!receipts.some(item=>item.id===row.id||(item.date===row.date&&receiptAmount(item)===row.amount&&receiptCurrency(item)===row.currency)))receipts.push(row);
+      }
+      const declarations=[...state.declarations];
+      for(const row of data.declarations)if(!declarations.some(item=>item.period===row.period))declarations.push(row);
+      const balances=[...state.balances];
+      for(const row of data.balances)if(!balances.some(item=>item.date===row.date&&item.tax===row.tax))balances.push(row);
+      const added=receipts.length+declarations.length+balances.length-state.receipts.length-state.declarations.length-state.balances.length;
+      if(added&&!persist({...state,receipts,declarations,balances})){
+        status.textContent='Не удалось записать импорт в браузере.';return;
+      }
+      if(added)render();
+      status.textContent=added?'Добавлено записей: '+added+'.':'Эти записи уже есть в браузере.';
+    }catch{
+      status.textContent='Не удалось прочитать файл. Выбери JSON для импорта ФОП за 2026 год.';
+    }finally{
+      input.value='';
+    }
+  }
+
+  initTaxes();render();if($('date').value)lookup();
 })();
 </script>
 </body>

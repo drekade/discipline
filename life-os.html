@@ -558,7 +558,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
 .daily-tarot-img{width:auto;max-width:36px;max-height:57px;flex-shrink:0;border-radius:3px}
 #ritual-result{align-items:flex-start}
 #ritual-result .daily-hexagram{margin-top:4px}
-.daily-hexagram i.empty{background:transparent;border:1px dashed #8e7e67}
+.daily-hexagram i.unthrown{background:transparent;border:1px dashed #8e7e67}
 .ritual-coins{display:flex;gap:4px;margin-top:4px}
 .ritual-coin{display:grid;place-items:center;width:21px;height:21px;border:1px solid #695136;border-radius:50%;background:#fae7a3;color:#4c341f;font:700 11px var(--ff)}
 .hexagram-meaning,.hexagram-transition p{margin:5px 0 0}
@@ -3444,7 +3444,7 @@ function hexagramGraphic(lines,pad=false){
   const values=pad?Array.from({length:6},(_,index)=>lines[index]):lines;
   [...values].reverse().forEach(value=>{
     const line=document.createElement('i');
-    line.className=value==null?'empty':(value%2?'yang':'yin')+((value===6||value===9)?' moving':'');
+    line.className=value==null?'unthrown':(value%2?'yang':'yin')+((value===6||value===9)?' moving':'');
     graphic.append(line);
   });
   return graphic;
