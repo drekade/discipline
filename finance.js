@@ -250,7 +250,7 @@ async function selectCloud(owner,{automatic=false}={}){
   cloudOwner=owner;cloudSeed=local;record=shared;
   if(shared)rememberCloud(owner);
   showGate();
-  issue(shared?'':'Первый вход перенесёт записи с этого устройства в общие «Финансы». Локальная копия сохранится.');
+  issue(shared?'':'Общая копия ещё не создана. Заверши настройку на устройстве, где есть актуальные записи.');
   return true;
 }
 async function refreshCloud({manual=false}={}){
@@ -262,7 +262,8 @@ async function refreshCloud({manual=false}={}){
   try{
     const shared=await financeCloud.read(owner);
     if(key!==secret||record.revision!==previous)return;
-    if(shared&&shared.revision!==previous){
+    if(!shared)throw new Error('Общая копия пока недоступна.');
+    if(shared.revision!==previous){
       const latest=await decrypt(shared,secret);
       if(key!==secret||record.revision!==previous)return;
       record=shared;state=latest;
@@ -331,13 +332,16 @@ function showGate(){
   document.querySelector('.print-report')?.remove();
   closeSheet();
   openView('gate');
-  $('cloud-mode').textContent=cloudOwner?'Общие «Финансы» · один PIN для телефона и ПК':'Локальные «Финансы» · только на этом устройстве';
+  const connecting=Boolean(cloudOwner&&!record&&!knownCloud(cloudOwner));
+  $('cloud-mode').textContent=connecting?'Подключение к общим «Финансам»':
+    cloudOwner?'Общие «Финансы» · один PIN для телефона и ПК':'Локальные «Финансы» · только на этом устройстве';
   $('cloud-connect').hidden=Boolean(cloudOwner);
   $('cloud-local').hidden=!cloudOwner;
   const hasPin=Boolean(record||cloudSeed||knownCloud(cloudOwner));
   $('gate-title').textContent=hasPin?'Вход по PIN':'Создай PIN';
-  $('gate-note').textContent=cloudSeed?'Введи PIN с этого устройства. Он станет общим.':
+  $('gate-note').textContent=cloudSeed?'Введи PIN этого устройства и нажми «Завершить синхронизацию». Его записи и PIN станут общими.':
     hasPin?'':'От 6 до 12 цифр. Этот PIN также понадобится для восстановления из копии.';
+  $('unlock').querySelector('button').textContent=connecting?'Завершить синхронизацию':'Открыть';
   $('pin-again').hidden=hasPin;
   $('unlock').reset();
 }
@@ -351,6 +355,11 @@ function openView(next){
   $('exit').hidden=!['gate','finance-home'].includes(next);
   $('lock').hidden=next==='gate';
   $('cloud-refresh').hidden=!cloudOwner||next==='gate';
+  if(next==='finance-home'){
+    const account=cloudOwner?financeCloud.session()?.user?.email:'';
+    $('finance-sync-state').textContent=cloudOwner?'Общие «Финансы»'+(account?' · '+account:''):'Локальная копия · только этот браузер';
+    $('finance-sync-actions').hidden=Boolean(cloudOwner);
+  }
   if(next==='fop'){
     const launch=()=>{if(view==='fop'&&key)$('fop-frame').src='fop.html?v=20261110-2';};
     if(cloudOwner)refreshCloud().then(launch);
@@ -379,6 +388,7 @@ $('unlock').addEventListener('submit',async event=>{
     const salt=initial?decode64(initial.salt):bytes(16);
     const secret=await derive(pin,salt);
     const loaded=initial?await decrypt(initial,secret):blank();
+    const connectedNow=Boolean(cloudOwner&&!record);
     if(!record){
       if(cloudOwner)loaded.fop=legacyFop();
       const encrypted=await encrypt(loaded,secret,salt);
@@ -391,7 +401,7 @@ $('unlock').addEventListener('submit',async event=>{
     range=monthRange(isoMonth(today()));compare=null;historyMerchant='';categoryLila=false;analyticsLila=false;
     $('search').value='';$('history-category').value='';$('history-lila').checked=false;
     for(const id of ['obligations','categories','history'])$(id).open=Boolean(state.open[id]);
-    issue();
+    issue(connectedNow?'Синхронизация завершена. На втором устройстве войди в тот же аккаунт и введи общий PIN.':'');
     openView(wantedFop?'fop':'finance-home');
     if(wantedFop)history.replaceState(null,'',location.pathname+location.search);
     wantedFop=false;
@@ -599,7 +609,7 @@ $('compare-button').addEventListener('click',()=>{
   const previous=new Date(range.start);previous.setUTCDate(0);
   chooser(compare||monthRange(isoMonth(previous.toISOString())),'Период для сравнения',value=>{compare=value;});
 });
-$('cloud-connect').addEventListener('click',async()=>{
+async function connectCloud(){
   if(busy||key)return;
   const owner=financeCloud.session()?.user?.id;
   if(owner){
@@ -610,6 +620,13 @@ $('cloud-connect').addEventListener('click',async()=>{
       else issue(error.message||'Синхронизация недоступна.');
     }finally{busy=false;}
   }else cloudLogin();
+}
+$('cloud-connect').addEventListener('click',connectCloud);
+$('cloud-connect-home').addEventListener('click',async()=>{
+  await saveQueue;
+  if(busy||!key||cloudOwner)return;
+  showGate();
+  await connectCloud();
 });
 $('cloud-local').addEventListener('click',async()=>{
   if(busy||key)return;

@@ -30,7 +30,7 @@
 <link rel="stylesheet" href="finance.css?v=20261110-3">
 <script defer src="jszip.min.js"></script>
 <script defer src="finance-xlsx.js?v=20261110-3"></script>
-<script defer src="finance.js?v=20261110-4"></script>
+<script defer src="finance.js?v=20261110-5"></script>
 </head>
 <body>
 <main>
@@ -54,6 +54,8 @@
   </section>
   <section id="finance-home" hidden>
     <h1>Финансы</h1>
+    <p class="muted" id="finance-sync-state"></p>
+    <div class="actions" id="finance-sync-actions"><button id="cloud-connect-home" class="lilac">Открыть общие финансы</button></div>
     <button class="card tile sage" data-view="budget"><strong>Личный бюджет <span aria-hidden="true">→</span></strong><small id="home-month"></small><span id="home-summary"></span></button>
     <button class="card tile yellow" data-view="fop"><strong>ФОП / Налоги <span aria-hidden="true">→</span></strong></button>
   </section>
