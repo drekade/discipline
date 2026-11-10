@@ -387,6 +387,27 @@ body:has(#page-home.active) .main{margin:0 auto;width:100%;min-width:0}
 #home-todo-status,#todo-edit-status{font-size:12px;color:#5d5141}
 #home-todo-status:empty,#todo-edit-status:empty{display:none}
 #modal-home-todo .modal{max-height:90vh;overflow-y:auto}
+.jl-wish{background:#f1e2eb}
+.wish-actions{display:flex;gap:6px;flex-wrap:wrap}
+.wish-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:7px 0 0}
+.wish-tile{display:grid;place-items:center;aspect-ratio:1;min-width:0;padding:0;border:1px solid #ac92a6;border-radius:11px;background:#f9f0f4;color:#60485a;overflow:hidden;cursor:pointer}
+.wish-tile img{width:100%;height:100%;object-fit:cover}
+.wish-tile span,.wish-picture span{padding:5px;overflow-wrap:anywhere;font-size:11px}
+#wish-status,#wish-edit-status{font-size:12px;color:#624d58;margin:6px 0}
+#wish-status:empty,#wish-edit-status:empty{display:none}
+#wish-more{margin-top:8px}
+.wish-modal{max-width:460px;max-height:90dvh;overflow:auto;background:#fff9ee}
+.wish-modal .modal-title{overflow-wrap:anywhere}
+.wish-picture{display:grid;place-items:center;min-height:90px;background:#faf2f5;border-radius:12px;overflow:hidden}
+.wish-picture img{display:block;width:100%;max-height:55dvh;object-fit:contain}
+.wish-edit-picture{margin:0 0 12px;min-height:0}
+.wish-edit-picture img{max-height:150px}
+.wish-product-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.wish-product-row input{flex:1 1 175px;min-width:0}
+.wish-product-row .btn-ghost{font-size:12px;padding:6px 8px}
+.wish-product-link{display:inline-flex;padding:8px 0;font-weight:700;color:#523666}
+.wish-view-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.wish-picture[hidden],.wish-product-link[hidden]{display:none}
 .jl-bottom{display:flex;justify-content:center;align-items:center;margin-top:10px;border-top:1.5px solid var(--ink);padding-top:7px}
 .jl-bottom button{display:grid;justify-items:center;align-content:center;min-width:66px;min-height:42px;border:0;background:transparent;color:var(--ink);cursor:pointer;font:650 11px var(--ff)}
 .jl-bottom svg{width:28px;height:25px}
@@ -844,6 +865,16 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
           <button type="button" class="btn-ghost" data-todo-action="paste">Вставить список</button>
         </div>
         <div id="home-todo-items"></div>
+      </details>
+      <details class="jl-todo jl-wish" id="home-wish" ontoggle="if(this.open)loadWishes()">
+        <summary><strong>Я хочу</strong></summary>
+        <div class="wish-actions">
+          <button type="button" id="wish-add" class="btn-ghost" onclick="openWishEditor()" hidden>+ Добавить</button>
+          <button type="button" id="wish-login" class="btn-ghost" onclick="showLogin('Войди, чтобы открыть вишлист')" hidden>Войти</button>
+        </div>
+        <p id="wish-status" role="status"></p>
+        <div id="wish-grid" class="wish-grid"></div>
+        <button type="button" class="btn-ghost" id="wish-more" onclick="loadWishes(true)" hidden>Показать ещё</button>
       </details>
       <nav class="jl-bottom" aria-label="Основная навигация">
         <button class="jl-plus" type="button" aria-label="Добавить" onclick="showModal('modal-add')">+</button>
@@ -1401,6 +1432,48 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
   </div>
 </div>
 
+<div class="modal-bg hidden" id="modal-wish-edit" role="dialog" aria-modal="true" aria-labelledby="wish-edit-heading">
+  <form class="modal wish-modal" onsubmit="event.preventDefault();saveWish()">
+    <div class="modal-head">
+      <span class="modal-title" id="wish-edit-heading">Новое желание</span>
+      <button type="button" class="modal-close" onclick="closeWishEditor()" aria-label="Закрыть">✕</button>
+    </div>
+    <div id="wish-edit-picture" class="wish-picture wish-edit-picture" hidden></div>
+    <div class="form-row">
+      <label class="field-label" for="wish-product">Ссылка на товар</label>
+      <div class="wish-product-row">
+        <input type="url" inputmode="url" id="wish-product" maxlength="4096" placeholder="https://…">
+        <button type="button" class="btn-ghost" onclick="previewWish()">Подтянуть фото</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="field-label" for="wish-image-url">Прямая ссылка на картинку</label>
+      <input type="url" inputmode="url" id="wish-image-url" maxlength="4096" placeholder="https://…">
+    </div>
+    <div class="form-row">
+      <label class="field-label" for="wish-file">Фото с устройства</label>
+      <input type="file" id="wish-file" accept="image/*" onchange="readWishPhoto(this)">
+    </div>
+    <p id="wish-edit-status" role="status"></p>
+    <button type="submit" class="btn-primary full" id="wish-save">Сохранить</button>
+  </form>
+</div>
+
+<div class="modal-bg hidden" id="modal-wish-view" role="dialog" aria-modal="true" aria-labelledby="wish-view-title">
+  <div class="modal wish-modal">
+    <div class="modal-head">
+      <span class="modal-title" id="wish-view-title">Желание</span>
+      <button type="button" class="modal-close" onclick="hideModal('modal-wish-view')" aria-label="Закрыть">✕</button>
+    </div>
+    <div id="wish-view-picture" class="wish-picture"></div>
+    <a class="wish-product-link" id="wish-view-link" target="_blank" rel="noopener noreferrer" hidden>Открыть товар ↗</a>
+    <div class="wish-view-actions">
+      <button type="button" class="btn-ghost" id="wish-view-edit">Изменить</button>
+      <button type="button" class="btn-ghost" id="wish-view-delete">Удалить</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg hidden" id="modal-home-todo" role="dialog" aria-modal="true" aria-labelledby="todo-edit-title">
   <form class="modal" onsubmit="event.preventDefault();submitTodo()">
     <div class="modal-head">
@@ -1789,6 +1862,7 @@ async function doLogin(){
     renderDaily();
     void syncDaily();
     if(document.getElementById('home-todo').open)void loadHomeTodo();
+    if(document.getElementById('home-wish').open)void loadWishes();
     if(document.getElementById('page-project').classList.contains('active')&&Number(document.getElementById('pc-id').value))void loadProjectWorkspace();
     await load();
   }catch(e){err.textContent='Ошибка сети: '+e;}
@@ -4152,6 +4226,257 @@ const hexagramMeanings=[
   "Дело близко к завершению. Последний переход требует такого же внимания, как первый."
 ];
 
+
+const WISH_PAGE_SIZE=24;
+const WISH_IMAGE_LIMIT=260000;
+let wishRows=[],wishOffset=0,wishMore=false,wishOwner=null,wishRead=0,wishLoading=false;
+let wishDraft=null,wishBusy=false,wishLookup=0;
+
+function wishHttpUrl(value){
+  try{
+    const url=new URL(value.trim());
+    return url.protocol==='https:'&&!url.username&&!url.password?url.href:'';
+  }catch{return '';}
+}
+function wishImageSrc(value){
+  return /^data:image\/(?:jpeg|webp|png);base64,[a-z0-9+/=]+$/i.test(value||'')?value:wishHttpUrl(value||'');
+}
+function wishStatus(message='',editor=false){
+  document.getElementById(editor?'wish-edit-status':'wish-status').textContent=message;
+}
+function resetWishes(owner){
+  ++wishRead;
+  wishOwner=owner;
+  wishRows=[];wishOffset=0;wishMore=false;wishLoading=false;
+  wishDraft=null;
+  hideModal('modal-wish-edit');
+  hideModal('modal-wish-view');
+  renderWishes();
+}
+async function loadWishes(append=false){
+  const owner=session?.user?.id;
+  if(wishOwner!==owner)resetWishes(owner);
+  document.getElementById('wish-login').hidden=!!owner;
+  document.getElementById('wish-add').hidden=!owner;
+  if(!owner){wishStatus('Войди, чтобы видеть вишлист на телефоне и ПК.');return;}
+  if(wishLoading)return;
+  wishLoading=true;
+  const request=++wishRead;
+  const offset=append?wishOffset:0;
+  wishStatus('Загружаю…');
+  try{
+    const response=await apiFetch(SB+'/rest/v1/wish_items?order=created_at.desc,id.desc&limit='+WISH_PAGE_SIZE+'&offset='+offset,{cache:'no-store'});
+    if(!response.ok)throw new Error('wish read');
+    const rows=await response.json();
+    if(request!==wishRead||session?.user?.id!==owner)return;
+    wishRows=append?[...new Map([...wishRows,...rows].map(row=>[row.id,row])).values()]:rows;
+    wishOffset=offset+rows.length;
+    wishMore=rows.length===WISH_PAGE_SIZE;
+    wishStatus(wishRows.length?'':'Добавь первое желание.');
+    renderWishes();
+  }catch{
+    if(request===wishRead)wishStatus('Не удалось загрузить. Сверни и открой список снова.');
+  }finally{if(request===wishRead)wishLoading=false;}
+}
+function wishLabel(row){
+  const link=wishHttpUrl(row.product_url||'');
+  return row.title||(link?new URL(link).hostname:'Желание');
+}
+function renderWishes(){
+  const grid=document.getElementById('wish-grid');
+  grid.replaceChildren(...wishRows.map(row=>{
+    const button=document.createElement('button');
+    button.className='wish-tile';
+    button.type='button';
+    button.setAttribute('aria-label',wishLabel(row));
+    button.onclick=()=>openWishView(row.id);
+    setWishPicture(button,row.image_src,wishLabel(row),true);
+    return button;
+  }));
+  document.getElementById('wish-more').hidden=!wishMore;
+}
+function setWishPicture(container,src,label,lazy=false){
+  const placeholder=document.createElement('span');
+  placeholder.textContent=label;
+  const url=wishImageSrc(src);
+  if(!url){container.replaceChildren(placeholder);return;}
+  const img=document.createElement('img');
+  img.alt='';
+  img.loading=lazy?'lazy':'eager';
+  img.referrerPolicy='no-referrer';
+  img.onerror=()=>img.replaceWith(placeholder);
+  img.src=url;
+  container.replaceChildren(img);
+}
+function openWishView(id){
+  const row=wishRows.find(item=>item.id===id);
+  if(!row)return;
+  const label=wishLabel(row);
+  const link=wishHttpUrl(row.product_url||'');
+  document.getElementById('wish-view-title').textContent=label;
+  const anchor=document.getElementById('wish-view-link');
+  anchor.hidden=!link;
+  if(link)anchor.href=link;
+  else anchor.removeAttribute('href');
+  setWishPicture(document.getElementById('wish-view-picture'),row.image_src,label);
+  document.getElementById('wish-view-edit').onclick=()=>openWishEditor(id);
+  document.getElementById('wish-view-delete').onclick=()=>deleteWish(id);
+  showModal('modal-wish-view');
+}
+function openWishEditor(id){
+  if(!session?.user?.id)return;
+  ++wishLookup;
+  const row=wishRows.find(item=>item.id===id);
+  wishDraft={id:row?.id,owner:session.user.id,title:row?.title||'',image:row?.image_src||'',previewed:row?.product_url||''};
+  document.getElementById('wish-edit-heading').textContent=row?'Редактировать желание':'Новое желание';
+  document.getElementById('wish-product').value=row?.product_url||'';
+  document.getElementById('wish-image-url').value=wishHttpUrl(row?.image_src||'');
+  document.getElementById('wish-file').value='';
+  wishStatus('',true);
+  renderWishDraft();
+  hideModal('modal-wish-view');
+  showModal('modal-wish-edit');
+}
+function closeWishEditor(){
+  ++wishLookup;
+  wishDraft=null;
+  hideModal('modal-wish-edit');
+}
+function renderWishDraft(){
+  const picture=document.getElementById('wish-edit-picture');
+  const src=wishDraft?.image;
+  picture.hidden=!src;
+  setWishPicture(picture,src,'Фото недоступно');
+}
+async function previewWish(){
+  const draft=wishDraft;
+  if(!draft)return;
+  const url=wishHttpUrl(document.getElementById('wish-product').value);
+  if(!url){wishStatus('Вставь ссылку на товар с https://.',true);return;}
+  if(draft.pendingPreview?.url===url)return draft.pendingPreview.promise;
+  const promise=fetchWishPreview(draft,url);
+  draft.pendingPreview={url,promise};
+  try{await promise;}
+  finally{if(draft.pendingPreview?.promise===promise)draft.pendingPreview=null;}
+}
+async function fetchWishPreview(draft,url){
+  const request=++wishLookup;
+  draft.previewed=url;
+  wishStatus('Ищу фото на странице товара…',true);
+  try{
+    const response=await apiFetch(SB+'/functions/v1/wish-preview',{
+      method:'POST',body:JSON.stringify({url})
+    });
+    const result=await response.json();
+    if(request!==wishLookup||wishDraft!==draft||session?.user?.id!==draft.owner)return;
+    if(response.ok){
+      draft.title=String(result.title||'').trim().slice(0,240);
+      if(wishHttpUrl(result.image||'')){
+        draft.image=wishHttpUrl(result.image);
+        document.getElementById('wish-image-url').value=draft.image;
+        document.getElementById('wish-file').value='';
+        wishStatus('',true);
+        renderWishDraft();
+        return;
+      }
+    }
+    wishStatus('Фото по этой ссылке не нашлось. Можно вставить ссылку на картинку или загрузить фото.',true);
+  }catch{
+    if(request===wishLookup&&wishDraft===draft)wishStatus('Фото не загрузилось. Можно добавить своё.',true);
+  }
+}
+async function readWishPhoto(input){
+  const file=input.files[0];
+  const draft=wishDraft;
+  if(!file||!draft)return;
+  const request=++wishLookup;
+  if(!/^image\/(?:jpeg|png|webp|gif|bmp|avif|heic|heif)$/i.test(file.type)||file.size>20*1024*1024){
+    wishStatus('Выбери фото до 20 МБ, например JPG, PNG или WebP.',true);
+    input.value='';
+    return;
+  }
+  draft.uploading=request;
+  const url=URL.createObjectURL(file);
+  try{
+    const img=new Image();
+    img.src=url;
+    await img.decode();
+    const canvas=document.createElement('canvas');
+    const ratio=Math.min(1,900/Math.max(img.width,img.height));
+    canvas.width=Math.max(1,Math.round(img.width*ratio));
+    canvas.height=Math.max(1,Math.round(img.height*ratio));
+    const context=canvas.getContext('2d');
+    context.fillStyle='#fff';
+    context.fillRect(0,0,canvas.width,canvas.height);
+    context.drawImage(img,0,0,canvas.width,canvas.height);
+    let encoded=canvas.toDataURL('image/jpeg',.84);
+    for(const quality of [.7,.55,.38,.25]){
+      if(encoded.length<=WISH_IMAGE_LIMIT)break;
+      encoded=canvas.toDataURL('image/jpeg',quality);
+    }
+    if(encoded.length>WISH_IMAGE_LIMIT)throw new Error('image size');
+    if(request!==wishLookup||wishDraft!==draft)return;
+    draft.image=encoded;
+    document.getElementById('wish-image-url').value='';
+    wishStatus('',true);
+    renderWishDraft();
+  }catch{
+    if(request===wishLookup&&wishDraft===draft){
+      input.value='';
+      wishStatus('Не удалось открыть фото. Попробуй JPG или PNG.',true);
+    }
+  }finally{
+    URL.revokeObjectURL(url);
+    if(draft.uploading===request)draft.uploading=null;
+  }
+}
+async function saveWish(){
+  const draft=wishDraft;
+  if(!draft||wishBusy||draft.owner!==session?.user?.id)return;
+  if(draft.uploading===wishLookup){wishStatus('Дождись, пока фото откроется.',true);return;}
+  const productInput=document.getElementById('wish-product');
+  const product=wishHttpUrl(productInput.value);
+  if(productInput.value.trim()&&!product){wishStatus('Проверь ссылку на товар.',true);return;}
+  const imageInput=document.getElementById('wish-image-url');
+  if(imageInput.value.trim()&&!wishHttpUrl(imageInput.value)){wishStatus('Проверь ссылку на картинку.',true);return;}
+  const button=document.getElementById('wish-save');
+  wishBusy=true;
+  button.disabled=true;
+  try{
+    if(product&&draft.pendingPreview?.url===product)await draft.pendingPreview.promise;
+    else if(product&&product!==draft.previewed&&!draft.image)await previewWish();
+    if(wishDraft!==draft||session?.user?.id!==draft.owner)return;
+    const image=wishHttpUrl(imageInput.value)||(draft.image.startsWith('data:')?draft.image:'');
+    if(!product&&!image){wishStatus('Добавь фото или ссылку на товар.',true);return;}
+    const payload={product_url:product||null,image_src:image||null,title:product&&product===draft.previewed?draft.title||null:null};
+    wishStatus('Сохраняю…',true);
+    const response=await apiFetch(SB+'/rest/v1/wish_items'+(draft.id?'?id=eq.'+encodeURIComponent(draft.id):''),{
+      method:draft.id?'PATCH':'POST',body:JSON.stringify(payload)
+    });
+    if(!response.ok)throw new Error('wish write');
+    const [row]=await response.json();
+    if(!row)throw new Error('wish missing');
+    if(wishDraft!==draft||session?.user?.id!==draft.owner)return;
+    hideModal('modal-wish-edit');
+    wishDraft=null;
+    ++wishRead;
+    wishLoading=false;
+    await loadWishes();
+  }catch{if(wishDraft===draft)wishStatus('Не удалось сохранить желание. Попробуй ещё раз.',true);}
+  finally{wishBusy=false;button.disabled=false;}
+}
+async function deleteWish(id){
+  if(!confirm('Удалить это желание из списка?'))return;
+  try{
+    const response=await apiFetch(SB+'/rest/v1/wish_items?id=eq.'+encodeURIComponent(id),{method:'DELETE'});
+    if(!response.ok)throw new Error('wish delete');
+    hideModal('modal-wish-view');
+    ++wishRead;
+    wishLoading=false;
+    await loadWishes();
+  }catch{wishStatus('Не удалось удалить желание.');}
+}
+
 let homeTodo=null;
 let homeTodoSaving=false;
 let homeTodoLoad=0;
@@ -5897,6 +6222,10 @@ window.addEventListener('storage',event=>{
   renderDaily();
   refreshDaily();
   if(personalPreviewOwner!==session?.user?.id)void loadPersonalProjectPreviews();
+  if(wishOwner!==session?.user?.id){
+    resetWishes(session?.user?.id);
+    if(document.getElementById('home-wish').open)void loadWishes();
+  }
   if(homeTodo?.owner!==session?.user?.id){
     homeTodo=null;
     renderHomeTodo();
