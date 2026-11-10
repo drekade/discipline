@@ -170,7 +170,7 @@ const knownMerchants=[
   [/rozetka|розетк/,'Rozetka','shopping'],[/sinsay/,'Sinsay','clothes']
 ];
 const blank = () => ({version:1,operations:[],deleted:[],categories:{...baseCategories},rules:{},obligations:[],
-  subscriptions:[],dismissed:[],open:{},cashBalances:[],lastImport:null});
+  subscriptions:[],dismissed:[],open:{},cashBalances:[],budgetChecks:[],lastImport:null});
 const normalize = financeExcel.words;
 const uuid = () => crypto.randomUUID();
 const utf8 = new TextEncoder();
@@ -321,6 +321,7 @@ async function decrypt(vault,secret){
     throw new Error('Неизвестный формат бюджета.');
   }
   if(!Array.isArray(value.cashBalances))value.cashBalances=[];
+  if(!Array.isArray(value.budgetChecks))value.budgetChecks=[];
   return updateImported(value);
 }
 async function encrypt(value,secret,salt){
@@ -648,22 +649,35 @@ function savingsAmount(currencies){
   return Object.entries(currencies).filter(([,amount])=>amount).map(([currency,amount])=>
     currency==='uah'?money(amount):(currency==='usd'?'$':'€')+new Intl.NumberFormat('uk-UA',{maximumFractionDigits:2}).format(amount/100)).join(' · ');
 }
+function budgetCheck(period){
+  return state.budgetChecks.filter(row=>row.start===period.start&&row.end<=period.end)
+    .sort((a,b)=>b.end.localeCompare(a.end))[0]||null;
+}
 function budgetSummary(period,applyCardFilter){
   const rows=operations(period,false,applyCardFilter), recorded=totals(rows,period);
   const measured=cashMeasurement(period,true);
   const extra=measured?.unrecorded??0;
-  const expense=recorded.expense+extra;
+  const savings=periodSavings(period);
+  const actual=applyCardFilter&&cardSelection?null:budgetCheck(period);
+  const recordedExpense=recorded.expense+extra;
+  const gap=actual?.countDifference&&actual.end===period.end?
+    recorded.income-savings.personal.uah-savings.shared.uah-actual.cards-actual.cash-recordedExpense:null;
+  const reconciled=gap!=null&&gap>=0;
+  const expense=recordedExpense+(reconciled?gap:0);
   const days=Math.max(1,Math.round((Date.parse(period.end)-Date.parse(period.start))/86400000)+1);
   return {...recorded,expense,difference:recorded.income-expense,average:Math.round(expense/days),
     measured,extra,cashComplete:Boolean(measured?.unrecorded!=null&&measured.from===period.start&&measured.latest.date===period.end),
-    savings:periodSavings(period)};
+    savings,actual,gap,reconciled};
 }
 function budgetRows(summary,{interactive=false,filtered=false}={}){
   const flow=(label,value,type)=>interactive?rowButton(label,'',money(value),()=>drill('','',false,type)):metric(label,money(value));
-  const spendingLabel=summary.cashComplete?'Потрачено':'Потрачено по учёту';
-  const rows=[flow('Поступило в бюджет',summary.income,'income')];
+  const spendingLabel=summary.reconciled?'Потрачено по сверке':summary.cashComplete?'Потрачено':'Потрачено по учёту';
+  const rows=[];
+  if(summary.actual)rows.push(metric('Доступно на '+shortDate(summary.actual.end),money(summary.actual.cards+summary.actual.cash),'total'));
+  rows.push(flow('Поступило в бюджет',summary.income,'income'));
   if(summary.fop)rows.push(flow('В том числе с ФОП',summary.fop,'fop'));
-  rows.push(summary.extra?metric(spendingLabel,money(summary.expense)):flow(spendingLabel,summary.expense,'expense'));
+  rows.push(summary.extra||summary.gap>0?metric(spendingLabel,money(summary.expense)):flow(spendingLabel,summary.expense,'expense'));
+  if(summary.reconciled&&summary.gap>0)rows.push(metric('В том числе расход без разбивки',money(summary.gap)));
   if(summary.measured?.unrecorded!=null){
     const label='В том числе наличные по остаткам';
     const value=money(summary.measured.inferred);
@@ -671,16 +685,18 @@ function budgetRows(summary,{interactive=false,filtered=false}={}){
       $('cash-details').open=true;
       $('cash-details').scrollIntoView({block:'start'});
     }):metric(label,value));
-    if(interactive&&summary.extra)rows.push(flow('Расходы с отдельными записями',summary.expense-summary.extra,'expense'));
+    
   }
-  rows.push(metric(summary.cashComplete?'Разница за период':'Разница по учёту',signed(summary.difference),'total'));
-  if(interactive)rows.push(metric('Средний расход по учёту за день',money(summary.average)));
+  if(interactive&&(summary.extra||summary.gap>0))rows.push(flow('Расходы с отдельными записями',
+    summary.expense-summary.extra-(summary.reconciled?summary.gap:0),'expense'));
+  rows.push(metric(summary.reconciled?'Разница по сверке':summary.cashComplete?'Разница за период':'Разница по учёту',signed(summary.difference),'total'));
+  if(interactive)rows.push(metric(summary.reconciled?'Средний расход по сверке за день':'Средний расход по учёту за день',money(summary.average)));
   for(const [pool,amounts] of Object.entries(summary.savings)){
     const amount=savingsAmount(amounts);
     if(amount)rows.push(metric(pool==='personal'?'В личную подушку':'В общую подушку',amount));
   }
   const setAside=summary.savings.personal.uah+summary.savings.shared.uah;
-  if(setAside&&!filtered){
+  if(setAside&&!filtered&&!summary.reconciled){
     rows.push(metric('Разница после гривневых накоплений',signed(summary.difference-setAside)));
   }
   return rows;
@@ -703,7 +719,11 @@ function render(){
       'Наличные по остаткам учтены за '+shortDate(measured.from)+' — '+shortDate(measured.latest.date)+
         (summary.cashComplete?'.':'. За остальные дни учтены отдельные записи.'):
       'Расход наличных по остаткам появится после двух сверок за подходящие даты.';
-    $('budget-summary-note').textContent=cashNote+(cardSelection?' Накопления показаны по всем источникам.':'');
+    const note=summary.reconciled?'Расход без разбивки получен сверкой поступлений, гривневых накоплений и фактического остатка.':
+      summary.gap<0?'Фактический остаток и записи не сходятся. Расходы показаны по записям и сверке наличных.':cashNote;
+    $('budget-summary-note').textContent=note+(cardSelection?' Накопления показаны по всем источникам.':'');
+    $('reconcile-budget').hidden=Boolean(cardSelection);
+    $('reconcile-budget').textContent=summary.actual?.end===range.end?'Изменить фактический остаток':'Сверить фактический остаток';
     categoryOptions($('history-category'),true);
     renderHistory();
     const breakdown=group(operations(range,categoryLila),row=>row.category);
@@ -788,6 +808,30 @@ function chooser(initial,caption,onChange){
 }
 const chooseRange=()=>chooser(range,'Выбрать период',value=>{range=value;historyLimit=100;});
 $('period-button').addEventListener('click',chooseRange);
+$('reconcile-budget').addEventListener('click',()=>{
+  const {start,end}=range;
+  const existing=state.budgetChecks.find(row=>row.start===start&&row.end===end);
+  const cash=state.cashBalances.find(row=>row.date===end);
+  const form=sheetForm('<h2>Фактический остаток</h2><p class="muted" id="reconcile-dates"></p><label>На картах для трат, всего грн<input name="cards" inputmode="decimal" required></label><label>Наличными на руках для трат, грн<input name="cash" inputmode="decimal" required></label><p class="muted">Суммы из подушек вводить сюда не нужно.</p><label class="check"><input name="countDifference" type="checkbox">Всё из поступлений периода, что не осталось и не отложено, потрачено</label><p class="muted">По этой отметке разница попадёт в расход без категории.</p><p role="status"></p><button class="lilac">Сохранить</button>');
+  $('reconcile-dates').textContent='Сверка на '+shortDate(end)+' по поступлениям с '+shortDate(start)+'.';
+  field(form,'cards').value=inputMoney(existing?.cards);
+  field(form,'cash').value=inputMoney(existing?.cash??cash?.wallet);
+  field(form,'countDifference').checked=Boolean(existing?.countDifference);
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const data=formData(form), cards=financeExcel.number(data.cards), cash=financeExcel.number(data.cash);
+    if(cards==null||cards<0||cash==null||cash<0){formIssue(form,'Проверь остатки. Можно указать ноль.');return;}
+    const submit=form.querySelector('button');
+    if(submit.disabled)return;
+    submit.disabled=true;
+    const row={start,end,cards,cash,countDifference:data.countDifference==='on'};
+    if(await commit(next=>{
+      next.budgetChecks=next.budgetChecks.filter(item=>item.start!==start||item.end!==end);
+      next.budgetChecks.push(row);
+    }))closeSheet();
+    submit.disabled=false;
+  });
+});
 $('cards-filter').addEventListener('click',()=>{
   const cards=[...new Set(state.operations.map(row=>row.cardTail).filter(Boolean))].sort();
   const form=sheetForm('<h2>Карты в сводке</h2><p class="muted">Ручные записи без привязки к карте остаются в сводке.</p><div id="card-options"></div><p role="status"></p><button class="lilac">Применить</button>');
