@@ -84,7 +84,7 @@ const financeExcel = (() => {
     const shared=sharedDoc?localName(sharedDoc,'si').map(row=>localName(row,'t').map(t=>t.textContent).join('')):[];
     const epoch=Date.UTC(1899,11,30)+(['1','true'].includes(localName(book,'workbookPr')[0]?.getAttribute('date1904'))?1462*86400000:0);
     const paths=new Map(localName(rels,'Relationship').map(item=>[item.getAttribute('Id'),item.getAttribute('Target')]));
-    const cards=new Set(), parsed=[];
+    const parsed=[];
     let skipped=0, recognized=false;
     for(const sheet of localName(book,'sheet')){
       const id=sheet.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id')||sheet.getAttribute('r:id');
@@ -111,13 +111,11 @@ const financeExcel = (() => {
         if(!amount){skipped++;continue;}
         const time=String(values[cols.time]??'').trim();
         if(/^\d{1,2}:\d{2}(?::\d{2})?$/.test(time))stamp.time=time;
-        const card=words(values[cols.card]);
-        if(card)cards.add(card);
-        parsed.push({...stamp,amount,original,bankId:String(values[cols.bankId]??'').trim(),
+        const card=words(values[cols.card]).replace(/[\s-]/g,'').replace(/[xх•]/g,'*');
+        parsed.push({...stamp,amount,original,card,bankId:String(values[cols.bankId]??'').trim(),
           merchant:String(values[cols.merchant]??'').trim()});
       }
     }
-    if(cards.size>1)throw new Error('В файле несколько карт. Экспортируй выписку одной гривневой карты.');
     if(!recognized||!parsed.length)throw new Error('В .xlsx не найдены операции с датой, описанием и суммой в гривнах.');
     return {rows:parsed,skipped};
   }

@@ -263,7 +263,7 @@ function matchesHistory(row){
 }
 function operationRow(row){
   const amount=row.type==='internal'?money(row.amount):signed(row.type==='expense'?-row.amount:row.amount);
-  const sub=[row.type==='internal'?'Перемещение':categoryName(row.category),row.lila?'Лила':'',methods[row.method]].filter(Boolean).join(' · ');
+  const sub=[row.type==='internal'?'Перемещение':categoryName(row.category),row.lila?'Лила':'',row.cardTail?'Карта •'+row.cardTail:methods[row.method]].filter(Boolean).join(' · ');
   return rowButton(row.merchant||labels[row.type],sub,amount,()=>operationSheet(row));
 }
 function renderHistory(){
@@ -492,7 +492,7 @@ $('manage-categories').addEventListener('click',()=>{
 
 function importSheet(){
   const title=n('h2','Импорт выписки');
-  const hint=empty('Выбери файл .xlsx из Приват24 по одной личной гривневой карте.');
+  const hint=empty('Выбери выписку .xlsx из Приват24. В одном файле могут быть операции по нескольким гривневым картам.');
   const file=n('input');file.type='file';file.accept='.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
   file.setAttribute('aria-label','Выписка Excel');
   const status=n('p');status.setAttribute('role','status');
@@ -522,43 +522,70 @@ function classifyBank(row){
   return {type};
 }
 async function importRows({rows,skipped}){
-  const batchId=uuid(), occurrence=new Map(), incoming=[];
+  const batchId=uuid(), occurrence=new Map(), cards=new Map(), incoming=[];
   for(const row of rows){
     if(row.date>today()){skipped++;continue;}
+    if(row.card&&!cards.has(row.card))cards.set(row.card,await digest('card:'+row.card));
+    const cardId=cards.get(row.card)||'';
+    const cardTail=row.card?.match(/\d{4}$/)?.[0]||'';
     const signature=JSON.stringify([row.date,row.time,row.amount,normalize(row.original)]);
-    const count=(occurrence.get(signature)||0)+1;
-    occurrence.set(signature,count);
-    const importKey=await digest(row.bankId?'bank:'+row.bankId:'row:'+signature+':'+count);
-    incoming.push({row,importKey});
+    const scope=cardId?cardId+':':'';
+    const occurrenceKey=scope+signature;
+    const count=(occurrence.get(occurrenceKey)||0)+1;
+    occurrence.set(occurrenceKey,count);
+    const identity=row.bankId?'bank:'+row.bankId:'row:'+signature+':'+count;
+    const legacyKey=await digest(identity);
+    const importKey=scope?await digest(scope+identity):legacyKey;
+    incoming.push({row,importKey,legacyKey,cardId,cardTail});
   }
   return commit(next=>{
     let added=0,pending=0;
     const seen=new Set([...next.deleted,...next.operations.map(row=>row.importKey).filter(Boolean)]);
+    const legacy=new Map(next.operations.filter(row=>row.importKey&&!row.cardId).map(row=>[row.importKey,row]));
+    const aliases=new Set(next.operations.map(row=>row.legacyImportKey).filter(Boolean));
+    const deleted=new Set(next.deleted);
     const byAmount=new Map();
     const matchKey=row=>row.date+':'+Math.abs(row.amount);
     for(const item of next.operations){
       const k=matchKey(item), list=byAmount.get(k)||[];
       list.push(item);byAmount.set(k,list);
     }
-    for(const {row,importKey} of incoming){
-      if(seen.has(importKey)){skipped++;continue;}
+    for(const {row,importKey,legacyKey,cardId,cardTail} of incoming){
+      if(seen.has(importKey)||!cardId&&aliases.has(legacyKey)){skipped++;continue;}
+      // Keep previously edited operations and exclusions when a later export supplies the card.
+      const old=cardId&&legacy.get(legacyKey);
+      if(cardId&&(deleted.has(legacyKey)||old&&normalize(old.original)===normalize(row.original))){
+        if(deleted.delete(legacyKey))deleted.add(importKey);
+        if(old){
+          Object.assign(old,{importKey,legacyImportKey:legacyKey,cardId,cardTail});
+          legacy.delete(legacyKey);
+          aliases.add(legacyKey);
+        }
+        seen.delete(legacyKey);
+        seen.add(importKey);
+        skipped++;
+        continue;
+      }
       const previous=byAmount.get(matchKey(row))||[];
       const classification=classifyBank(row);
-      const possible=previous.some(item=>!(row.bankId&&item.bankId&&row.bankId!==item.bankId)&&
-        normalize(item.original||item.merchant)!==normalize(row.original)&&
+      const possible=previous.some(item=>!(cardId&&item.cardId&&cardId!==item.cardId)&&
+        !(row.bankId&&item.bankId&&row.bankId!==item.bankId)&&normalize(item.original||item.merchant)!==normalize(row.original)&&
         item.type===classification.type);
       const info=merchantInfo(row.original,row.merchant);
       const item={id:uuid(),batchId,importKey,date:row.date,time:row.time,amount:Math.abs(row.amount),original:row.original,
-        bankId:row.bankId,merchant:info.name,category:info.category,method:'card',note:'',lila:false,...classification};
+        bankId:row.bankId,cardId,cardTail,legacyImportKey:cardId?legacyKey:'',
+        merchant:info.name,category:info.category,method:'card',note:'',lila:false,...classification};
       if(possible){item.pending=true;item.reason='Возможный дубликат: совпадают дата и сумма.';item.duplicate=true;}
       applyRule(item,next.rules);
       next.operations.push(item);
       seen.add(importKey);
+      if(cardId)aliases.add(legacyKey);
       const k=matchKey(item), list=byAmount.get(k)||[];
       list.push(item);byAmount.set(k,list);
       if(item.pending)pending++;
       else added++;
     }
+    next.deleted=[...deleted];
     if(added+pending)next.lastImport={id:batchId,added,pending,skipped};
     else if(next.lastImport)next.lastImport.latestSkipped=skipped;
     else next.lastImport={id:null,added,pending,skipped};
