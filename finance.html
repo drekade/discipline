@@ -30,7 +30,7 @@
 <link rel="stylesheet" href="finance.css?v=20261110-3">
 <script defer src="jszip.min.js"></script>
 <script defer src="finance-xlsx.js?v=20261110-3"></script>
-<script defer src="finance.js?v=20261110-11"></script>
+<script defer src="finance.js?v=20261110-12"></script>
 </head>
 <body>
 <main>
@@ -64,7 +64,7 @@
   <section id="budget" hidden>
     <header class="budget-head"><h1>Личный бюджет</h1><button class="lilac" id="period-button"></button><p id="period-note" class="muted"></p><button id="cards-filter" hidden>Все карты</button></header>
     <dl class="card sage metrics" id="summary"></dl>
-    <p class="muted">По записанным операциям. Расход наличных по остаткам показан отдельно.</p>
+    <p class="muted" id="budget-summary-note"></p>
     <details class="card" id="obligations">
       <summary>Обязательные платежи<small id="obligation-summary"></small></summary>
       <div class="actions"><button id="add-obligation">+ Обязательство</button><label class="file-button">Загрузить шаблоны<input id="bill-presets" type="file" accept=".json,application/json" aria-label="Шаблоны обязательств"></label></div><div id="obligation-list"></div>
@@ -81,7 +81,7 @@
       <p class="muted" id="history-merchant" hidden></p>
       <div id="history-list"></div>
     </details>
-    <details class="card"><summary>Наличные</summary><div id="budget-cash"></div></details>
+    <details class="card" id="cash-details"><summary>Наличные</summary><div id="budget-cash"></div></details>
     <details class="card"><summary>Разовые планы</summary>
       <div class="actions"><button id="add-plan">+ Добавить план</button></div><div id="plan-list"></div>
     </details>

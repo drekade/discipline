@@ -358,7 +358,7 @@ function commit(change){
 }
 function showGate(){
   key=null;state=null;
-  for(const id of ['home-summary','summary','category-list','history-list','obligation-list','review-list','review-cash','budget-cash','plan-list','analytics-content','comparison','subscription-list']){
+  for(const id of ['home-summary','summary','category-list','history-list','obligation-list','review-list','review-cash','budget-cash','budget-summary-note','plan-list','analytics-content','comparison','subscription-list']){
     $(id).replaceChildren();
   }
   document.querySelector('.print-report')?.remove();
@@ -633,20 +633,77 @@ function drill(category,merchant='',lila=false,type=''){
   renderHistory();
   $('history').scrollIntoView();
 }
+function periodSavings(period){
+  const sum=()=>({uah:0,usd:0,eur:0});
+  const totals={personal:sum(),shared:sum()};
+  let fop;
+  try{fop=cloudOwner?state.fop:legacyFop();}catch{return totals;}
+  for(const row of fop?.money||[]){
+    if(row.type==='savings'&&Object.hasOwn(totals,row.pool)&&Object.hasOwn(totals[row.pool],row.currency)&&
+      Number.isSafeInteger(row.amount)&&inRange(row,period))totals[row.pool][row.currency]+=row.amount;
+  }
+  return totals;
+}
+function savingsAmount(currencies){
+  return Object.entries(currencies).filter(([,amount])=>amount).map(([currency,amount])=>
+    currency==='uah'?money(amount):(currency==='usd'?'$':'€')+new Intl.NumberFormat('uk-UA',{maximumFractionDigits:2}).format(amount/100)).join(' · ');
+}
+function budgetSummary(period,applyCardFilter){
+  const rows=operations(period,false,applyCardFilter), recorded=totals(rows,period);
+  const measured=cashMeasurement(period,true);
+  const extra=measured?.unrecorded??0;
+  const expense=recorded.expense+extra;
+  const days=Math.max(1,Math.round((Date.parse(period.end)-Date.parse(period.start))/86400000)+1);
+  return {...recorded,expense,difference:recorded.income-expense,average:Math.round(expense/days),
+    measured,extra,cashComplete:Boolean(measured?.unrecorded!=null&&measured.from===period.start&&measured.latest.date===period.end),
+    savings:periodSavings(period)};
+}
+function budgetRows(summary,{interactive=false,filtered=false}={}){
+  const flow=(label,value,type)=>interactive?rowButton(label,'',money(value),()=>drill('','',false,type)):metric(label,money(value));
+  const spendingLabel=summary.cashComplete?'Потрачено':'Потрачено по учёту';
+  const rows=[flow('Поступило в бюджет',summary.income,'income')];
+  if(summary.fop)rows.push(flow('В том числе с ФОП',summary.fop,'fop'));
+  rows.push(summary.extra?metric(spendingLabel,money(summary.expense)):flow(spendingLabel,summary.expense,'expense'));
+  if(summary.measured?.unrecorded!=null){
+    const label='В том числе наличные по остаткам';
+    const value=money(summary.measured.inferred);
+    rows.push(interactive?rowButton(label,'',value,()=>{
+      $('cash-details').open=true;
+      $('cash-details').scrollIntoView({block:'start'});
+    }):metric(label,value));
+    if(interactive&&summary.extra)rows.push(flow('Расходы с отдельными записями',summary.expense-summary.extra,'expense'));
+  }
+  rows.push(metric(summary.cashComplete?'Разница за период':'Разница по учёту',signed(summary.difference),'total'));
+  if(interactive)rows.push(metric('Средний расход по учёту за день',money(summary.average)));
+  for(const [pool,amounts] of Object.entries(summary.savings)){
+    const amount=savingsAmount(amounts);
+    if(amount)rows.push(metric(pool==='personal'?'В личную подушку':'В общую подушку',amount));
+  }
+  const setAside=summary.savings.personal.uah+summary.savings.shared.uah;
+  if(setAside&&!filtered){
+    rows.push(metric('Разница после гривневых накоплений',signed(summary.difference-setAside)));
+  }
+  return rows;
+}
 function render(){
   if(!state)return;
-  const current=monthRange(isoMonth(today())), now=totals(operations(current,false,false),current);
+  const current=monthRange(isoMonth(today()));
   $('home-month').textContent=current.label;
-  $('home-summary').replaceChildren(metric('Поступило в бюджет',money(now.income)),
-    ...(now.fop?[metric('В том числе с ФОП',money(now.fop))]:[]),metric('Потрачено',money(now.expense)),
-    metric('Разница за месяц',signed(now.difference),'total'));
+  $('home-summary').replaceChildren(...budgetRows(budgetSummary(current,false)));
   if(view==='budget'){
     $('period-button').textContent=range.label+' ⌄';
     $('period-note').textContent=shortDate(range.start)+' — '+shortDate(range.end);
     const cards=[...new Set(state.operations.map(row=>row.cardTail).filter(Boolean))];
     $('cards-filter').hidden=cards.length<2;
     $('cards-filter').textContent=cardSelection?'Карты '+[...cardSelection].map(card=>'•'+card).join(', ')+' ⌄':'Все карты ⌄';
-    $('summary').replaceChildren(...stats(totals(operations(),range),true));
+    const summary=budgetSummary(range,true);
+    $('summary').replaceChildren(...budgetRows(summary,{interactive:true,filtered:Boolean(cardSelection)}));
+    const measured=summary.measured;
+    const cashNote=measured?.unrecorded!=null?
+      'Наличные по остаткам учтены за '+shortDate(measured.from)+' — '+shortDate(measured.latest.date)+
+        (summary.cashComplete?'.':'. За остальные дни учтены отдельные записи.'):
+      'Расход наличных по остаткам появится после двух сверок за подходящие даты.';
+    $('budget-summary-note').textContent=cashNote+(cardSelection?' Накопления показаны по всем источникам.':'');
     categoryOptions($('history-category'),true);
     renderHistory();
     const breakdown=group(operations(range,categoryLila),row=>row.category);
@@ -1419,32 +1476,38 @@ function cashMovement(row){
   if(/^(?:термінал самообслуговування|решта в терміналі|поповнення готівкою|внесення готівки|пополнение наличными)/.test(description))return -row.amount;
   return 0;
 }
-function cashContent(period,interactive=true){
-  const eligible=state.operations.filter(row=>!row.pending&&row.date<=period.end);
-  const selected=eligible.filter(row=>row.date>=period.start&&row.method==='cash');
-  const actual=totals(selected,period);
+function dayAfter(date){
+  return new Date(Date.parse(date)+86400000).toISOString().slice(0,10);
+}
+function cashMeasurement(period,withinPeriod=false){
   const snapshots=state.cashBalances.filter(row=>row.date<=period.end).sort((a,b)=>a.date.localeCompare(b.date));
   const latest=snapshots.at(-1);
-  const earlier=snapshots.filter(row=>row.date<period.start).at(-1)||snapshots[0];
+  if(!latest||latest.date<period.start)return null;
+  const earlier=snapshots.slice(0,-1).filter(row=>row.date<period.start&&
+    (!withinPeriod||dayAfter(row.date)===period.start)).at(-1)||snapshots.find(row=>row.date>=period.start);
+  if(!earlier||latest===earlier)return null;
+  const interval=state.operations.filter(row=>!row.pending&&row.date>earlier.date&&row.date<=latest.date);
+  const cash=totals(interval.filter(row=>row.method==='cash'),{start:earlier.date,end:latest.date});
+  const movement=interval.reduce((sum,row)=>sum+cashMovement(row),0);
+  const inferred=earlier.amount+cash.income+movement-latest.amount;
+  return {earlier,latest,from:dayAfter(earlier.date),inferred,unrecorded:inferred>=cash.expense?inferred-cash.expense:null};
+}
+function cashContent(period,interactive=true){
+  const selected=state.operations.filter(row=>!row.pending&&inRange(row,period)&&row.method==='cash');
+  const actual=totals(selected,period);
+  const latest=state.cashBalances.filter(row=>row.date<=period.end).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  const measured=cashMeasurement(period);
   const result=[
     metric('Получила наличными за период',money(actual.income)),
     metric('Записанные расходы наличными',money(actual.expense))
   ];
-  if(latest){
-    result.push(metric('Осталось на '+shortDate(latest.date),money(latest.amount)));
-  }
-  if(earlier&&latest!==earlier&&latest.date>=period.start){
-    const interval=eligible.filter(row=>row.date>earlier.date&&row.date<=latest.date);
-    const cash=totals(interval.filter(row=>row.method==='cash'),{start:earlier.date,end:latest.date});
-    const movement=interval.reduce((sum,row)=>sum+cashMovement(row),0);
-    const inferred=earlier.amount+cash.income+movement-latest.amount;
-    result.push(empty('Расход между остатками за '+shortDate(earlier.date)+' и '+shortDate(latest.date)+'.'));
-    if(inferred>=cash.expense){
-      result.push(metric('Потрачено наличными по остаткам',money(inferred),'total'),
-        metric('Из них без разбивки по покупкам',money(inferred-cash.expense)));
-    }else{
-      result.push(empty('Остатки и записанные операции расходятся. Проверь суммы и пополнения за эти даты.'));
-    }
+  if(latest)result.push(metric('Осталось на '+shortDate(latest.date),money(latest.amount)));
+  if(measured){
+    result.push(empty('Расход между остатками за '+shortDate(measured.earlier.date)+' и '+shortDate(measured.latest.date)+'.'));
+    if(measured.unrecorded!=null){
+      result.push(metric('Потрачено наличными по остаткам',money(measured.inferred),'total'),
+        metric('Из них без разбивки по покупкам',money(measured.unrecorded)));
+    }else result.push(empty('Остатки и записанные операции расходятся. Проверь суммы и пополнения за эти даты.'));
   }else result.push(empty('Для расчёта расхода нужны остатки на две разные даты.'));
   if(interactive){
     const actions=cashActions();
