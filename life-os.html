@@ -366,6 +366,27 @@ body:has(#page-home.active) .main{margin:0 auto;width:100%;min-width:0}
 .jl-projects img{right:12px;bottom:11px;width:34px;height:34px}
 .jl-meeting{margin-top:9px;display:grid;grid-template-columns:31px minmax(0,1fr) 12px;gap:8px;align-items:center;width:100%;text-align:left;padding:8px 10px;border:1.7px solid var(--ink);border-radius:13px;background:#f9e9df;color:var(--ink);font-family:inherit;cursor:pointer}
 .jl-meeting strong,.jl-meeting small{display:block}.jl-meeting strong{font-size:13px}.jl-meeting small{font-size:11px;line-height:1.3;overflow-wrap:anywhere}
+.jl-todo{margin-top:8px;border:1.7px solid var(--ink);border-radius:13px;background:#edf0e1;padding:0 10px;color:var(--ink)}
+.jl-todo > summary,.home-todo-category > summary,.home-todo-group > summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:7px}
+.jl-todo summary::-webkit-details-marker{display:none}
+.jl-todo summary::before{content:'›';font-size:17px;font-weight:700}
+.jl-todo details[open] > summary::before,.jl-todo[open] > summary::before{transform:rotate(90deg)}
+.jl-todo > summary{min-height:36px;font-size:13px}
+#home-todo-count,.home-todo-category summary small,.home-todo-group summary small{margin-left:auto;font-size:11px;color:#514c42}
+.jl-todo[open]{padding-bottom:9px}
+.home-todo-controls{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:5px 0 8px}
+.home-todo-controls[hidden]{display:none}
+.jl-todo .btn-ghost{padding:4px 7px;min-height:29px;font-size:11px}
+.home-todo-category,.home-todo-group{border-top:1px solid #bdc4ac;padding-top:4px;margin:5px 0}
+.home-todo-category > summary,.home-todo-group > summary{min-height:30px;font-size:13px;overflow-wrap:anywhere}
+.home-todo-group{margin-left:12px}
+.home-todo-row{display:flex;gap:6px;align-items:center;min-height:34px}
+.home-todo-row input[type=checkbox]{width:18px;height:18px;flex:none;accent-color:#527454}
+.home-todo-row button{border:0;background:none;color:inherit;font:inherit;text-align:left;min-height:30px;overflow-wrap:anywhere;cursor:pointer}
+.home-todo-row.is-done button{text-decoration:line-through;color:#5d6152}
+#home-todo-status,#todo-edit-status{font-size:12px;color:#5d5141}
+#home-todo-status:empty,#todo-edit-status:empty{display:none}
+#modal-home-todo .modal{max-height:90vh;overflow-y:auto}
 .jl-bottom{display:flex;justify-content:center;gap:clamp(24px,12vw,64px);align-items:center;margin-top:10px;border-top:1.5px solid var(--ink);padding-top:7px}
 .jl-bottom button{display:grid;justify-items:center;align-content:center;min-width:66px;min-height:42px;border:0;background:transparent;color:var(--ink);cursor:pointer;font:650 11px var(--ff)}
 .jl-bottom svg{width:28px;height:25px}
@@ -428,7 +449,7 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal-close{flex-shrink:0;background:#e4d5ef;color:#241e19}
 body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal .form-row{min-width:0}
 body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal input[type="number"]{display:block;width:100%;min-height:38px;border:1px solid #dbceb8;border-radius:9px;padding:7px 9px;color:#241e19;font:inherit}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal div:has(> .form-row + .form-row) > .form-row{display:flex;flex-direction:column}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal div:has(> .form-row + .form-row) > .form-row:not([hidden]){display:flex;flex-direction:column}
 body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal div:has(> .form-row + .form-row) > .form-row > :is(input,select){margin-top:auto}
 body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal :is(input,select,textarea){min-width:0;max-width:100%;background:#fffcf6}
 body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal .btn-primary{background:#d2e3ec;color:#241e19;border:1px solid #241e19}
@@ -494,11 +515,34 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 .project-month-row span{overflow-wrap:anywhere}
 #work-project-filter{width:auto;max-width:100%;padding:6px 8px;font-size:12px}
 #work-project-title{scroll-margin-top:12px}
+#work-projects-list{display:grid;gap:7px}
+.work-project-row{background:#fbf2e1;border:1px solid #c9b79d;border-radius:11px}
+.work-project-row > summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;padding:10px 12px}
+.work-project-row > summary::-webkit-details-marker{display:none}
+.work-project-row > summary::before{content:'›';flex:0 0 auto;font:700 19px/1 var(--ff);transition:transform .12s}
+.work-project-row[open] > summary::before{transform:rotate(90deg)}
+.work-project-label{display:grid;gap:4px;min-width:0;flex:1}
+.work-project-label > strong{font:700 17px/1.13 Georgia,serif;overflow-wrap:anywhere}
+.work-project-tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#685648}
+.work-project-kind{background:#ece0cd;border-radius:20px;padding:2px 6px}
+.work-project-kind[data-kind="ad"]{background:#f4dfa3}
+.work-project-kind[data-kind="course"]{background:#d9e4c5}
+.work-project-kind[data-kind="design"]{background:#e6d9ed}
+.work-project-amount{font-size:12px;font-weight:700;flex-shrink:0;color:#63448b}
+.work-project-content{padding:0 12px 10px 27px}
+.work-project-archive{margin-top:1px}
+.work-project-archive .work-project-row{margin-top:5px}
+.project-card-actions{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.project-card-actions .btn-ghost{padding:5px 8px}
 .project-section .task-list{margin:8px 0 0}
 .project-section .btn-ghost{padding:5px 8px}
 .project-section summary{font-weight:700;cursor:pointer}
 .project-settings summary{margin-bottom:8px}
 .project-entry{border-top:1px solid var(--b);padding:8px 0;margin-top:6px;overflow-wrap:anywhere}
+.project-goal details{padding-left:10px}
+.project-goal details .project-entry{margin-left:0}
+#task-assigned-date-row[hidden],#tc-assigned-date-row[hidden],#task-kind-row[hidden],#pc-work-settings[hidden],#pr-kind-row[hidden]{display:none}
+.project-pub-status{display:inline-block;border-radius:20px;background:#eadcf0;padding:3px 7px;margin-left:5px;font-size:11px;color:#493257}
 .project-entry p{font-size:13px;color:var(--t2);margin:4px 0;white-space:pre-wrap}
 .project-entry-controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px}
 .project-entry-controls button{min-height:30px}
@@ -730,6 +774,16 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       <button type="button" class="jl-meeting" id="jl-meeting" onclick="openHomeMeeting()">
         <svg viewBox="0 0 48 40" aria-hidden="true"><rect x="8" y="8" width="32" height="28" rx="4" fill="#fff5dd"/><path d="M8 16h32m-23-12v8m14-8v8m-16 11h3m5 0h3m5 0h3m-19 6h3m5 0h3"/></svg><span><strong>Ближайшая встреча</strong><small id="jl-meeting-text">Загрузка событий…</small></span><span aria-hidden="true">›</span>
       </button>
+      <details class="jl-todo" id="home-todo" ontoggle="if(this.open)loadHomeTodo()">
+        <summary><strong>Список дел</strong><span id="home-todo-count"></span></summary>
+        <p id="home-todo-status" role="status"></p>
+        <button type="button" id="home-todo-login" class="btn-ghost" onclick="retryDailySync()" hidden>Войти</button>
+        <div class="home-todo-controls" id="home-todo-actions" hidden>
+          <button type="button" class="btn-ghost" data-todo-action="add-category">+ Раздел</button>
+          <button type="button" class="btn-ghost" data-todo-action="paste">Вставить список</button>
+        </div>
+        <div id="home-todo-items"></div>
+      </details>
       <nav class="jl-bottom" aria-label="Основная навигация">
         <button class="jl-plus" type="button" aria-label="Добавить" onclick="showModal('modal-add')">+</button>
         <button type="button" onclick="goToPage('all-cal')"><svg viewBox="0 0 48 40" aria-hidden="true"><rect x="8" y="8" width="32" height="28" rx="4" fill="#fff5dd"/><path d="M8 16h32m-23-12v8m14-8v8m-16 11h3m5 0h3m5 0h3m-19 6h3m5 0h3"/></svg><span>Календарь</span></button>
@@ -913,7 +967,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
           </select>
           <button class="btn-ghost" type="button" onclick="openProjectForm('work')">+ Проект</button>
         </div>
-        <div class="proj-grid" id="work-projects-list"></div>
+        <div id="work-projects-list"></div>
       </section>
       <div class="sec-row work-list-head">
         <h2 class="sec-title">Все съёмки</h2>
@@ -1180,6 +1234,30 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
   </div>
 </div>
 
+<div class="modal-bg hidden" id="modal-home-todo" role="dialog" aria-modal="true" aria-labelledby="todo-edit-title">
+  <form class="modal" onsubmit="event.preventDefault();submitTodo()">
+    <div class="modal-head">
+      <span class="modal-title" id="todo-edit-title">Список дел</span>
+      <button type="button" class="modal-close" onclick="hideModal('modal-home-todo')" aria-label="Закрыть">✕</button>
+    </div>
+    <div class="form-row" id="todo-edit-name-row">
+      <label class="field-label" for="todo-edit-name">Название</label>
+      <input type="text" id="todo-edit-name" maxlength="180">
+      <p class="project-empty" id="todo-category-examples" hidden>Например, Дом, Покупки, Подарки, Одежда, Здоровье или Животные.</p>
+    </div>
+    <div class="form-row" id="todo-edit-paste-row" hidden>
+      <label class="field-label" for="todo-edit-paste">Список</label>
+      <textarea class="f" id="todo-edit-paste" rows="7" maxlength="16000" placeholder="Дом:&#10;- Кухня:&#10;--- Убрать кухню&#10;- Купить ёршик"></textarea>
+      <p class="project-empty">Название раздела заканчивается двоеточием. Подгруппа начинается с дефиса и тоже заканчивается двоеточием. Вложенные пункты начинаются с трёх дефисов.</p>
+    </div>
+    <p id="todo-edit-status" role="status"></p>
+    <div class="home-todo-controls">
+      <button type="submit" class="btn-primary">Сохранить</button>
+      <button type="button" class="btn-ghost" id="todo-edit-delete" onclick="submitTodo(true)" hidden>Удалить</button>
+    </div>
+  </form>
+</div>
+
 <div class="modal-bg hidden" id="modal-add" role="dialog" aria-modal="true" aria-labelledby="quick-add-title">
   <div class="modal">
     <div class="modal-head"><h2 class="modal-title" id="quick-add-title">Добавить</h2><button class="modal-close" type="button" aria-label="Закрыть" onclick="hideModal('modal-add')">✕</button></div>
@@ -1229,6 +1307,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
     </div>
     <input type="hidden" id="tc-id">
     <div class="form-row"><label class="field-label">Что сделать</label><input type="text" id="tc-title"></div>
+    <div id="tc-work-fields">
     <div class="form-row"><label class="field-label">Тип</label>
       <select id="tc-kind"><option value="задача">Задача</option><option value="дизайн">Дизайн</option></select>
     </div>
@@ -1248,8 +1327,9 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       <span onclick="tcUsePrice()" style="float:right;font-weight:600;color:var(--purple);cursor:pointer">= по прайсу</span></label>
       <input type="number" id="tc-amount" step="50" placeholder="можно вписать свою">
     </div>
+    </div>
     <div style="display:flex;gap:8px">
-      <div class="form-row" style="flex:1"><label class="field-label">ТЗ дали</label><input type="date" id="tc-assigned-date"></div>
+      <div class="form-row" id="tc-assigned-date-row" style="flex:1"><label class="field-label">ТЗ дали</label><input type="date" id="tc-assigned-date"></div>
       <div class="form-row" style="flex:1"><label class="field-label">Срок</label><input type="date" id="tc-date"></div>
     </div>
     <div class="form-row"><label class="field-label">Статус</label>
@@ -1379,6 +1459,9 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
     <div class="form-row"><label class="field-label">Название</label><input type="text" id="pc-name"></div>
     <div class="form-row"><label class="field-label">Описание</label><textarea class="f" id="pc-desc" rows="2"></textarea></div>
     <div class="form-row"><label class="field-label" for="pc-link">Ссылка</label><input type="text" id="pc-link" placeholder="https://..."></div>
+    <div class="form-row"><label class="field-label" for="pc-scope">Раздел</label>
+      <select id="pc-scope"><option value="work">Работа</option><option value="personal">Мои проекты</option></select>
+    </div>
     <label class="project-workflow"><input type="checkbox" id="pc-multistage"> Вести проект по этапам</label>
     <div id="pc-work-settings">
     <div class="form-row"><label class="field-label" for="pc-kind">Тип проекта</label>
@@ -1425,6 +1508,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       <select id="task-kind" onchange="qaAutoHint()"><option value="задача">Задача</option><option value="дизайн">Дизайн</option></select>
     </div>
     <div class="form-row"><label class="field-label">Задача</label><input type="text" id="task-title" placeholder="Что нужно сделать?" oninput="qaAutoHint()"></div>
+    <div id="task-work-fields">
     <div class="form-row"><label class="field-label">От кого (поручил)</label><input type="text" id="task-assigned" placeholder="Денис, Марго, Таня…"></div>
     <div class="form-row"><label class="field-label">Позиция прайса <span id="task-auto-hint" style="font-weight:400;color:var(--t3)"></span></label>
       <select id="task-price" onchange="qaRecalc()"></select>
@@ -1436,8 +1520,9 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       </div>
       <div class="form-row" style="flex:1"><label class="field-label">Сумма ₴</label><input type="number" id="task-amount" step="50"></div>
     </div>
+    </div>
     <div style="display:flex;gap:8px">
-      <div class="form-row" style="flex:1"><label class="field-label">ТЗ дали</label><input type="date" id="task-assigned-date"></div>
+      <div class="form-row" id="task-assigned-date-row" style="flex:1"><label class="field-label">ТЗ дали</label><input type="date" id="task-assigned-date"></div>
       <div class="form-row" style="flex:1"><label class="field-label">Срок</label><input type="date" id="task-date"></div>
     </div>
     <button class="btn-primary full" onclick="saveTask()">Сохранить</button>
@@ -1595,6 +1680,7 @@ async function doLogin(){
     document.getElementById('lg-pass').value='';
     renderDaily();
     void syncDaily();
+    if(document.getElementById('home-todo').open)void loadHomeTodo();
     if(!document.getElementById('modal-proj-card').classList.contains('hidden'))void loadProjectWorkspace();
     await load();
   }catch(e){err.textContent='Ошибка сети: '+e;}
@@ -2176,7 +2262,11 @@ function renderEvents(){
 function isPersonalProject(project){return project?.scope==='personal';}
 const projectKinds={ad:'Реклама',course:'Курсы',design:'Дизайн',other:'Другое'};
 function workProjectKind(project){
-  return project?.work_kind||(/^курс(?:ы|и)?(?:\s|$)/i.test(project?.name||'')?'course':'other');
+  if(project?.work_kind)return project.work_kind;
+  const name=(project?.name||'').trim();
+  if(/^реклам(?:а|ы)(?:\s|$)/i.test(name))return 'ad';
+  if(/^курс(?:ы|и)?(?:\s|$)/i.test(name))return 'course';
+  return 'other';
 }
 function hasProjectStages(project){
   return project?.multistage??(!isPersonalProject(project)&&workProjectKind(project)==='course');
@@ -2196,16 +2286,17 @@ function renderProjects(){
 }
 function projectTaskRows(tasks,showMissingPrice=false){
   return tasks.map(t=>{
+    const personal=isPersonalTask(t);
     const icon=t.status==='готово'?'✓':'';
     const cls=t.status==='готово'?'done':'';
-    const badge=t.kind==='дизайн'?'<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fff;background:#FE702D;padding:1px 6px;border-radius:10px;margin-right:6px">дизайн</span>':'';
-    const who=t.assigned_by?`<span class="task-date">от ${avEscape(t.assigned_by)}</span>`:'';
+    const badge=!personal&&t.kind==='дизайн'?'<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fff;background:#FE702D;padding:1px 6px;border-radius:10px;margin-right:6px">дизайн</span>':'';
+    const who=!personal&&t.assigned_by?`<span class="task-date">от ${avEscape(t.assigned_by)}</span>`:'';
     const dd=t.status==='готово'?(t.done_date||t.date):t.date;
     return`<div class="task-item">
       <div class="task-check ${cls}" onclick="cycleTask(${t.id},'${t.status}')">${icon}</div>
       <span class="task-text ${t.status==='готово'?'done':''}" onclick="openTaskCard(${t.id})">${badge}${avEscape(t.title||'')}</span>
       ${who}${dd?`<span class="task-date">${fmtShort(dd)}</span>`:''}
-      ${t.amount!=null?`<span class="task-date" style="font-weight:600">${fmtMoney(t.amount)}</span>`:
+      ${!personal&&t.amount!=null?`<span class="task-date" style="font-weight:600">${fmtMoney(t.amount)}</span>`:
         showMissingPrice?'<span class="task-date" style="color:#C4552A" title="цена не проставлена">— ₴</span>':''}
     </div>`;
   }).join('');
@@ -2214,10 +2305,9 @@ function renderProjectList(id,projects,empty){
   const el=document.getElementById(id);
   if(!projects.length){el.innerHTML='<div class="projects-empty">'+empty+'</div>';return;}
   const opened=new Set([...el.querySelectorAll('details[open][data-list]')].map(list=>list.dataset.list));
-  el.innerHTML=projects.map((p,i)=>{
+  const compact=id==='work-projects-list';
+  const rows=projects.map((p,i)=>{
     const tasks=DB.tasks.filter(t=>t.project_id===p.id);
-    const done=tasks.filter(t=>t.status==='готово').length;
-    const inprog=tasks.filter(t=>t.status!=='готово').length;
     const active=tasks.filter(task=>task.status!=='готово');
     const archive=tasks.filter(task=>task.status==='готово');
     function folded(key,label,content){
@@ -2247,20 +2337,50 @@ function renderProjectList(id,projects,empty){
       </div>`;
     }).join('');
 
-    return`<div class="proj-card" style="border-top-color:${PC[i%5]}">
-      <button class="proj-name proj-open" type="button" onclick="openProjCard(${p.id})">${avEscape(p.name||'Без названия')}${(p.amount!==null&&p.amount!==undefined)?` <span style="font-size:12px;font-weight:700;color:var(--purple)">${fmtMoney(p.amount)}</span>`:''}</button>
-      <div class="proj-meta">${isPersonalProject(p)?'':projectKinds[workProjectKind(p)]+' · '}${tasks.length?`${done}/${tasks.length} задач`:''}${inprog?' · '+inprog+' в работе':''}${projShoots.length?' · '+projShoots.length+' съём.':''}</div>
-      ${p.link?`<a href="${avEscape(p.link)}" target="_blank" rel="noopener" class="link-row" style="margin-bottom:6px">🔗 Документ</a>`:''}
-      ${p.figma_url?`<a href="${avEscape(p.figma_url)}" target="_blank" rel="noopener" class="link-row" style="margin-bottom:8px;color:#A85638">🎨 Figma</a>`:''}
-      ${folded('active','Задачи · '+active.length,`<div class="task-list">${projectTaskRows(active)}</div>
-        <button class="add-task-btn" onclick="openAddTask(${p.id})">+ Добавить задачу</button>`)}
+    const personal=isPersonalProject(p);
+    const name=avEscape(p.name?.trim()||'Без названия');
+    const amount=!personal&&p.amount!=null?fmtMoney(p.amount):'';
+    const counts=[active.length?'Задачи '+active.length:'',archive.length?'Выполнено '+archive.length:'',projShoots.length?'Съёмки '+projShoots.length:''].filter(Boolean);
+    const category=projectKinds[workProjectKind(p)];
+    const lists=`
+      ${p.link?`<a href="${avEscape(p.link)}" target="_blank" rel="noopener" class="link-row">Документ</a>`:''}
+      ${p.figma_url?`<a href="${avEscape(p.figma_url)}" target="_blank" rel="noopener" class="link-row">Figma</a>`:''}
+      ${active.length?folded('active','Текущие задачи · '+active.length,`<div class="task-list">${projectTaskRows(active)}</div>`):''}
       ${archive.length?folded('archive','Выполненные задачи · '+archive.length,`<div class="task-list">${projectTaskRows(archive)}</div>`):''}
-      ${projShoots.length?folded('shoots','Съёмки · '+projShoots.length,`<div class="project-shoots">${shootsHtml}</div>`):''}
-      <div style="margin-top:10px">
-        <span class="schip ${p.status==='готово'?'schip-done':'schip-pend'}" style="cursor:pointer" onclick="toggleProject(${p.id},'${p.status||'в работе'}')">${p.status||'в работе'}</span>
-      </div>
+      ${projShoots.length?folded('shoots','Съёмки · '+projShoots.length,`<div class="project-shoots">${shootsHtml}</div>`):''}`;
+    const actions=`<div class="project-card-actions">
+      ${compact?`<button class="btn-ghost" type="button" onclick="openProjCard(${p.id})">Открыть проект</button>`:''}
+      <button class="btn-ghost" type="button" onclick="openAddTask(${p.id})">+ Задача</button>
     </div>`;
-  }).join('');
+    if(!compact)return `<div class="proj-card" style="border-top-color:${PC[i%5]}">
+      <button class="proj-name proj-open" type="button" onclick="openProjCard(${p.id})">${name}</button>
+      ${counts.length?`<p class="proj-meta">${counts.join(' · ')}</p>`:''}
+      ${lists}${actions}
+    </div>`;
+    const key=p.id+'-row';
+    return `<details class="work-project-row" data-list="${key}" ${opened.has(key)?'open':''}>
+      <summary>
+        <span class="work-project-label"><strong>${name}</strong>
+          <span class="work-project-tags"><span class="work-project-kind" data-kind="${workProjectKind(p)}">${category}</span>
+          ${counts.length?`<span>${counts.join(' · ')}</span>`:''}</span>
+        </span>
+        ${amount?`<span class="work-project-amount">${amount}</span>`:''}
+      </summary>
+      <div class="work-project-content">${actions}${lists}</div>
+    </details>`;
+  });
+  if(!compact){el.innerHTML=rows.join('');return;}
+  const named=[],completed=[],unnamed=[];
+  projects.forEach((project,index)=>{
+    const group=!project.name?.trim()?unnamed:project.status==='готово'?completed:named;
+    group.push(rows[index]);
+  });
+  function archiveGroup(key,label,group){
+    return group.length?`<details class="project-fold work-project-archive" data-list="${key}" ${opened.has(key)?'open':''}>
+      <summary>${label} · ${group.length}</summary>${group.join('')}</details>`:'';
+  }
+  el.innerHTML=named.join('')+archiveGroup('completed','Завершённые проекты',completed)+
+    archiveGroup('unnamed','Старые записи без названия',unnamed);
 }
 
 async function cycleTask(id,cur){
@@ -2304,9 +2424,15 @@ function qaResetPrice(){
   document.getElementById('task-amount').value='';
   document.getElementById('task-assigned-date').value=localDateStr(new Date());
 }
+function setTaskFields(prefix,personal){
+  document.getElementById(prefix+'-work-fields').hidden=personal;
+  document.getElementById(prefix+'-assigned-date-row').hidden=personal;
+}
 function openAddTask(projId){
   document.getElementById('task-proj-id').value=projId;
-  document.getElementById('task-kind-row').hidden=isPersonalTask({project_id:projId});
+  const personal=isPersonalTask({project_id:projId});
+  document.getElementById('task-kind-row').hidden=personal;
+  setTaskFields('task',personal);
   document.getElementById('task-kind').value='задача';
   document.getElementById('task-title').value='';
   document.getElementById('task-assigned').value='';
@@ -2318,6 +2444,7 @@ function openAddTask(projId){
 function openAddStandaloneTask(kind){
   document.getElementById('task-proj-id').value='';
   document.getElementById('task-kind-row').hidden=false;
+  setTaskFields('task',false);
   document.getElementById('task-kind').value=kind||'задача';
   document.getElementById('task-title').value='';
   document.getElementById('task-assigned').value='';
@@ -2331,10 +2458,11 @@ async function saveTask(){
   const projId=parseInt(projRaw);
   const title=document.getElementById('task-title').value.trim();
   if(!title){alert('Введи название задачи');return;}
-  const assigned=document.getElementById('task-assigned').value.trim();
+  const personal=isPersonalTask({project_id:projId});
+  const assigned=personal?'':document.getElementById('task-assigned').value.trim();
   // если позиция не выбрана руками — определяем по прайсу автоматически
-  let pickedCode=document.getElementById('task-price').value||null;
-  let amtField=document.getElementById('task-amount').value;
+  let pickedCode=personal?null:document.getElementById('task-price').value||null;
+  const amtField=personal?'':document.getElementById('task-amount').value;
   let pickedAmount=amtField===''?null:parseFloat(amtField);
   if(!pickedCode){
     const auto=projectTaskPrice(title);
@@ -2351,7 +2479,7 @@ async function saveTask(){
     surcharge:parseFloat(document.getElementById('task-surch').value)||0,
     extra:0,
     amount:pickedAmount,
-    assigned_date:document.getElementById('task-assigned-date').value||localDateStr(new Date()),
+    assigned_date:personal?null:document.getElementById('task-assigned-date').value||localDateStr(new Date()),
     status:'в работе',
     done_date:null
   };
@@ -2405,9 +2533,11 @@ const courseStageTemplate=[
   ['Финализация','Согласовать раунды правок, собрать финальные версии и экспортировать.']
 ];
 const workspaceSections=[
+  ['goal','Цели','Цель'],
   ['idea','Идеи','Идея'],
   ['plan','План','Пункт плана'],
   ['stage','Этапы производства','Этап'],
+  ['publication','Публикации','Публикация'],
   ['payment','Оплата проекта','Поступление']
 ];
 let projectWorkspace=null;
@@ -2464,13 +2594,29 @@ async function loadProjectWorkspace(){
 
 function renderProjectWorkspace(openSection){
   const board=document.getElementById('pc-board');
-  const opened=new Set([...board.querySelectorAll('details[open]')].map(details=>details.dataset.kind));
+  const opened=new Set([...board.querySelectorAll('details[open][data-kind]')].map(details=>details.dataset.kind));
+  const openGoals=new Set([...board.querySelectorAll('details[open][data-goal]')].map(details=>details.dataset.goal));
   if(openSection)opened.add(openSection);
   const project=DB.projects.find(p=>p.id===projectWorkspace.projectId);
   const items=projectWorkspace.items;
-  const sections=workspaceSections.filter(([kind])=>(kind!=='stage'||hasProjectStages(project))&&(kind!=='payment'||!isPersonalProject(project)));
-  board.innerHTML=sections.map(([kind,label,singular])=>{
-    const entries=items.filter(item=>item.kind===kind);
+  const publications=items.find(item=>item.kind==='settings')?.publications;
+  const sections=workspaceSections.filter(([kind])=>
+    (kind!=='stage'||hasProjectStages(project))&&(kind!=='payment'||!isPersonalProject(project))&&
+    (kind!=='publication'||publications));
+  const customSections=items.filter(item=>item.kind==='custom_section');
+  sections.push(...customSections.map(section=>['custom-'+section.id,section.title,'Запись',section]));
+  const sectionSettings=`<details class="project-section" data-kind="settings" ${opened.has('settings')?'open':''}>
+    <summary>Разделы проекта</summary>
+    <div class="project-entry-controls">
+      <label><input type="checkbox" data-publications ${publications?'checked':''}> Публикации</label>
+      <button type="button" class="btn-ghost" data-action="custom-section">+ Свой раздел</button>
+    </div>
+    <div class="project-entry-editor"></div>
+  </details>`;
+  board.innerHTML=sections.map(([kind,label,singular,custom])=>{
+    const entries=items.filter(item=>custom?item.kind==='custom_item'&&item.sectionId===custom.id:item.kind===kind);
+    if(kind==='publication')entries.sort((a,b)=>(a.status==='published')-(b.status==='published')||
+      (a.date||'9999').localeCompare(b.date||'9999'));
     const count=kind==='payment'?'':' · '+entries.length;
     const budget=items.find(item=>item.kind==='budget');
     const received=kind==='payment'?entries.reduce((total,item)=>total+Number(item.amount||0),0):0;
@@ -2479,51 +2625,86 @@ function renderProjectWorkspace(openSection){
       Получено <strong>${fmtMoney(received)}</strong>
       ${budget?` · Осталось <strong>${fmtMoney(Math.max(0,Number(budget.amount)-received))}</strong>`:''}
       </p>`:'';
-    const extra=kind==='payment'
+    const extra=custom?`<button type="button" class="btn-ghost" data-action="edit-section">Настроить</button>
+        <button type="button" class="btn-ghost" data-action="remove-section">Удалить раздел</button>`:kind==='payment'
       ?'<button type="button" class="btn-ghost" data-action="budget">Общая сумма</button>'
       :kind==='stage'&&!entries.length
         ?'<button type="button" class="btn-ghost" data-action="template">Шаблон видеокурса · 7 этапов</button>'
         :'';
-    return `<details class="project-section" data-kind="${kind}" ${opened.has(kind)?'open':''}>
-      <summary>${label}${count}</summary>
+    return `<details class="project-section" data-kind="${avEscape(kind)}" ${custom?`data-custom="${avEscape(custom.id)}"`:''} ${opened.has(kind)?'open':''}>
+      <summary>${avEscape(label)}${count}</summary>
       ${paymentSummary}
       <div class="project-entry-controls">
         <button type="button" class="btn-ghost" data-action="add">+ ${singular}</button>${extra}
       </div>
       <div class="project-entry-editor"></div>
-      ${entries.length?entries.map((item,index)=>renderProjectEntry(item,index,entries.length)).join(''):'<p class="project-empty">Пока пусто</p>'}
+      ${entries.length?entries.map((item,index)=>kind==='goal'?renderProjectGoal(item,items):renderProjectEntry(item,index,entries.length,custom?.mode==='checklist')).join(''):'<p class="project-empty">Пока пусто</p>'}
     </details>`;
-  }).join('');
+  }).join('')+sectionSettings;
+  board.querySelectorAll('[data-goal]').forEach(goal=>{goal.open=openGoals.has(goal.dataset.goal);});
 }
-function renderProjectEntry(item,index,count){
-  const checklist=item.kind==='plan'||item.kind==='stage';
+function renderProjectGoal(goal,items){
+  const steps=items.filter(item=>item.kind==='goal_step'&&item.goalId===goal.id);
+  const complete=steps.filter(step=>step.done).length;
+  return `<article class="project-entry project-goal" data-item="${avEscape(goal.id)}">
+    <strong>${avEscape(goal.title)}</strong>
+    ${goal.note?`<p>${avEscape(goal.note)}</p>`:''}
+    <div class="project-entry-controls">
+      <label><input type="checkbox" data-done ${goal.done?'checked':''}> Цель достигнута</label>
+      <button type="button" class="btn-ghost" data-action="edit">Изменить</button>
+      <button type="button" class="btn-ghost" data-action="delete">Удалить</button>
+    </div>
+    <details class="project-fold" data-goal="${avEscape(goal.id)}">
+      <summary>Шаги · ${complete} из ${steps.length}</summary>
+      <button type="button" class="btn-ghost" data-action="goal-step">+ Шаг</button>
+      <div class="project-entry-editor"></div>
+      ${steps.map((step,index)=>renderProjectEntry(step,index,steps.length)).join('')}
+    </details>
+  </article>`;
+}
+function renderProjectEntry(item,index,count,customChecklist=false){
+  const checklist=customChecklist||['plan','stage','goal_step'].includes(item.kind);
   const controls=checklist?`
     <label><input type="checkbox" data-done ${item.done?'checked':''}> Готово</label>
     <button type="button" class="btn-ghost" data-action="up" aria-label="Выше" ${index===0?'disabled':''}>↑</button>
     <button type="button" class="btn-ghost" data-action="down" aria-label="Ниже" ${index===count-1?'disabled':''}>↓</button>`:'';
+  const publication=item.kind==='publication';
+  const pubStatus=item.status==='published'?'Опубликовано':item.status==='ready'?(item.date?'Запланировано':'Готово'):'В подготовке';
   const title=item.kind==='payment'?fmtMoney(item.amount):avEscape(item.title);
   return `<article class="project-entry" data-item="${avEscape(item.id)}">
     <strong>${item.kind==='stage'?(index+1)+'. ':''}${title}</strong>
-    ${item.date?`<p>${fmtShort(item.date)}</p>`:''}
+    ${publication?`<span class="project-pub-status">${pubStatus}</span>`:''}
+    ${publication?`<p>${item.format==='video'?'Видео':'Пост'}${item.date?' · '+fmtShort(item.date):''}</p>`:
+       item.date?`<p>${fmtShort(item.date)}</p>`:''}
     ${item.note?`<p>${avEscape(item.note)}</p>`:''}
     <div class="project-entry-controls">${controls}
+      ${publication&&item.status!=='published'?`<button type="button" class="btn-ghost" data-action="advance-publication">${item.status==='ready'?'Отметить опубликованным':'Отметить готовым'}</button>`:''}
       <button type="button" class="btn-ghost" data-action="edit">Изменить</button>
       <button type="button" class="btn-ghost" data-action="delete">Удалить</button>
     </div>
   </article>`;
 }
-function editProjectEntry(section,kind,item={}){
-  const editor=section.querySelector('.project-entry-editor');
+function editProjectEntry(section,kind,item={},goal){
+  const editor=(goal||section).querySelector(':scope > .project-entry-editor');
+  const inputId='workspace-title-'+(goal?.dataset.goal||kind);
   const money=kind==='payment'||kind==='budget';
   editor.innerHTML=`<form class="project-entry project-entry-form">
     ${money?`<div class="form-row"><label class="field-label" for="workspace-amount-${kind}">Сумма, грн</label>
       <input name="amount" id="workspace-amount-${kind}" type="number" min="0.01" step="0.01" value="${avEscape(item.amount??'')}" required></div>`
-      :`<div class="form-row"><label class="field-label" for="workspace-title-${kind}">Название</label>
-      <input name="title" id="workspace-title-${kind}" value="${avEscape(item.title||'')}" required></div>`}
-    ${kind==='payment'?`<div class="form-row"><label class="field-label" for="workspace-date">Дата поступления</label>
-      <input name="date" id="workspace-date" type="date" value="${avEscape(item.date||'')}"></div>`:''}
-    ${kind==='budget'?'':`<div class="form-row"><label class="field-label" for="workspace-note-${kind}">Подробности</label>
-      <textarea name="note" id="workspace-note-${kind}" rows="2">${avEscape(item.note||'')}</textarea></div>`}
+      :`<div class="form-row"><label class="field-label" for="${inputId}">${kind==='goal_step'?'Что нужно сделать?':'Название'}</label>
+      <input name="title" id="${inputId}" value="${avEscape(item.title||'')}" required></div>`}
+    ${kind==='payment'||kind==='publication'?`<div class="form-row"><label class="field-label" for="workspace-date-${kind}">${kind==='publication'?'Дата публикации':'Дата поступления'}</label>
+      <input name="date" id="workspace-date-${kind}" type="date" value="${avEscape(item.date||'')}"></div>`:''}
+    ${kind==='publication'?`<div class="form-row"><label class="field-label" for="workspace-format">Формат</label>
+      <select id="workspace-format" name="format"><option value="post">Пост</option><option value="video" ${item.format==='video'?'selected':''}>Видео</option></select></div>
+      <div class="form-row"><label class="field-label" for="workspace-status">Статус</label>
+      <select id="workspace-status" name="status"><option value="draft">В подготовке</option><option value="ready" ${item.status==='ready'?'selected':''}>Готово</option>
+      <option value="published" ${item.status==='published'?'selected':''}>Опубликовано</option></select></div>`:''}
+    ${kind==='custom_section'?`<div class="form-row"><label class="field-label" for="${inputId}-mode">Что внутри</label>
+      <select name="mode" id="${inputId}-mode"><option value="notes">Заметки</option>
+      <option value="checklist" ${item.mode==='checklist'?'selected':''}>Чек-лист</option></select></div>`:''}
+    ${['budget','custom_section'].includes(kind)?'':`<div class="form-row"><label class="field-label" for="${inputId}-note">Подробности</label>
+      <textarea name="note" id="${inputId}-note" rows="2">${avEscape(item.note||'')}</textarea></div>`}
     <div class="project-entry-controls">
       <button type="submit" class="btn-primary">Сохранить</button>
       <button type="button" class="btn-ghost" data-action="cancel">Отмена</button>
@@ -2537,13 +2718,21 @@ function editProjectEntry(section,kind,item={}){
     const title=(values.get('title')||'').trim();
     if(!money&&!title){form.elements.title.focus();return;}
     const entry={...item,id:item.id||crypto.randomUUID(),kind};
+    if(goal)entry.goalId=goal.dataset.goal;
     if(money)entry.amount=Number(values.get('amount'));
     else entry.title=title;
-    if(kind!=='budget')entry.note=(values.get('note')||'').trim();
-    if(kind==='payment')entry.date=values.get('date')||null;
+    if(kind==='custom_section')entry.mode=values.get('mode');
+    else if(kind!=='budget')entry.note=(values.get('note')||'').trim();
+    if(kind==='custom_item')entry.sectionId=section.dataset.custom;
+    if(kind==='payment'||kind==='publication')entry.date=values.get('date')||null;
+    if(kind==='publication'){
+      entry.format=values.get('format');
+      entry.status=values.get('status');
+      if(entry.status==='published'&&!entry.date)entry.date=dailyDate();
+    }
     const items=projectWorkspace.items;
     const updated=item.id?items.map(old=>old.id===item.id?entry:old):[...items,entry];
-    void saveProjectWorkspace(updated,section.dataset.kind);
+    void saveProjectWorkspace(updated,kind==='custom_section'?'custom-'+entry.id:section.dataset.kind);
   };
 }
 async function saveProjectWorkspace(items,section){
@@ -2581,8 +2770,23 @@ document.getElementById('pc-board').addEventListener('click',event=>{
   const items=projectWorkspace.items;
   const index=items.findIndex(item=>item.id===button.closest('[data-item]')?.dataset.item);
   const action=button.dataset.action;
-  if(action==='cancel'){section.querySelector('.project-entry-editor').replaceChildren();return;}
-  if(action==='add'||action==='edit'){editProjectEntry(section,kind,items[index]);return;}
+  const entry=items[index];
+  const goal=button.closest('[data-goal]');
+  if(action==='cancel'){button.closest('.project-entry-editor').replaceChildren();return;}
+  if(action==='goal-step'){editProjectEntry(section,'goal_step',{},goal);return;}
+  if(action==='custom-section'){editProjectEntry(section,'custom_section');return;}
+  if(action==='edit-section'){
+    editProjectEntry(section,'custom_section',items.find(item=>item.id===section.dataset.custom));
+    return;
+  }
+  if(action==='remove-section'){
+    const id=section.dataset.custom;
+    if(confirm('Удалить раздел вместе с его записями?')){
+      void saveProjectWorkspace(items.filter(item=>item.id!==id&&item.sectionId!==id),'settings');
+    }
+    return;
+  }
+  if(action==='add'||action==='edit'){editProjectEntry(section,entry?.kind||(section.dataset.custom?'custom_item':kind),entry,goal);return;}
   if(action==='budget'){editProjectEntry(section,'budget',items.find(item=>item.kind==='budget'));return;}
   if(action==='template'){
     const stages=courseStageTemplate.map(([title,note])=>({id:crypto.randomUUID(),kind,title,note,done:false}));
@@ -2590,11 +2794,18 @@ document.getElementById('pc-board').addEventListener('click',event=>{
     return;
   }
   if(index<0)return;
-  if(action==='delete'){
-    if(confirm('Удалить запись?'))void saveProjectWorkspace(items.filter((_,i)=>i!==index),kind);
+  if(action==='advance-publication'){
+    const status=entry.status==='ready'?'published':'ready';
+    const date=entry.date||(status==='published'?dailyDate():null);
+    void saveProjectWorkspace(items.map(item=>item.id===entry.id?{...item,status,date}:item),kind);
     return;
   }
-  const indexes=items.map((item,i)=>item.kind===kind?i:-1).filter(i=>i>=0);
+  if(action==='delete'){
+    const question=entry.kind==='goal'?'Удалить цель вместе с её шагами?':'Удалить запись?';
+    if(confirm(question))void saveProjectWorkspace(items.filter(item=>item.id!==entry.id&&item.goalId!==entry.id),kind);
+    return;
+  }
+  const indexes=items.map((item,i)=>item.kind===entry.kind&&item.goalId===entry.goalId&&item.sectionId===entry.sectionId?i:-1).filter(i=>i>=0);
   const next=indexes[indexes.indexOf(index)+(action==='up'?-1:1)];
   if(next===undefined)return;
   const updated=[...items];
@@ -2602,6 +2813,17 @@ document.getElementById('pc-board').addEventListener('click',event=>{
   void saveProjectWorkspace(updated,kind);
 });
 document.getElementById('pc-board').addEventListener('change',event=>{
+  const toggle=event.target.closest('[data-publications]');
+  if(toggle&&projectWorkspace){
+    const publications=toggle.checked;
+    toggle.checked=!publications;
+    const items=projectWorkspace.items;
+    const previous=items.find(item=>item.kind==='settings');
+    const settings={id:previous?.id||crypto.randomUUID(),kind:'settings',publications};
+    const updated=previous?items.map(item=>item===previous?settings:item):[...items,settings];
+    void saveProjectWorkspace(updated,publications?'publication':'settings');
+    return;
+  }
   const box=event.target.closest('[data-done]');
   if(!box||!projectWorkspace)return;
   const checked=box.checked;
@@ -2620,6 +2842,7 @@ function openProjCard(id){
   for(const id of ['pc-settings','pc-task-list','pc-task-archive'])document.getElementById(id).open=false;
   document.getElementById('pc-work-settings').hidden=isPersonalProject(p);
   document.getElementById('pc-kind').value=workProjectKind(p);
+  document.getElementById('pc-scope').value=isPersonalProject(p)?'personal':'work';
   document.getElementById('pc-multistage').checked=hasProjectStages(p);
   renderProjectTasks();
   document.getElementById('pc-name').value=p.name||'';
@@ -2662,9 +2885,31 @@ async function saveProjCard(){
   };
   if(!isPersonalProject(project)&&kind!==workProjectKind(project))update.work_kind=kind;
   if(multistage!==hasProjectStages(project)||('work_kind' in update&&multistage!==(kind==='course')))update.multistage=multistage;
-  if(!await dbPatch('projects',id,update)){alert('Настройки не сохранены'+dbErrHint());return;}
-  await load();
-  openProjCard(id);
+  const scope=document.getElementById('pc-scope').value;
+  const moving=scope!==(isPersonalProject(project)?'personal':'work');
+  const save=document.querySelector('#modal-proj-card button[onclick="saveProjCard()"]');
+  if(save.disabled)return;
+  save.disabled=true;
+  try{
+    if(moving){
+      update.multistage=multistage;
+      if(scope==='personal'&&project?.name){
+        const response=await apiFetch(SB+'/rest/v1/shoots?select=id&limit=1&project=eq.'+encodeURIComponent(project.name));
+        if(!response.ok)throw new Error('project shoots');
+        if((await response.json()).length){
+          alert('У проекта есть рабочие съёмки. Сначала переназначь их, затем перенеси проект.');
+          return;
+        }
+      }
+      update.scope=scope;
+      update.billing=scope==='personal'?'personal':'category';
+    }
+    if(!await dbPatch('projects',id,update)){alert('Настройки не сохранены'+dbErrHint());return;}
+    await load();
+    if(moving)goToPage(scope==='personal'?'projects':'shoots-cal');
+    openProjCard(id);
+  }catch{alert('Не удалось сохранить настройки проекта. Проверь подключение.');}
+  finally{save.disabled=false;}
 }
 async function deleteProjCard(){
   const id=parseInt(document.getElementById('pc-id').value);
@@ -2790,6 +3035,7 @@ function openTaskCard(id){
   const t=(DB.tasks||[]).find(x=>x.id===id);
   if(!t)return;
   document.getElementById('tc-id').value=t.id;
+  setTaskFields('tc',isPersonalTask(t));
   document.getElementById('tc-head').textContent=t.kind==='дизайн'?'🎨 Дизайн':'📋 Задача';
   document.getElementById('tc-title').value=t.title||'';
   document.getElementById('tc-kind').value=t.kind||'задача';
@@ -2819,7 +3065,7 @@ async function saveTaskCard(){
   if(status==='готово'&&!doneDate)doneDate=localDateStr(new Date());
   if(status!=='готово')doneDate=null;
   const amtRaw=document.getElementById('tc-amount').value;
-  await dbPatch('tasks',id,{
+  const update={
     title,
     kind:document.getElementById('tc-kind').value,
     assigned_by:document.getElementById('tc-assigned').value.trim()||null,
@@ -2831,7 +3077,12 @@ async function saveTaskCard(){
     assigned_date:document.getElementById('tc-assigned-date').value||null,
     date:document.getElementById('tc-date').value||null,
     status,done_date:doneDate
-  });
+  };
+  const task=DB.tasks.find(task=>task.id===id);
+  if(task&&isPersonalTask(task)){
+    for(const field of ['kind','assigned_by','price_code','qty','surcharge','extra','amount','assigned_date'])delete update[field];
+  }
+  if(!await dbPatch('tasks',id,update)){alert('Задача не сохранена'+dbErrHint());return;}
   hideModal('modal-task-card');await load();
 }
 async function deleteTaskCard(){
@@ -3595,6 +3846,212 @@ const hexagramMeanings=[
   "После завершения бережно поддержи порядок и проверь оставшиеся мелочи.",
   "Дело близко к завершению. Последний переход требует такого же внимания, как первый."
 ];
+
+let homeTodo=null;
+let homeTodoSaving=false;
+let homeTodoLoad=0;
+let todoEdit=null;
+
+function todoStatus(message=''){
+  document.getElementById('home-todo-status').textContent=message;
+}
+async function loadHomeTodo(force=false){
+  if(homeTodoSaving&&!force)return;
+  const owner=session?.user?.id;
+  const request=++homeTodoLoad;
+  document.getElementById('home-todo-login').hidden=!!owner;
+  document.getElementById('home-todo-actions').hidden=!owner;
+  if(!owner){
+    homeTodo=null;
+    renderHomeTodo();
+    todoStatus('Войди, чтобы список был общим на телефоне и ПК.');
+    return;
+  }
+  todoStatus('Загружаю список…');
+  try{
+    const response=await apiFetch(SB+'/rest/v1/home_todos?select=revision,categories',{cache:'no-store'});
+    if(!response.ok)throw new Error('todo read');
+    const [row]=await response.json();
+    if(request!==homeTodoLoad||session?.user?.id!==owner)return;
+    homeTodo={owner,revision:row?.revision??null,categories:row?.categories||[]};
+    todoStatus();
+    renderHomeTodo();
+  }catch{
+    if(request===homeTodoLoad)todoStatus('Не удалось загрузить список. Сверни и открой его снова.');
+  }
+}
+function renderHomeTodo(openIds=[]){
+  const list=document.getElementById('home-todo-items');
+  const opened=new Set([...openIds,...[...list.querySelectorAll('details[open]')].map(row=>row.dataset.todoId)]);
+  const categories=homeTodo?.categories||[];
+  let remaining=0;
+  function itemsHtml(items){
+    remaining+=items.filter(item=>!item.done).length;
+    return items.map(item=>`<div class="home-todo-row ${item.done?'is-done':''}" data-todo-id="${item.id}">
+      <input type="checkbox" data-todo-done ${item.done?'checked':''} aria-label="Готово: ${avEscape(item.title)}">
+      <button type="button" data-todo-action="edit-item">${avEscape(item.title)}</button>
+    </div>`).join('');
+  }
+  function caption(title,items,groups=[]){
+    const all=[...items,...groups.flatMap(group=>group.items)];
+    return `<strong>${avEscape(title)}</strong><small>${all.length?all.filter(item=>item.done).length+' / '+all.length:''}</small>`;
+  }
+  list.innerHTML=categories.map(category=>`<details class="home-todo-category" data-todo-id="${category.id}" ${opened.has(category.id)?'open':''}>
+    <summary>${caption(category.title,category.items,category.groups)}</summary>
+    <div class="home-todo-controls">
+      <button type="button" class="btn-ghost" data-todo-action="add-item">+ Пункт</button>
+      <button type="button" class="btn-ghost" data-todo-action="add-group">+ Подгруппа</button>
+      <button type="button" class="btn-ghost" data-todo-action="edit-category">Изменить</button>
+    </div>
+    ${itemsHtml(category.items)}
+    ${category.groups.map(group=>`<details class="home-todo-group" data-todo-id="${group.id}" ${opened.has(group.id)?'open':''}>
+      <summary>${caption(group.title,group.items)}</summary>
+      <div class="home-todo-controls">
+        <button type="button" class="btn-ghost" data-todo-action="add-item">+ Пункт</button>
+        <button type="button" class="btn-ghost" data-todo-action="edit-group">Изменить</button>
+      </div>
+      ${itemsHtml(group.items)}
+    </details>`).join('')}
+  </details>`).join('')||(homeTodo?'<p class="project-empty">Добавь раздел или вставь готовый список.</p>':'');
+  document.getElementById('home-todo-count').textContent=remaining?'Осталось '+remaining:'';
+}
+async function saveHomeTodo(categories,openIds=[]){
+  const current=homeTodo;
+  if(!current||homeTodoSaving||current.owner!==session?.user?.id)return false;
+  homeTodoSaving=true;
+  ++homeTodoLoad;
+  const base=SB+'/rest/v1/home_todos';
+  todoStatus('Сохраняю…');
+  try{
+    const initial=current.revision===null;
+    const payload=initial?{categories}:{categories,revision:current.revision+1};
+    const response=await apiFetch(initial?base:base+'?revision=eq.'+current.revision,
+      {method:initial?'POST':'PATCH',body:JSON.stringify(payload)});
+    if(!response.ok&&response.status!==409)throw new Error('todo write');
+    const [row]=response.ok?await response.json():[];
+    if(session?.user?.id!==current.owner)return false;
+    if(!row){
+      await loadHomeTodo(true);
+      todoStatus('Список изменился на другом устройстве. Проверь его и повтори действие.');
+      return false;
+    }
+    homeTodo={owner:current.owner,revision:row.revision,categories:row.categories};
+    todoStatus();
+    renderHomeTodo(openIds);
+    return true;
+  }catch{
+    todoStatus('Не удалось сохранить. Попробуй ещё раз.');
+    return false;
+  }finally{homeTodoSaving=false;}
+}
+function newTodoEntry(title){
+  return {id:crypto.randomUUID(),title};
+}
+function addPastedTodo(categories,text){
+  const key=title=>title.trim().toLocaleLowerCase('ru-RU');
+  let category,group;
+  function section(title){
+    let entry=categories.find(entry=>key(entry.title)===key(title));
+    if(!entry){
+      entry={...newTodoEntry(title),items:[],groups:[]};
+      categories.push(entry);
+    }
+    return entry;
+  }
+  for(const raw of text.replace(/&#x20;|&nbsp;/gi,' ').split(/\r?\n/)){
+    const line=raw.trim().replace(/\\(?=[-–—])/g,'');
+    if(!line)continue;
+    const bullet=line.match(/^([-–—*•]+)\s*/);
+    const title=line.slice(bullet?.[0].length||0).trim().replace(/:\s*$/,'');
+    if(!title)continue;
+    if(line.endsWith(':')){
+      if(!bullet){category=section(title);group=null;continue;}
+      category??=section('Другое');
+      group=category.groups.find(entry=>key(entry.title)===key(title));
+      if(!group){group={...newTodoEntry(title),items:[]};category.groups.push(group);}
+      continue;
+    }
+    category??=section('Другое');
+    if(bullet&&bullet[1].length===1&&!/^\s/.test(raw))group=null;
+    const items=(group||category).items;
+    if(!items.some(item=>key(item.title)===key(title)))items.push({...newTodoEntry(title),done:false});
+  }
+  return categories;
+}
+function openTodoEditor(action,category,group,item){
+  const type=action.split('-').at(-1);
+  const labels={category:'Раздел',group:'Подгруппа',item:'Пункт',paste:'Вставить список'};
+  todoEdit={action,type,category:category?.id,group:group?.id,item:item?.id};
+  const paste=type==='paste';
+  document.getElementById('todo-category-examples').hidden=action!=='add-category';
+  const value=({category,group,item})[type]?.title||'';
+  document.getElementById('todo-edit-title').textContent=labels[type];
+  document.getElementById('todo-edit-name-row').hidden=paste;
+  document.getElementById('todo-edit-paste-row').hidden=!paste;
+  document.getElementById('todo-edit-name').value=action.startsWith('edit-')?value:'';
+  document.getElementById('todo-edit-paste').value='';
+  document.getElementById('todo-edit-delete').hidden=!action.startsWith('edit-');
+  document.getElementById('todo-edit-status').textContent='';
+  showModal('modal-home-todo');
+  document.getElementById(paste?'todo-edit-paste':'todo-edit-name').focus();
+}
+async function submitTodo(remove=false){
+  if(!todoEdit||!homeTodo||homeTodoSaving)return;
+  const {action,type,category:cid,group:gid,item:iid}=todoEdit;
+  const name=document.getElementById('todo-edit-name').value.trim();
+  const pasted=document.getElementById('todo-edit-paste').value.trim();
+  if(!remove&&!(type==='paste'?pasted:name)){
+    document.getElementById('todo-edit-status').textContent='Заполни поле.';
+    return;
+  }
+  if(remove&&!confirm(type==='item'?'Удалить пункт?':'Удалить вместе со всеми пунктами?'))return;
+  const categories=structuredClone(homeTodo.categories);
+  const category=categories.find(entry=>entry.id===cid);
+  const group=category?.groups.find(entry=>entry.id===gid);
+  const target=(group||category)?.items;
+  const item=target?.find(entry=>entry.id===iid);
+  if(type==='paste')addPastedTodo(categories,pasted);
+  else if(action==='add-category')categories.push({...newTodoEntry(name),groups:[],items:[]});
+  else if(action==='add-group'&&category)category.groups.push({...newTodoEntry(name),items:[]});
+  else if(action==='add-item'&&target)target.push({...newTodoEntry(name),done:false});
+  else if(action==='edit-category'&&category){
+    if(remove)categories.splice(categories.indexOf(category),1);
+    else category.title=name;
+  }else if(action==='edit-group'&&group){
+    if(remove)category.groups.splice(category.groups.indexOf(group),1);
+    else group.title=name;
+  }else if(action==='edit-item'&&item){
+    if(remove)target.splice(target.indexOf(item),1);
+    else item.title=name;
+  }else{
+    document.getElementById('todo-edit-status').textContent='Запись уже изменилась. Открой её заново.';
+    return;
+  }
+  if(await saveHomeTodo(categories,[cid,gid].filter(Boolean)))hideModal('modal-home-todo');
+  else document.getElementById('todo-edit-status').textContent=document.getElementById('home-todo-status').textContent;
+}
+document.getElementById('home-todo').addEventListener('click',event=>{
+  const button=event.target.closest('[data-todo-action]');
+  if(!button||!homeTodo||homeTodoSaving)return;
+  const category=homeTodo.categories.find(entry=>entry.id===button.closest('.home-todo-category')?.dataset.todoId);
+  const group=category?.groups.find(entry=>entry.id===button.closest('.home-todo-group')?.dataset.todoId);
+  const item=(group||category)?.items.find(entry=>entry.id===button.closest('.home-todo-row')?.dataset.todoId);
+  openTodoEditor(button.dataset.todoAction,category,group,item);
+});
+document.getElementById('home-todo').addEventListener('change',event=>{
+  const box=event.target.closest('[data-todo-done]');
+  if(!box||!homeTodo)return;
+  const checked=box.checked;
+  box.checked=!checked;
+  const categories=structuredClone(homeTodo.categories);
+  const category=categories.find(entry=>entry.id===box.closest('.home-todo-category')?.dataset.todoId);
+  const group=category?.groups.find(entry=>entry.id===box.closest('.home-todo-group')?.dataset.todoId);
+  const item=(group||category)?.items.find(entry=>entry.id===box.closest('.home-todo-row')?.dataset.todoId);
+  if(!item)return;
+  item.done=checked;
+  void saveHomeTodo(categories);
+});
+
 let dailyState=null;
 let dailyCloud=null;
 let dailyPending=false;
@@ -5125,6 +5582,11 @@ window.addEventListener('storage',event=>{
   try{session=JSON.parse(event.newValue||'null');}catch{session=null;}
   renderDaily();
   refreshDaily();
+  if(homeTodo?.owner!==session?.user?.id){
+    homeTodo=null;
+    renderHomeTodo();
+    if(document.getElementById('home-todo').open)void loadHomeTodo();
+  }
   if(!document.getElementById('modal-proj-card').classList.contains('hidden')&&projectWorkspace?.owner!==session?.user?.id)void loadProjectWorkspace();
 });
 setInterval(refreshDaily,20000);

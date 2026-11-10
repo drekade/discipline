@@ -1,12 +1,15 @@
-import os, json, httpx, asyncio, random
-from datetime import datetime, timedelta
+import os, json, httpx, asyncio, random, re
+from datetime import date, datetime, timedelta
+from uuid import UUID, uuid4
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, BotCommand, MenuButtonCommands
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes, TypeHandler, ApplicationHandlerStop
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 GROQ_KEY = os.environ.get("GROQ_KEY", "")
 SUPA_URL = os.environ.get("SUPA_URL", "")
 SUPA_KEY = os.environ.get("SUPA_KEY", "")
+TELEGRAM_OWNER_ID = os.environ.get("TELEGRAM_OWNER_ID", "").strip()
+LIFE_OWNER_UUID = os.environ.get("LIFE_OWNER_UUID", "").strip()
 SUPA_H = {
     "apikey": SUPA_KEY,
     "Authorization": f"Bearer {SUPA_KEY}",
@@ -471,7 +474,10 @@ async def apply_action(action, data):
         return False
 
     elif action == "add_tasks":
-        await load_price()
+        project = data.get("project") or {}
+        personal = is_personal(project)
+        if not personal:
+            await load_price()
         kind = (data.get("kind") or "задача").strip().lower()
         if kind not in ("задача", "дизайн"):
             kind = "задача"
@@ -490,13 +496,15 @@ async def apply_action(action, data):
             due = (it.get("due") or it.get("date") or "").strip()
             if due.lower() in ("не указано", "none", "null", "—", "-", ""):
                 due = ""
-            code = guess_price(title)
+            code = None if personal else guess_price(title)
+            if project and kind != "дизайн" and PRICE_BY_CODE.get(code, {}).get("sec") == 3:
+                code = None
             auto_amount = price_amount(code, 1) if code else None
             row = {
                 "title": title, "kind": kind, "status": "в работе",
-                "project_id": None, "assigned_by": assigned or None,
+                "project_id": project.get("id"), "assigned_by": assigned or None,
                 "date": due or None, "done_date": None,
-                "assigned_date": datetime.now().strftime("%Y-%m-%d"),
+                "assigned_date": None if personal else datetime.now().strftime("%Y-%m-%d"),
                 "qty": 1, "surcharge": 0, "extra": 0,
                 "price_code": code, "amount": auto_amount
             }
@@ -769,7 +777,8 @@ def render_project(p, shoots, tasks):
         for t in proj_tasks:
             icon = "✅" if t.get("status")=="готово" else "🔄" if t.get("status")=="в работе" else "⭕"
             lines.append(f"  {icon} {t.get('title','')}")
-    proj_shoots = [s for s in shoots if s.get("project","") == p.get("name","")]
+    proj_shoots = [s for s in shoots if not is_personal(p) and p.get("name")
+                   and s.get("project") == p["name"]]
     if proj_shoots:
         lines.append(f"\n📅 Съёмок: {len(proj_shoots)}")
     return "\n".join(lines)
@@ -852,7 +861,12 @@ async def cmd_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "• дневник (рассказ про день)\n\n"
         "📋 Задачи без съёмки (типография, дизайн):\n"
         "• «задача: сделать баннер, поправить упаковку»\n"
-        "• «дизайн: исправить текст в логотипе от Дениса»\n\n"
+        "• «дизайн: исправить текст в логотипе от Дениса»\n"
+        "• «задача Взрывы: составить программу» → в задачи курса\n"
+        "• «идея Астра игра: новый уровень» → в идеи проекта\n"
+        "• «план WHITE MONK: собрать референсы» → в план проекта\n"
+        "• «цель Астра Клик Ит: выйти в публичный тест» → в цели проекта\n"
+        "• «рабочий проект курс: Взрывы», «личный проект: Астра игра»\n\n"
         "📊 Отчёт: «отчёт», «отчёт за август», «отчёт за неделю»\n\n"
         "📄 Файлы:\n"
         "• пришли/перешли документ (PDF и любой другой) — предложу\n"
@@ -879,6 +893,202 @@ async def cmd_clear(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🗑 Контекст очищен. Начинаем сначала.", reply_markup=reply_kbd())
 
 
+
+ENTRY_ROUTE = re.compile(
+    r"^(?:(личная|личный|особиста|особистий|рабочая|рабочий|робоча|робочий)\s+)?"
+    r"(задача|завдання|дизайн|идея|ідея|план|цель|мета|этап|етап)"
+    r"(?:\s+(?:(?:в|во|у|для)\s+)?([^:\n]+))?\s*:\s*(.*)$", re.IGNORECASE | re.DOTALL
+)
+PROJECT_ROUTE = re.compile(
+    r"^(личный|особистий|рабочий|робочий)\s+про[еє]кт"
+    r"(?:\s+(реклама|курс|дизайн))?\s*:\s*(.*)$", re.IGNORECASE | re.DOTALL
+)
+ENTRY_KIND = {"задача":"задача", "завдання":"задача", "дизайн":"дизайн",
+              "идея":"idea", "ідея":"idea", "план":"plan", "цель":"goal", "мета":"goal", "этап":"stage", "етап":"stage"}
+PROJECT_KIND = {"реклама":"ad", "курс":"course", "дизайн":"design"}
+ENTRY_LABEL = {"задача":"Задача", "дизайн":"Дизайн", "idea":"Идея", "plan":"Пункт плана", "goal":"Цель", "stage":"Этап"}
+
+def is_personal(project):
+    return project.get("scope") == "personal"
+
+def project_title(project):
+    return (project.get("name") or "").strip() or "Без названия"
+
+def project_label(project):
+    return f"{'Мои проекты' if is_personal(project) else 'Работа'} → {project_title(project)}"
+
+def name_key(text):
+    return "".join(c for c in text.casefold().replace("ё", "е") if c.isalnum())
+
+def matching_projects(projects, target):
+    key = name_key(target)
+    if not key:
+        return []
+    exact = [p for p in projects if name_key(project_title(p)) == key]
+    return exact or [p for p in projects if key in name_key(project_title(p))]
+
+def uses_stages(project):
+    if project.get("multistage") is not None:
+        return project["multistage"]
+    return not is_personal(project) and (
+        project.get("work_kind") == "course"
+        or not project.get("work_kind") and re.match(r"^курс(?:ы|и)?(?:\s|$)", project_title(project), re.I)
+    )
+
+def project_picker(items, callback, back=False):
+    buttons = [[InlineKeyboardButton(project_label(p)[:75], callback_data=callback(p))] for p in items]
+    if back:
+        buttons.append([InlineKeyboardButton("◀️ Назад", callback_data="projects")])
+    return InlineKeyboardMarkup(buttons)
+
+def project_scope_menu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("Рабочие проекты", callback_data="projectlist_work")],
+        [InlineKeyboardButton("Мои проекты", callback_data="projectlist_personal")],
+        [InlineKeyboardButton("◀️ Назад", callback_data="main")]
+    ])
+
+async def append_project_item(project_id, item):
+    owner = str(UUID(LIFE_OWNER_UUID))
+    url = f"{SUPA_URL}/rest/v1/project_workspaces"
+    match = {"user_id": f"eq.{owner}", "project_id": f"eq.{project_id}"}
+    async with httpx.AsyncClient(timeout=12) as client:
+        for _ in range(3):
+            response = await client.get(url, headers=SUPA_H, params=match)
+            response.raise_for_status()
+            rows = response.json()
+            if rows:
+                row = rows[0]
+                if any(entry.get("id") == item["id"] for entry in row["items"]):
+                    return True
+                response = await client.patch(url, headers=SUPA_H,
+                    params={**match, "revision": f"eq.{row['revision']}"},
+                    json={"revision": row["revision"] + 1, "items": [*row["items"], item]})
+                response.raise_for_status()
+                if response.json():
+                    return True
+            else:
+                response = await client.post(url, headers=SUPA_H,
+                    json={"user_id": owner, "project_id": project_id, "items": [item]})
+                if response.status_code != 409:
+                    response.raise_for_status()
+                    return True
+    return False
+
+async def save_routed_entry(draft, project, uid):
+    kind = draft["kind"]
+    body = draft["body"]
+    project_id = project["id"]
+    destination = project_label(project)
+    if kind in ("задача", "дизайн"):
+        title = body
+        deadline = re.search(r"\s+(?:до|к)\s+(\d{4}-\d{2}-\d{2})\s*$", title, re.I)
+        due = None
+        if deadline:
+            try:
+                due = date.fromisoformat(deadline[1]).isoformat()
+            except ValueError:
+                return "Проверь дату. Формат срока — ГГГГ-ММ-ДД."
+            title = title[:deadline.start()].strip()
+        data = {"kind": kind, "tasks": [{"title": title, "due": due}], "project": project}
+        ok = await apply_action("add_tasks", data)
+    else:
+        if not TELEGRAM_OWNER_ID or str(uid) != TELEGRAM_OWNER_ID or not LIFE_OWNER_UUID:
+            return "Для записи целей, идей, планов и этапов в проект нужно связать Telegram с аккаунтом «ЖИЗНЬ.exe»."
+        if kind == "stage" and not uses_stages(project):
+            return f"В «{project_title(project)}» выключены этапы. Включи их в настройках проекта."
+        title, _, note = body.partition("\n")
+        item = {"id": draft["id"], "kind": kind, "title": title.strip(), "note": note.strip()}
+        if kind in ("plan", "stage", "goal"):
+            item["done"] = False
+        try:
+            ok = await append_project_item(project_id, item)
+        except (ValueError, httpx.HTTPError) as exc:
+            print(f"PROJECT WORKSPACE: {type(exc).__name__}")
+            return "Запись в проект не подтвердилась. Проверь настройку связи с Supabase."
+    return f"✓ {ENTRY_LABEL[kind]} → {destination}\n{title[:350]}" if ok else (
+        "Сохранение не подтвердилось. Проверь карточку проекта перед повторной отправкой."
+    )
+
+async def handle_project_route(update, ctx, text):
+    entry = ENTRY_ROUTE.fullmatch(text)
+    creation = PROJECT_ROUTE.fullmatch(text)
+    if not entry and not creation:
+        return False
+    if entry and not entry[1] and not entry[3] and ENTRY_KIND[entry[2].casefold()] in ("задача", "дизайн", "idea"):
+        return False
+    msg = update.message
+    uid = update.effective_user.id
+    if update.effective_chat.type != "private":
+        await msg.reply_text("Отправь эту запись боту в личный чат.")
+        return True
+    ctx.user_data.pop("entry_route", None)
+    try:
+        if creation:
+            scope, kind, body = creation.groups()
+            title, _, note = body.strip().partition("\n")
+            if not title.strip():
+                await msg.reply_text("Добавь название после двоеточия.")
+                return True
+            personal = scope.casefold() in ("личный", "особистий")
+            if personal and kind:
+                await msg.reply_text("Для личного проекта используй «личный проект: Название».")
+                return True
+            payload = {"name": title.strip(), "description": note.strip(), "status": "в работе",
+                       "scope": "personal" if personal else "work"}
+            if personal:
+                payload["billing"] = "personal"
+            if kind:
+                payload["work_kind"] = PROJECT_KIND[kind.casefold()]
+            ok = await supa_insert("projects", payload)
+            await msg.reply_text(f"✓ {project_label(payload)}" if ok else "Проект не сохранён. Проверь, что обновление базы «ЖИЗНЬ.exe» установлено.")
+            return True
+
+        scope, label, target, body = entry.groups()
+        kind = ENTRY_KIND[label.casefold()]
+        body = body.strip()
+        if not body:
+            await msg.reply_text("Добавь текст записи после двоеточия.")
+            return True
+        projects = [p for p in await supa_get("projects", 500) if (p.get("name") or "").strip()]
+        if scope:
+            personal = scope.casefold() in ("личная", "личный", "особиста", "особистий")
+            projects = [p for p in projects if is_personal(p) == personal]
+        matches = matching_projects(projects, target or "")
+        draft = {"kind": kind, "body": body, "id": str(uuid4())}
+        if len(matches) == 1:
+            await msg.reply_text(await save_routed_entry(draft, matches[0], uid))
+            return True
+        choices = (matches or [p for p in projects if p.get("status") != "готово"])[:15]
+        if not choices:
+            await msg.reply_text("Подходящих проектов нет. Проверь название или создай проект.")
+            return True
+        draft["choices"] = {str(p["id"]): p for p in choices}
+        ctx.user_data["entry_route"] = draft
+        question = "Куда записать?" if not target else (
+            f"Нашла несколько проектов по «{target.strip()}». Выбери нужный."
+            if matches else f"Проект «{target.strip()}» не нашла. Выбери из списка или отправь запись с точным названием."
+        )
+        await msg.reply_text(question, reply_markup=project_picker(
+            choices, lambda p: f"route_{draft['id']}_{p['id']}"))
+    except httpx.HTTPError as exc:
+        print(f"PROJECT ROUTE: {type(exc).__name__}")
+        await msg.reply_text("Связь с базой прервалась. Проверь проект перед повторной отправкой.")
+    return True
+
+async def restrict_bot(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if TELEGRAM_OWNER_ID and (
+        not update.effective_user or str(update.effective_user.id) != TELEGRAM_OWNER_ID
+        or not update.effective_chat or update.effective_chat.type != "private"
+    ):
+        if update.callback_query:
+            await update.callback_query.answer()
+        raise ApplicationHandlerStop
+
+async def cmd_id(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type == "private":
+        await update.message.reply_text(str(update.effective_user.id))
+
 async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     uid = update.effective_user.id
@@ -903,6 +1113,8 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     text_stripped = text.strip()
+    if await handle_project_route(update, ctx, text_stripped):
+        return
     if text_stripped in ("🏠 Сегодня", "📅 Съёмки", "🎬 Проекты", "💡 Идеи", "📓 Дневник", "📊 Итоги"):
         if text_stripped == "🏠 Сегодня":
             try:
@@ -934,15 +1146,7 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             return
 
         elif text_stripped == "🎬 Проекты":
-            projects = await supa_get("projects", 50)
-            if not projects:
-                await msg.reply_text("Проектов пока нет.", reply_markup=reply_kbd())
-                return
-            buttons = []
-            for p in projects:
-                icon = "✅" if p.get("status") == "готово" else "🔸"
-                buttons.append([InlineKeyboardButton(f"{icon} {p.get('name','?')}", callback_data=f"proj_{p['id']}")])
-            await msg.reply_text("🎬 Проекты:", reply_markup=InlineKeyboardMarkup(buttons))
+            await msg.reply_text("В каком разделе посмотреть проекты?", reply_markup=project_scope_menu())
             return
 
         elif text_stripped == "💡 Идеи":
@@ -1123,9 +1327,11 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
         tasks = await supa_get("tasks", 300)
         shoots = await supa_get("shoots", 300)
+        projects = await supa_get("projects", 500)
+        personal_ids = {p["id"] for p in projects if is_personal(p)}
         rows = []
         for t in tasks or []:
-            if (t.get("status") or "") != "готово":
+            if t.get("project_id") in personal_ids or (t.get("status") or "") != "готово":
                 continue
             d = (t.get("done_date") or t.get("date") or "")[:10]
             if not d or d < f_s or d > t_s:
@@ -1329,6 +1535,15 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             except Exception as qe:
                 print(f"QUERY ERROR: {qe}")
                 reply = "Не получилось достать данные 😔"
+        elif action == "add_tasks":
+            prefix = text_stripped.partition(":")[0].strip().casefold()
+            if prefix not in ("задача", "завдання", "дизайн"):
+                action = "none"
+                reply = "Для записи напиши «задача: …» или «дизайн: …». Чтобы указать проект, добавь его название перед двоеточием."
+            else:
+                data["kind"] = "дизайн" if prefix == "дизайн" else "задача"
+                data.pop("project", None)
+                saved = await apply_action(action, data)
         elif action not in ("none","clarify","clarify_reply"):
             saved = await apply_action(action, data)
 
@@ -1352,7 +1567,7 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                           for t in (data.get("tasks") or [])
                           if isinstance(t, dict) and (t.get("title") or "").strip()]
                 created_list = data.get("_created") or []
-                lines2 = [f"{label}: записала {saved} ✓"]
+                lines2 = [f"{label}: записала {saved} ✓ · Работа"]
                 total = 0
                 unknown = 0
                 for c in created_list[:10]:
@@ -1368,7 +1583,7 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                     lines2.append("Поправить цены можно в «Жизни».")
                 reply = (reply + "\n\n" if reply else "") + "\n".join(lines2)
             else:
-                reply = reply or "Не разобрала задачи. Напиши: задача: ... или дизайн: ..."
+                reply = "Задача не сохранилась. Проверь запись и попробуй снова."
 
         show_kbd = action not in ("none","clarify")
         await msg.reply_text(reply, reply_markup=main_kbd() if show_kbd else None)
@@ -1621,16 +1836,33 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     if cb == "projects":
         pending.pop(uid, None)
-        items = await supa_get("projects",20)
-        if not items:
-            await q.edit_message_text("🎬 Проектов пока нет", reply_markup=main_kbd())
+        await q.edit_message_text("В каком разделе посмотреть проекты?", reply_markup=project_scope_menu())
+        return
+
+    if cb in ("projectlist_work", "projectlist_personal"):
+        personal = cb == "projectlist_personal"
+        items = [p for p in await supa_get("projects", 500)
+                 if is_personal(p) == personal and (p.get("name") or "").strip()]
+        title = "Мои проекты" if personal else "Рабочие проекты"
+        items.sort(key=lambda p: p.get("status") == "готово")
+        await q.edit_message_text(title if items else title + " · пока пусто",
+            reply_markup=project_picker(items[:20], lambda p: f"proj_{p['id']}", back=True))
+        return
+
+    if cb.startswith("route_"):
+        draft = ctx.user_data.get("entry_route")
+        _, token, pid = cb.split("_", 2)
+        project = draft["choices"].get(pid) if draft and draft["id"] == token else None
+        if not project:
+            await q.edit_message_text("Этот выбор устарел. Пришли запись ещё раз.")
             return
-        buttons = []
-        for p in items:
-            icon = "✅" if p.get("status")=="готово" else "🔸"
-            buttons.append([InlineKeyboardButton(f"{icon} {p.get('name','')[:30]}", callback_data=f"proj_{p['id']}")])
-        buttons.append([InlineKeyboardButton("◀️ Назад",callback_data="main")])
-        await q.edit_message_text("🎬 Выбери проект:", reply_markup=InlineKeyboardMarkup(buttons))
+        ctx.user_data.pop("entry_route", None)
+        try:
+            result = await save_routed_entry(draft, project, uid)
+        except httpx.HTTPError as exc:
+            print(f"PROJECT ROUTE: {type(exc).__name__}")
+            result = "Связь с базой прервалась. Проверь проект перед повторной отправкой."
+        await q.edit_message_text(result)
         return
 
     if cb.startswith("proj_") and "toggle" not in cb:
@@ -1767,6 +1999,8 @@ def main():
     import time
     time.sleep(5)
     app = Application.builder().token(TELEGRAM_TOKEN).build()
+    app.add_handler(TypeHandler(Update, restrict_bot), group=-1)
+    app.add_handler(CommandHandler("id", cmd_id))
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("today", cmd_today_handler))
     app.add_handler(CommandHandler("help", cmd_help))
@@ -1777,6 +2011,7 @@ def main():
     async def post_init(application):
         await application.bot.set_my_commands([
             BotCommand("today", "что у меня сегодня"),
+            BotCommand("id", "мой ID в Telegram"),
             BotCommand("help", "что я умею"),
             BotCommand("clear", "очистить контекст"),
             BotCommand("start", "перезапуск"),
