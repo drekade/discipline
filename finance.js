@@ -573,6 +573,10 @@ function group(rows,getKey){
   }
   return [...groups].sort((a,b)=>b[1].amount-a[1].amount);
 }
+const averageCheck=value=>Math.round(value.amount/value.count);
+function categoryRow(id,value,lila){
+  return rowButton(categoryName(id),'Средний чек '+money(averageCheck(value)),money(value.amount),()=>drill(id,'',lila));
+}
 function matchesHistory(row){
   const category=$('history-category').value, type=$('history-type').value, search=normalize($('search').value);
   const strings=[row.merchant,row.original,row.note,categoryName(row.category),money(row.amount),inputMoney(row.amount)];
@@ -649,7 +653,7 @@ function render(){
     $('category-filter').setAttribute('aria-pressed',String(categoryLila));
     $('category-filter').classList.toggle('lilac',categoryLila);
     $('category-summary').textContent=breakdown.slice(0,3).map(([id])=>categoryName(id)).join(' · ')||'Нет расходов за период';
-    $('category-list').replaceChildren(...breakdown.map(([id,value])=>rowButton(categoryName(id),'',money(value.amount),()=>drill(id,'',categoryLila))));
+    $('category-list').replaceChildren(...breakdown.map(([id,value])=>categoryRow(id,value,categoryLila)));
     renderObligations();
     $('budget-cash').replaceChildren(...cashContent(range));
     renderPlans();
@@ -1464,7 +1468,7 @@ function renderAnalytics(){
   }
   const categories=n('section','','card');categories.append(n('h2','Категории'));
   for(const [id,value] of group(rows,row=>row.category)){
-    categories.append(rowButton(categoryName(id),'',money(value.amount),()=>drill(id,'',analyticsLila)));
+    categories.append(categoryRow(id,value,analyticsLila));
   }
   const merchants=n('section','','card');merchants.append(n('h2','Магазины и получатели'));
   for(const [merchant,value] of group(rows,row=>normalize(row.merchant))){
@@ -1601,7 +1605,7 @@ async function exportExcel(){
       {name:'Операции',rows:[exportHeaders,...rows.map(exportValues)]},
       {name:'Сводка',rows:[[reportTitle()],['Поступило в бюджет, грн',result.income/100],['В том числе с ФОП, грн',result.fop/100],['Потрачено, грн',result.expense/100],
         ['Разница, грн',result.difference/100],['Средний расход, грн',result.average/100],
-        [],['Категория','Расход, грн'],...group(rows,row=>row.category).map(([id,value])=>[categoryName(id),value.amount/100])]}
+        [],['Категория','Расход, грн','Средний чек, грн'],...group(rows,row=>row.category).map(([id,value])=>[categoryName(id),value.amount/100,averageCheck(value)/100])]}
     ]);
     if(key)download(file,'life-budget-'+range.start+'.xlsx');
   }catch{issue('Не удалось подготовить Excel.');}
@@ -1609,7 +1613,7 @@ async function exportExcel(){
 function printBudget(){
   const rows=exportRows(), report=n('article','','print-report');
   report.append(n('h1',reportTitle()),...stats(totals(rows,range)));
-  report.append(n('h2','Категории'),...group(rows,row=>row.category).map(([id,value])=>metric(categoryName(id),money(value.amount))));
+  report.append(n('h2','Категории'),...group(rows,row=>row.category).map(([id,value])=>metric(categoryName(id),money(value.amount)+' · средний чек '+money(averageCheck(value)))));
   report.append(n('h2','Крупнейшие расходы'));
   for(const row of rows.filter(item=>item.type==='expense').sort((a,b)=>b.amount-a.amount).slice(0,10)){
     report.append(metric(row.merchant||categoryName(row.category),money(row.amount)));
