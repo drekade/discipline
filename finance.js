@@ -466,13 +466,16 @@ function transferFees(rows){
   return result;
 }
 function totals(rows,period){
-  let income=0,expense=0;
+  let income=0,expense=0,fop=0;
   for(const row of rows){
-    if(row.type==='income')income+=row.amount;
+    if(row.type==='income'){
+      income+=row.amount;
+      if(row.fopFunding)fop+=row.amount;
+    }
     if(row.type==='expense')expense+=row.amount;
   }
   const days=Math.max(1,Math.round((Date.parse(period.end)-Date.parse(period.start))/86400000)+1);
-  return {income,expense,difference:income-expense,average:Math.round(expense/days)};
+  return {income,expense,fop,difference:income-expense,average:Math.round(expense/days)};
 }
 function metric(label,value,cls=''){
   const row=n('div','','metric '+cls);
@@ -480,7 +483,9 @@ function metric(label,value,cls=''){
 }
 function stats(summary,interactive=false){
   const flow=(label,value,type)=>interactive?rowButton(label,'',money(value),()=>drill('','',false,type)):metric(label,money(value));
-  return [flow('Поступило',summary.income,'income'),flow('Потрачено',summary.expense,'expense'),
+  return [flow('Поступило в бюджет',summary.income,'income'),
+    ...(summary.fop?[flow('В том числе с ФОП',summary.fop,'fop')]:[]),
+    flow('Потрачено',summary.expense,'expense'),
     metric('Разница за период',signed(summary.difference),'total'),metric('Средний расход за день',money(summary.average))];
 }
 function categoryName(id){return state.categories[id]||state.categories.unknown;}
@@ -512,15 +517,17 @@ function group(rows,getKey){
 function matchesHistory(row){
   const category=$('history-category').value, type=$('history-type').value, search=normalize($('search').value);
   const strings=[row.merchant,row.original,row.note,categoryName(row.category),money(row.amount),inputMoney(row.amount)];
-  return (!type||row.type===type)&&(!category||row.type==='expense'&&row.category===category)&&
+  const matchesType=type==='fop'?row.type==='income'&&row.fopFunding:!type||row.type===type;
+  return matchesType&&(!category||row.type==='expense'&&row.category===category)&&
     (!$('history-lila').checked||row.type==='expense'&&row.lila)&&
     (!historyMerchant||normalize(row.merchant)===(historyMerchant===':empty:'?'':historyMerchant))&&
     (!search||strings.some(value=>normalize(value).includes(search))||
       (financeExcel.number(search)!==null&&Math.abs(financeExcel.number(search))===row.amount));
 }
+const operationTypeLabel=row=>row.type==='income'&&row.fopFunding?'Пополнение с ФОП':labels[row.type];
 function operationRow(row){
   const amount=row.type==='internal'?money(row.amount):signed(row.type==='expense'?-row.amount:row.amount);
-  const sub=[row.type==='expense'?categoryName(row.category):labels[row.type],row.type==='expense'&&row.lila?'Лила':'',
+  const sub=[row.type==='expense'?categoryName(row.category):operationTypeLabel(row),row.type==='expense'&&row.lila?'Лила':'',
     row.cardTail?'Карта •'+row.cardTail:methods[row.method]].filter(Boolean).join(' · ');
   return rowButton(row.merchant||labels[row.type],sub,amount,()=>{
     if(row.feeSource){
@@ -541,6 +548,14 @@ function renderHistory(){
     display.push(operationRow(row));
   }
   if(rows.length>historyLimit)display.push(button('Показать ещё',()=>{historyLimit+=100;renderHistory();}));
+  if(!rows.length&&['rent','utility'].includes($('history-category').value)&&
+    ![...housingRules(state.obligations).values()].some(rule=>rule.utility&&rule.rents.size)){
+    display.push(empty('Чтобы распределять переводы арендодателю, загрузи личные шаблоны обязательств или укажи одного получателя в аренде и коммуналке.'));
+    display.push(button('Открыть обязательные платежи',()=>{
+      $('obligations').open=true;
+      $('bill-presets').scrollIntoView({block:'center'});
+    }));
+  }
   $('history-list').replaceChildren(...(display.length?display:[empty('Операций по этим фильтрам нет.')]));
 
 }
@@ -559,7 +574,8 @@ function render(){
   if(!state)return;
   const current=monthRange(isoMonth(today())), now=totals(operations(current,false,false),current);
   $('home-month').textContent=current.label;
-  $('home-summary').replaceChildren(metric('Поступило',money(now.income)),metric('Потрачено',money(now.expense)),
+  $('home-summary').replaceChildren(metric('Поступило в бюджет',money(now.income)),
+    ...(now.fop?[metric('В том числе с ФОП',money(now.fop))]:[]),metric('Потрачено',money(now.expense)),
     metric('Разница за месяц',signed(now.difference),'total'));
   if(view==='budget'){
     $('period-button').textContent=range.label+' ⌄';
@@ -792,30 +808,53 @@ function merchantInfo(original,merchant,bankCategory){
   const category=descriptionCategories.find(([pattern])=>pattern.test(text))?.[1];
   return {name:known?.[1]||name,category:known?.[2]||category||bankCategories[normalize(bankCategory)]||'unknown'};
 }
+function fopTransfer(original){
+  const text=normalize(original);
+  return /(?:^|[^\p{L}])(?:фоп|fop)(?=$|[^\p{L}])/u.test(text)&&
+    /переказ власних кошт[іi]в|переказ частини власного прибутку|perekaz chastyny vlasnoho prybutku/.test(text);
+}
 function ownTransfer(original){
   return /скарбнич|копилк|між власними|між своїми|между своими|между собственными|обмін валют|обмен валют|з[іi] сво[єе][їіi] картки|на свою картку|переказ власних кошт[іi]в|\bfop\b.*perekaz chastyny vlasnoho prybutku|^(?:термінал самообслуговування|решта в терміналі):/.test(normalize(original));
 }
+const payeeKey=name=>normalize(name).replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+function housingRules(obligations){
+  const rules=new Map();
+  for(const bill of obligations){
+    const payee=payeeKey(bill.merchant);
+    if(!payee||!['rent','utility'].includes(bill.category))continue;
+    const rule=rules.get(payee)||{rents:new Set(),utility:false};
+    if(bill.category==='rent'&&bill.amount>0)rule.rents.add(bill.amount);
+    if(bill.category==='utility')rule.utility=true;
+    rules.set(payee,rule);
+  }
+  return rules;
+}
 function updateImported(data){
+  const housing=housingRules(data.obligations);
   for(const row of data.operations){
     if(!row.importKey||row.pending)continue;
-    if(!row.manualType&&!row.manualCategory&&!row.obligation&&ownTransfer(row.original)){
-      if(row.type!=='internal')row.bankDirection=row.type;
-      row.type='internal';
+    if(!row.manualType&&!row.obligation){
+      if(row.type!=='expense'&&fopTransfer(row.original)){
+        row.type='income';
+        row.fopFunding=true;
+      }else if(!row.manualCategory&&ownTransfer(row.original)){
+        if(row.type!=='internal')row.bankDirection=row.type;
+        row.type='internal';
+      }
     }
     if(row.type!=='expense'||row.manualCategory)continue;
     if(!row.category||row.category==='unknown'||row.autoCategory===row.category){
-      const related=data.obligations.filter(bill=>bill.merchant&&normalize(bill.merchant)===normalize(row.merchant));
-      const fixed=related.find(bill=>bill.category==='rent'&&bill.amount===row.amount);
-      const utility=related.find(bill=>bill.category==='utility');
       const category=merchantInfo(row.original,row.merchant,row.bankCategory).category;
-      if(fixed)row.category='rent';
-      else if(utility&&related.some(bill=>bill.category==='rent'&&bill.amount>0))row.category='utility';
-      else if(category!=='unknown')row.category=category;
-      else row.category=normalize(row.original)==='на картку'?'transfers':'other';
+      row.category=category!=='unknown'?category:normalize(row.original)==='на картку'?'transfers':'other';
+      row.autoCategory=row.category;
+    }
+    applyRule(row,data.rules);
+    const matched=housing.get(payeeKey(row.merchant))||housing.get(payeeKey(row.original));
+    if(matched?.rents.size&&(matched.utility||matched.rents.has(row.amount))){
+      row.category=matched.rents.has(row.amount)?'rent':'utility';
       row.autoCategory=row.category;
     }
     if(!data.categories[row.category]&&baseCategories[row.category])data.categories[row.category]=baseCategories[row.category];
-    applyRule(row,data.rules);
   }
   return data;
 }
@@ -940,6 +979,7 @@ function importSheet(){
 function classifyBank(row){
   const text=normalize(row.original);
   if(row.amount<0&&/^(?:комісія|комиссия|bank fee)(?:\s|$)/.test(text))return {type:'expense',category:'bank'};
+  if(row.amount>0&&fopTransfer(row.original))return {type:'income',fopFunding:true};
   if(ownTransfer(row.original))return {type:'internal',bankDirection:row.amount<0?'expense':'income'};
   const type=row.amount<0?'expense':'income';
   if(/крипт|crypto|зняття готівки|снятие налич|поповнення готівкою|внесення готівки|пополнение налич|переказ|перевод/.test(text)){
@@ -1369,7 +1409,7 @@ function download(blob,name){
 }
 const exportHeaders=['Дата','Тип','Сумма, грн','Категория','Магазин или получатель','Способ оплаты','Комментарий','Лила','Описание из банка'];
 function exportValues(row){
-  return [row.date,labels[row.type],row.amount/100,categoryName(row.category),row.merchant,methods[row.method],row.note,row.lila?'Да':'',row.original];
+  return [row.date,operationTypeLabel(row),row.amount/100,categoryName(row.category),row.merchant,methods[row.method],row.note,row.lila?'Да':'',row.original];
 }
 function reportTitle(){return 'Личный бюджет · '+range.start+' — '+range.end;}
 async function exportExcel(){
@@ -1377,7 +1417,7 @@ async function exportExcel(){
   try{
     const file=await financeExcel.write([
       {name:'Операции',rows:[exportHeaders,...rows.map(exportValues)]},
-      {name:'Сводка',rows:[[reportTitle()],['Поступило, грн',result.income/100],['Потрачено, грн',result.expense/100],
+      {name:'Сводка',rows:[[reportTitle()],['Поступило в бюджет, грн',result.income/100],['В том числе с ФОП, грн',result.fop/100],['Потрачено, грн',result.expense/100],
         ['Разница, грн',result.difference/100],['Средний расход, грн',result.average/100],
         [],['Категория','Расход, грн'],...group(rows,row=>row.category).map(([id,value])=>[categoryName(id),value.amount/100])]}
     ]);
@@ -1398,7 +1438,7 @@ function printBudget(){
     line.append(...values.map(value=>n(tag,String(value??''))));parent.append(line);
   };
   addRow(header,'th',['Дата','Тип','Сумма','Получатель и детали']);
-  for(const row of rows)addRow(body,'td',[row.date,labels[row.type],money(row.amount),
+  for(const row of rows)addRow(body,'td',[row.date,operationTypeLabel(row),money(row.amount),
     [row.merchant,categoryName(row.category),methods[row.method],row.lila?'Лила':'',row.note,row.original].filter(Boolean).join(' · ')]);
   table.append(header,body);
   report.append(n('h2','Операции'),table);

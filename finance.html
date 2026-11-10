@@ -30,7 +30,7 @@
 <link rel="stylesheet" href="finance.css?v=20261110-3">
 <script defer src="jszip.min.js"></script>
 <script defer src="finance-xlsx.js?v=20261110-3"></script>
-<script defer src="finance.js?v=20261110-6"></script>
+<script defer src="finance.js?v=20261110-7"></script>
 </head>
 <body>
 <main>
@@ -74,7 +74,7 @@
     <details class="card" id="history">
       <summary>История операций<small id="history-summary"></small></summary>
       <label class="search">Поиск<input type="search" id="search" placeholder="Получатель, сумма, комментарий"></label>
-      <div class="grid"><label>Категория<select id="history-category"></select></label><label>Тип<select id="history-type"><option value="">Все операции</option><option value="income">Поступления</option><option value="expense">Расходы</option><option value="internal">Перемещения</option></select></label><label class="check"><input type="checkbox" id="history-lila">Лила</label></div>
+      <div class="grid"><label>Категория<select id="history-category"></select></label><label>Тип<select id="history-type"><option value="">Все операции</option><option value="income">Поступления</option><option value="fop">Пополнения с ФОП</option><option value="expense">Расходы</option><option value="internal">Перемещения</option></select></label><label class="check"><input type="checkbox" id="history-lila">Лила</label></div>
       <p class="muted" id="history-merchant" hidden></p>
       <div id="history-list"></div>
     </details>
