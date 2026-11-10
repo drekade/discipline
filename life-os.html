@@ -321,9 +321,9 @@ body.show-extra .nb-extra{display:flex}
 :is(#page-life-cal,#page-all-cal) #events-list { margin-top:8px; }
 :is(#page-life-cal,#page-all-cal) .life-sync { font-size:12px; margin:0 0 9px; color:#77503c; }
 :is(#page-life-cal,#page-all-cal) :focus-visible { outline:2px solid #65407b; outline-offset:2px; }
-body:has(#page-life-cal.active,#page-all-cal.active,#page-projects.active,#page-project.active){background:#fbf1e3}
-body:has(#page-life-cal.active,#page-all-cal.active,#page-projects.active,#page-project.active) :is(.sidebar,.mob-header,.mob-fab){display:none!important}
-body:has(#page-life-cal.active,#page-all-cal.active,#page-projects.active,#page-project.active) .main{margin:0 auto;width:100%;min-width:0}
+body:has(#page-life-cal.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active){background:#fbf1e3}
+body:has(#page-life-cal.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active) :is(.sidebar,.mob-header,.mob-fab){display:none!important}
+body:has(#page-life-cal.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active) .main{margin:0 auto;width:100%;min-width:0}
 :is(#page-life-cal,#page-all-cal,#page-projects){margin-inline:auto;padding:24px 14px 36px}
 @media(max-width:768px){
   :is(#page-life-cal,#page-all-cal,#page-projects){padding:8px 14px 24px}
@@ -394,8 +394,8 @@ body:has(#page-home.active) .main{margin:0 auto;width:100%;min-width:0}
 #page-home :focus-visible{outline:2px solid #6c4782;outline-offset:2px}
 </style>
 <style>
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active){background:#fbf1e3}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .main{min-width:0}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active){background:#fbf1e3}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active) .main{min-width:0}
 :is(#page-shoots-cal,#page-report){--work-ink:#241e19;--work-cream:#fff9ee;--work-blue:#d2e3ec;--work-lilac:#e4d5ef;color:var(--work-ink);max-width:820px}
 .work-nav{display:flex;justify-content:space-between;gap:10px;margin-bottom:15px}
 .work-nav button,.work-today{background:none;border:0;color:#4c355e;font:700 13px var(--ff);min-height:34px;padding:4px 0;cursor:pointer;text-align:left}
@@ -443,18 +443,18 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 #page-report .report-period input{display:block;width:100%;min-width:0;min-height:38px;margin-top:3px;background:var(--work-cream);color:var(--work-ink)}
 #page-report :is(#rp-summary,#rp-blocks,#rp-advances,#advance-list){overflow-wrap:anywhere}
 :is(#page-shoots-cal,#page-report) :focus-visible{outline:2px solid #704d83;outline-offset:2px}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal{background:#fff9ee;border:1.6px solid #241e19;padding:0 16px 16px;max-height:calc(100dvh - 26px);overscroll-behavior:contain}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal-head{position:sticky;top:0;z-index:2;background:#fff9ee;padding:13px 0 9px;border-bottom:1px solid #dfd1bc;margin-bottom:13px;gap:10px}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal-title{font:700 22px Georgia,serif}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal-close{flex-shrink:0;background:#e4d5ef;color:#241e19}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal .form-row{min-width:0}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal input[type="number"]{display:block;width:100%;min-height:38px;border:1px solid #dbceb8;border-radius:9px;padding:7px 9px;color:#241e19;font:inherit}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal div:has(> .form-row + .form-row) > .form-row:not([hidden]){display:flex;flex-direction:column}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal div:has(> .form-row + .form-row) > .form-row > :is(input,select){margin-top:auto}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal :is(input,select,textarea){min-width:0;max-width:100%;background:#fffcf6}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal .btn-primary{background:#d2e3ec;color:#241e19;border:1px solid #241e19}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active) .modal{background:#fff9ee;border:1.6px solid #241e19;padding:0 16px 16px;max-height:calc(100dvh - 26px);overscroll-behavior:contain}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active) .modal-head{position:sticky;top:0;z-index:2;background:#fff9ee;padding:13px 0 9px;border-bottom:1px solid #dfd1bc;margin-bottom:13px;gap:10px}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active) .modal-title{font:700 22px Georgia,serif}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active) .modal-close{flex-shrink:0;background:#e4d5ef;color:#241e19}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active) .modal .form-row{min-width:0}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active) .modal input[type="number"]{display:block;width:100%;min-height:38px;border:1px solid #dbceb8;border-radius:9px;padding:7px 9px;color:#241e19;font:inherit}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active) .modal div:has(> .form-row + .form-row) > .form-row:not([hidden]){display:flex;flex-direction:column}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active) .modal div:has(> .form-row + .form-row) > .form-row > :is(input,select){margin-top:auto}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active) .modal :is(input,select,textarea){min-width:0;max-width:100%;background:#fffcf6}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active) .modal .btn-primary{background:#d2e3ec;color:#241e19;border:1px solid #241e19}
 @media(max-width:768px){
-  body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) :is(.mob-header,.mob-fab){display:none!important}
+  body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-work-projects.active,#page-project.active) :is(.mob-header,.mob-fab){display:none!important}
   :is(#page-shoots-cal,#page-report){padding:8px 14px 24px}
 }
 @media(max-width:350px){
@@ -524,7 +524,10 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 .project-month-row{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid var(--b);font-size:13px}
 .project-month-row span{overflow-wrap:anywhere}
 #work-project-filter{width:auto;max-width:100%;padding:6px 8px;font-size:12px}
-#work-project-title{scroll-margin-top:12px}
+#page-work-projects{width:100%;max-width:820px;min-width:0}
+.work-projects-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:#e5ecdf;border-color:#a6b29a}
+.work-projects-filter{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;font-size:13px;font-weight:600}
+@media(max-width:700px){#page-work-projects{padding:8px 12px 24px}}
 #work-projects-list{display:grid;gap:7px}
 .work-project-row{background:#fbf2e1;border:1px solid #c9b79d;border-radius:11px}
 .work-project-row > summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;padding:10px 12px}
@@ -551,6 +554,13 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 .personal-project-highlight small{font-size:10px;font-weight:700;color:#6a5141}
 .personal-project-highlight strong{font-size:14px;line-height:1.2}
 .personal-project-highlight span{font-size:12px;color:#51463b}
+#page-projects .personal-achievements{margin:12px 0;background:#edf0e1;border-color:#aab49a}
+.personal-achievements > summary{font:700 19px/1.2 Georgia,serif}
+.personal-achievements > summary small{font:600 12px var(--ff);margin-left:8px;color:#53624b}
+#achievement-picker{align-items:center}
+#achievement-project{width:auto;max-width:100%}
+.personal-achievement-row{display:block;width:100%;padding:8px 0;border:0;border-top:1px solid #c7cdbb;background:none;text-align:left;color:var(--ink);font:inherit;cursor:pointer;overflow-wrap:anywhere}
+.personal-achievement-row small{display:block;margin-top:3px;color:#5f5a4f}
 #page-shoots-cal .work-head{align-items:center;margin-bottom:12px}
 #page-shoots-cal .work-quick-add{gap:6px;align-items:center;padding:8px;background:#f2e6d3;border:1px solid #d8c8af;border-radius:12px}
 #page-shoots-cal .work-quick-add .work-project-jump{margin-left:auto;background:#fff9ee}
@@ -747,7 +757,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       <button class="nb nb-extra" onclick="showPage('all-cal',this)"><span class="icon">🗓️</span>Общий</button>
       <button class="nb" onclick="showPage('shoots-cal',this)"><span class="icon">📅</span>Работа</button>
       <button class="nb" onclick="showPage('life-cal',this)"><span class="icon">🏡</span>Жизнь</button>
-      <button class="nb" onclick="showPage('projects',this)"><span class="icon">🎬</span>Проекты</button>
+      <button class="nb" onclick="showPage('projects',this)"><span class="icon">🎬</span>Мои проекты</button>
       <button class="nb nb-extra" onclick="showPage('ideas',this)"><span class="icon">💡</span>Идеи</button>
       <button class="nb nb-extra" onclick="showPage('scripts',this)"><span class="icon">📜</span>Сценарии</button>
       <button class="nb nb-extra" onclick="showPage('diary',this)"><span class="icon">📓</span>Дневник</button>
@@ -774,7 +784,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       <button class="mob-nb nb-extra" onclick="showPage('all-cal',this,true)">🗓️ Общий</button>
       <button class="mob-nb" onclick="showPage('shoots-cal',this,true)">📅 Работа</button>
       <button class="mob-nb" onclick="showPage('life-cal',this,true)">🏡 Жизнь</button>
-      <button class="mob-nb" onclick="showPage('projects',this,true)">🎬 Проекты</button>
+      <button class="mob-nb" onclick="showPage('projects',this,true)">🎬 Мои проекты</button>
       <button class="mob-nb nb-extra" onclick="showPage('ideas',this,true)">💡 Идеи</button>
       <button class="mob-nb nb-extra" onclick="showPage('scripts',this,true)">📜 Сценарии</button>
       <button class="mob-nb nb-extra" onclick="showPage('diary',this,true)">📓 Дневник</button>
@@ -959,7 +969,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
         <button class="btn-ghost work-add-task" type="button" onclick="openWorkTask('задача')">+ Задача</button>
         <button class="btn-ghost" type="button" onclick="openWorkTask('дизайн')">+ Дизайн</button>
         <button class="btn-ghost" type="button" onclick="openProjectForm('work')">+ Проект</button>
-        <button class="btn-ghost work-project-jump" type="button" onclick="openWorkProjects()">К проектам ↓</button>
+        <button class="btn-ghost work-project-jump" type="button" onclick="openWorkProjects()">Рабочие проекты</button>
       </div>
       <p class="work-sync" id="work-sync" role="status" hidden></p>
       <div class="work-overview">
@@ -1005,16 +1015,6 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
           <h2 class="sec-title" id="standalone-title">Задачи и дизайн</h2>
         </div>
         <div id="standalone-tasks"></div>
-      </section>
-      <section class="work-tasks-panel" aria-labelledby="work-project-title">
-        <div class="sec-row work-list-head">
-          <h2 class="sec-title" id="work-project-title">Рабочие проекты</h2>
-          <select id="work-project-filter" aria-label="Тип рабочих проектов" onchange="renderProjects()">
-            <option value="">Все проекты</option><option value="ad">Реклама</option><option value="course">Курсы</option><option value="design">Дизайн</option><option value="other">Другое</option>
-          </select>
-          <button class="btn-ghost" type="button" onclick="openProjectForm('work')">+ Проект</button>
-        </div>
-        <div id="work-projects-list"></div>
       </section>
       <div class="sec-row work-list-head">
         <h2 class="sec-title">Все съёмки</h2>
@@ -1063,11 +1063,40 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
         <button class="btn-primary" type="button" onclick="openProjectForm('personal')">+ Проект</button>
       </header>
       <p class="work-sync" id="projects-sync" role="status" hidden></p>
+      <details class="project-section personal-achievements" id="personal-achievements">
+        <summary><span>Что сделано</span><small id="personal-achievement-count"></small></summary>
+        <p class="project-empty">Можно записать результат, даже если задачи для него раньше не было.</p>
+        <form id="achievement-picker" class="project-card-actions" onsubmit="event.preventDefault();openAchievementProject()">
+          <select id="achievement-project" aria-label="В каком проекте сделано"></select>
+          <button class="btn-ghost" type="submit">+ Записать сделанное</button>
+        </form>
+        <div id="personal-achievement-list"></div>
+      </details>
       <section aria-labelledby="project-list-title">
         <div class="sec-row projects-row"><h2 class="sec-title" id="project-list-title">Проекты</h2></div>
         <div class="proj-grid" id="projects-list"></div>
       </section>
     </div>
+
+    <section class="page" id="page-work-projects" aria-labelledby="work-project-title">
+      <nav class="work-nav" aria-label="Навигация рабочих проектов">
+        <button type="button" onclick="returnToWork()">← Работа</button>
+      </nav>
+      <header class="project-page-header work-projects-header">
+        <div><span class="project-page-label">Работа</span><h1 id="work-project-title">Рабочие проекты</h1></div>
+        <button class="btn-ghost" type="button" onclick="openProjectForm('work')">+ Проект</button>
+      </header>
+      <p class="work-sync" id="work-projects-sync" role="status" hidden></p>
+      <section class="work-tasks-panel" aria-label="Список рабочих проектов">
+        <div class="work-projects-filter">
+          <label for="work-project-filter">Тип проекта</label>
+          <select id="work-project-filter" aria-label="Тип рабочих проектов" onchange="renderProjects()">
+            <option value="">Все проекты</option><option value="ad">Реклама</option><option value="course">Курсы</option><option value="design">Дизайн</option><option value="other">Другое</option>
+          </select>
+        </div>
+        <div id="work-projects-list"></div>
+      </section>
+    </section>
 
     <section class="page" id="page-project" aria-labelledby="pc-heading">
       <nav class="work-nav" aria-label="Навигация проекта">
@@ -1965,7 +1994,7 @@ function setSyncOk(ok,message=''){
     document.getElementById('pc-route-retry').hidden=false;
   }
   if(!ok && !homeMeeting) document.getElementById('jl-meeting-text').textContent='Не удалось обновить события';
-  for(const id of ['work-sync','report-sync','projects-sync','overview-sync']){
+  for(const id of ['work-sync','work-projects-sync','report-sync','projects-sync','overview-sync']){
     const indicator=document.getElementById(id);
     indicator.hidden=ok;
     indicator.textContent=ok?'':'Не удалось обновить данные';
@@ -2357,6 +2386,7 @@ function workTasks(){return DB.tasks.filter(task=>!isPersonalTask(task));}
 let personalProjectPreviews=new Map();
 let personalPreviewOwner=null;
 let personalPreviewRequest=0;
+let pendingAchievementProject=0;
 async function loadPersonalProjectPreviews(){
   const owner=session?.user?.id;
   const request=++personalPreviewRequest;
@@ -2387,7 +2417,12 @@ function summarizePersonalProject(items=[]){
     publication:publication?.title,publicationDate:publication?.date,
     publications:items.some(item=>item.kind==='settings'&&item.publications),
     plans:items.filter(item=>item.kind==='plan'&&!item.done).length,
-    ideas:items.filter(item=>item.kind==='idea').length
+    ideas:items.filter(item=>item.kind==='idea').length,
+    history:items.filter(item=>item.kind==='achievement'||item.kind==='goal'&&item.done||item.kind==='publication'&&item.status==='published')
+      .map(item=>({
+        title:item.title,date:item.kind==='goal'?item.doneDate:item.publishedDate||item.date,
+        label:item.kind==='goal'?'Цель достигнута':item.kind==='publication'?'Опубликовано':'Запись'
+      }))
   };
 }
 function renderPersonalProjectPreview(project){
@@ -2406,8 +2441,37 @@ function renderPersonalProjectPreview(project){
   return `${project.description?.trim()?`<p class="personal-project-description">${avEscape(project.description.trim())}</p>`:''}
     ${goal}${publications}${counts.length?`<p class="proj-meta">${counts.join(' · ')}</p>`:''}`;
 }
+function renderPersonalAchievements(projects){
+  const picker=document.getElementById('achievement-picker');
+  const select=document.getElementById('achievement-project');
+  const selected=select.value;
+  picker.hidden=!projects.length;
+  select.replaceChildren(...projects.map(project=>new Option(project.name||'Без названия',project.id)));
+  if(projects.some(project=>String(project.id)===selected))select.value=selected;
+  const owner=session?.user?.id;
+  const entries=projects.flatMap(project=>{
+    const tasks=DB.tasks.filter(task=>task.project_id===project.id&&task.status==='готово')
+      .map(task=>({title:task.title,date:task.done_date||task.date,label:'Задача выполнена'}));
+    const history=owner&&personalPreviewOwner===owner?personalProjectPreviews.get(project.id)?.history||[]:[];
+    return [...tasks,...history].map(entry=>({...entry,project}));
+  }).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  document.getElementById('personal-achievement-count').textContent=entries.length?'· '+entries.length:'';
+  document.getElementById('personal-achievement-list').innerHTML=entries.map(({title,date,label,project})=>`
+    <button class="personal-achievement-row" type="button" onclick="openProjCard(${project.id})">
+      <strong>${avEscape(title||'Без названия')}</strong>
+      <small>${[date?fmtShort(date):'',project.name,label].filter(Boolean).map(avEscape).join(' · ')}</small>
+    </button>`).join('')||'<p class="project-empty">Здесь будут появляться результаты по личным проектам.</p>';
+}
+function openAchievementProject(){
+  const id=Number(document.getElementById('achievement-project').value);
+  if(!id)return;
+  pendingAchievementProject=id;
+  openProjCard(id);
+}
 function renderProjects(){
-  renderProjectList('projects-list',DB.projects.filter(isPersonalProject),'Личных проектов пока нет');
+  const personal=DB.projects.filter(isPersonalProject);
+  renderProjectList('projects-list',personal,'Личных проектов пока нет');
+  renderPersonalAchievements(personal);
   const kind=document.getElementById('work-project-filter').value;
   renderProjectList('work-projects-list',workProjects().filter(project=>!kind||workProjectKind(project)===kind),'Рабочих проектов в этом списке пока нет');
 }
@@ -2692,6 +2756,7 @@ const courseStageTemplate=[
 ];
 const workspaceSections=[
   ['goal','Цели','Цель'],
+  ['achievement','Что сделано','Запись'],
   ['idea','Идеи','Идея'],
   ['plan','План','Пункт плана'],
   ['stage','Этапы производства','Этап'],
@@ -2745,6 +2810,15 @@ async function loadProjectWorkspace(){
     projectWorkspace={projectId,owner,revision:row?.revision??null,items:row?.items||[]};
     renderProjectWorkspace();
     projectWorkspaceStatus();
+    if(pendingAchievementProject===projectId&&linkedProjectId()===projectId){
+      pendingAchievementProject=0;
+      const section=document.querySelector('#pc-board [data-kind="achievement"]');
+      if(section){
+        section.open=true;
+        editProjectEntry(section,'achievement');
+        section.scrollIntoView({block:'nearest'});
+      }
+    }
   }catch{
     if(request===workspaceRequest)projectWorkspaceStatus('Не удалось загрузить идеи и план.',true);
   }
@@ -2760,7 +2834,7 @@ function renderProjectWorkspace(openSection){
   const publications=items.find(item=>item.kind==='settings')?.publications;
   const sections=workspaceSections.filter(([kind])=>
     (kind!=='stage'||hasProjectStages(project))&&(kind!=='payment'||!isPersonalProject(project))&&
-    (kind!=='publication'||publications));
+    (kind!=='publication'||publications)&&(kind!=='achievement'||isPersonalProject(project)));
   const customSections=items.filter(item=>item.kind==='custom_section');
   sections.push(...customSections.map(section=>['custom-'+section.id,section.title,'Запись',section]));
   const sectionSettings=`<details class="project-section" data-kind="settings" ${opened.has('settings')?'open':''}>
@@ -2773,6 +2847,7 @@ function renderProjectWorkspace(openSection){
   </details>`;
   board.innerHTML=sections.map(([kind,label,singular,custom])=>{
     const entries=items.filter(item=>custom?item.kind==='custom_item'&&item.sectionId===custom.id:item.kind===kind);
+    if(kind==='achievement')entries.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     if(kind==='publication')entries.sort((a,b)=>(a.status==='published')-(b.status==='published')||
       (a.date||'9999').localeCompare(b.date||'9999'));
     const count=kind==='payment'?'':' · '+entries.length;
@@ -2851,8 +2926,8 @@ function editProjectEntry(section,kind,item={},goal){
       <input name="amount" id="workspace-amount-${kind}" type="number" min="0.01" step="0.01" value="${avEscape(item.amount??'')}" required></div>`
       :`<div class="form-row"><label class="field-label" for="${inputId}">${kind==='goal_step'?'Что нужно сделать?':'Название'}</label>
       <input name="title" id="${inputId}" value="${avEscape(item.title||'')}" required></div>`}
-    ${kind==='payment'||kind==='publication'?`<div class="form-row"><label class="field-label" for="workspace-date-${kind}">${kind==='publication'?'Дата публикации':'Дата поступления'}</label>
-      <input name="date" id="workspace-date-${kind}" type="date" value="${avEscape(item.date||'')}"></div>`:''}
+    ${['payment','publication','achievement'].includes(kind)?`<div class="form-row"><label class="field-label" for="workspace-date-${kind}">${kind==='publication'?'Дата публикации':kind==='achievement'?'Когда сделано':'Дата поступления'}</label>
+      <input name="date" id="workspace-date-${kind}" type="date" value="${avEscape(item.date||(kind==='achievement'?dailyDate():''))}"></div>`:''}
     ${kind==='publication'?`<div class="form-row"><label class="field-label" for="workspace-format">Формат</label>
       <select id="workspace-format" name="format"><option value="post">Пост</option><option value="video" ${item.format==='video'?'selected':''}>Видео</option></select></div>
       <div class="form-row"><label class="field-label" for="workspace-status">Статус</label>
@@ -2882,7 +2957,7 @@ function editProjectEntry(section,kind,item={},goal){
     if(kind==='custom_section')entry.mode=values.get('mode');
     else if(kind!=='budget')entry.note=(values.get('note')||'').trim();
     if(kind==='custom_item')entry.sectionId=section.dataset.custom;
-    if(kind==='payment'||kind==='publication')entry.date=values.get('date')||null;
+    if(['payment','publication','achievement'].includes(kind))entry.date=values.get('date')||null;
     if(kind==='publication'){
       entry.format=values.get('format');
       entry.status=values.get('status');
@@ -2956,7 +3031,7 @@ document.getElementById('pc-board').addEventListener('click',event=>{
   if(action==='advance-publication'){
     const status=entry.status==='ready'?'published':'ready';
     const date=entry.date||(status==='published'?dailyDate():null);
-    void saveProjectWorkspace(items.map(item=>item.id===entry.id?{...item,status,date}:item),kind);
+    void saveProjectWorkspace(items.map(item=>item.id===entry.id?{...item,status,date,...(status==='published'?{publishedDate:dailyDate()}:{})}:item),kind);
     return;
   }
   if(action==='delete'){
@@ -2988,7 +3063,8 @@ document.getElementById('pc-board').addEventListener('change',event=>{
   const checked=box.checked;
   box.checked=!checked;
   const id=box.closest('[data-item]').dataset.item;
-  const items=projectWorkspace.items.map(item=>item.id===id?{...item,done:checked}:item);
+  const items=projectWorkspace.items.map(item=>item.id===id
+    ?{...item,done:checked,...(item.kind==='goal'?{doneDate:checked?dailyDate():null}:{})}:item);
   void saveProjectWorkspace(items,box.closest('[data-kind]').dataset.kind);
 });
 
@@ -2998,7 +3074,7 @@ function linkedProjectId(){
 }
 function returnFromProject(useHistory=true){
   const project=DB.projects.find(p=>p.id===Number(document.getElementById('pc-id').value));
-  const fallback=project&&!isPersonalProject(project)?'shoots-cal':'projects';
+  const fallback=project&&!isPersonalProject(project)?'work-projects':'projects';
   const previous=history.state?.projectReturn;
   if(useHistory&&previous){history.back();return;}
   goToPage(previous||fallback);
@@ -3040,7 +3116,7 @@ function showLinkedProject(id){
   document.getElementById('pc-section-label').textContent=personal?'Мои проекты':'Работа · '+projectKinds[workProjectKind(p)];
   const source=history.state?.projectReturn;
   document.getElementById('pc-back').textContent=source==='report'?'← К отчёту':
-    source==='home'?'← Главная':personal?'← Мои проекты':'← Работа';
+    source==='home'?'← Главная':source==='shoots-cal'?'← Работа':personal?'← Мои проекты':'← Рабочие проекты';
   document.getElementById('pc-heading').textContent=p.name||'Без названия';
   document.getElementById('pc-description').textContent=p.description||'';
   for(const id of ['pc-settings','pc-task-list','pc-task-archive'])document.getElementById(id).open=false;
@@ -3558,8 +3634,16 @@ async function loadWorkMonth(){
 }
 
 function openWorkProjects(){
-  goToPage('shoots-cal');
-  document.getElementById('work-project-title').scrollIntoView({block:'start'});
+  const fromWork=document.getElementById('page-shoots-cal').classList.contains('active');
+  if(fromWork&&location.hash!=='#work-projects'){
+    if(location.hash!=='#shoots-cal')history.replaceState(null,'','#shoots-cal');
+    history.pushState({workProjectsFrom:'shoots-cal'},'','#work-projects');
+  }
+  goToPage('work-projects');
+}
+function returnToWork(){
+  if(history.state?.workProjectsFrom==='shoots-cal')history.back();
+  else goToPage('shoots-cal');
 }
 let projectFormScope='personal';
 function openProjectForm(scope){
@@ -3588,13 +3672,10 @@ async function saveProject(){
     for(const id of ['pr-name','pr-desc','pr-link'])document.getElementById(id).value='';
     hideModal('modal-project');
     if(scope==='work')document.getElementById('work-project-filter').value='';
-    goToPage(scope==='work'?'shoots-cal':'projects');
+    const pageId=scope==='work'?'work-projects':'projects';
+    goToPage(pageId);
     await load();
-    const page=document.getElementById(scope==='work'?'page-shoots-cal':'page-projects');
-    if(page.classList.contains('active')){
-      if(scope==='work')openWorkProjects();
-      if(created)openProjCard(created.id);
-    }
+    if(created&&document.getElementById('page-'+pageId).classList.contains('active'))openProjCard(created.id);
   }catch{alert('Не удалось сохранить проект. Проверь подключение.');}
   finally{button.disabled=false;}
 }
@@ -5553,10 +5634,15 @@ function showPage(id,btn,isMob){
     document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
   }
   if(btn)btn.classList.add('active');
-  if(id!=='project'&&location.hash&&location.hash!=='#'+id)history.replaceState(null,'','#'+id);
+  else if(id==='work-projects'){
+    document.querySelectorAll('.nb,.mob-nb').forEach(link=>{
+      link.classList.toggle('active',link.getAttribute('onclick')?.startsWith("showPage('shoots-cal',")||false);
+    });
+  }
+  if(id!=='project'&&(location.hash||id==='work-projects')&&location.hash!=='#'+id)history.replaceState(null,'','#'+id);
   if(id==='ritual')renderRitualRoom();
   if(id==='projects'&&previous!=='page-projects')void loadPersonalProjectPreviews();
-  const workPages=['page-shoots-cal','page-report','page-life-cal','page-all-cal','page-projects','page-project','page-overview','page-ritual'];
+  const workPages=['page-shoots-cal','page-report','page-life-cal','page-all-cal','page-projects','page-work-projects','page-project','page-overview','page-ritual'];
   if(previous!=='page-'+id&&(workPages.includes(previous)||workPages.includes('page-'+id))){
     window.scrollTo(0,0);
   }
@@ -5778,7 +5864,8 @@ function openLinkedPage(){
   if(id==='project'||!document.getElementById('page-'+id)?.classList.contains('page'))return;
   showPage(id);
   document.querySelectorAll('.nb,.mob-nb').forEach(btn=>{
-    btn.classList.toggle('active',btn.getAttribute('onclick')?.startsWith("showPage('"+id+"',")||false);
+    const navId=id==='work-projects'?'shoots-cal':id;
+    btn.classList.toggle('active',btn.getAttribute('onclick')?.startsWith("showPage('"+navId+"',")||false);
   });
 }
 window.addEventListener('hashchange',openLinkedPage);
