@@ -4,10 +4,33 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Финансы · ЖИЗНЬ.exe</title>
-<link rel="stylesheet" href="finance.css?v=20261110-2">
+<meta name="referrer" content="no-referrer">
+<script>
+(() => {
+  let callback;
+  function readFragment(){
+    const fragment=new URLSearchParams(location.hash.slice(1));
+    if(!fragment.has('access_token')&&!fragment.has('error_code'))return;
+    callback={
+      token:fragment.get('type')==='recovery'?fragment.get('access_token'):null,
+      error:fragment.has('error_code')
+    };
+    history.replaceState(null,'',location.pathname+location.search);
+    window.dispatchEvent(new Event('finance-recovery'));
+  }
+  window.takeFinanceRecovery=()=>{
+    const result=callback;
+    callback=null;
+    return result;
+  };
+  readFragment();
+  window.addEventListener('hashchange',readFragment);
+})();
+</script>
+<link rel="stylesheet" href="finance.css?v=20261110-3">
 <script defer src="jszip.min.js"></script>
-<script defer src="finance-xlsx.js?v=20261110-2"></script>
-<script defer src="finance.js?v=20261110-2"></script>
+<script defer src="finance-xlsx.js?v=20261110-3"></script>
+<script defer src="finance.js?v=20261110-4"></script>
 </head>
 <body>
 <main>

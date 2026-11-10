@@ -14,14 +14,42 @@ const financeCloud=(()=>{
     error.code='login';
     return error;
   }
+  function passwordError(status,value){
+    const code=value.error_code||value.code;
+    if(status===429||code==='over_request_rate_limit')return 'Слишком много попыток входа. Попробуй через несколько минут.';
+    switch(code){
+      case 'invalid_credentials':
+        return 'Почта или пароль не подошли. Нужен пользователь, созданный для «ЖИЗНЬ.exe» в Supabase → Authentication → Users.';
+      case 'email_not_confirmed':
+        return 'Почта ещё не подтверждена. Открой письмо с подтверждением аккаунта «ЖИЗНЬ.exe».';
+      case 'user_banned':
+        return 'Вход для этого пользователя заблокирован в настройках приложения.';
+      case 'email_provider_disabled':
+        return 'В проекте Supabase отключён вход по почте.';
+      case 'captcha_failed':
+        return 'В проекте требуется проверка CAPTCHA. Эта форма входа её пока не поддерживает.';
+    }
+    if(status===401||status===403)return 'Сервер отклонил подключение. Проверь настройки входа в проекте Supabase.';
+    if(status===404)return 'Сервис входа Supabase не найден. Проверь, что проект открыт и активен.';
+    if(status>=500)return 'Сервис входа Supabase временно недоступен. Попробуй позже.';
+    return 'Сервис входа отклонил запрос. Проверь настройки входа в проекте Supabase.';
+  }
   async function token(grant,body){
-    const response=await fetch(url+'/auth/v1/token?grant_type='+grant,{
-      method:'POST',headers:{apikey:publicKey,'Content-Type':'application/json'},
-      body:JSON.stringify(body),signal:AbortSignal.timeout(12000)
-    });
-    if(!response.ok)throw authError();
-    const value=await response.json();
-    if(!value.user?.id||!value.access_token)throw authError();
+    let response;
+    try{
+      response=await fetch(url+'/auth/v1/token?grant_type='+grant,{
+        method:'POST',headers:{apikey:publicKey,'Content-Type':'application/json'},
+        body:JSON.stringify(body),signal:AbortSignal.timeout(12000)
+      });
+    }catch{
+      throw new Error('Нет связи с сервисом входа. Проверь интернет и попробуй ещё раз.');
+    }
+    const value=await response.json().catch(()=>null);
+    if(!response.ok){
+      if(grant==='refresh_token'&&(response.status===400||response.status===401))throw authError();
+      throw new Error(passwordError(response.status,value||{}));
+    }
+    if(!value?.user?.id||!value.access_token)throw new Error('Сервис входа не вернул данные аккаунта. Попробуй ещё раз.');
     localStorage.setItem(sessionKey,JSON.stringify(value));
     return value;
   }
@@ -73,7 +101,34 @@ const financeCloud=(()=>{
       throw error;
     }
   }
-  return {session,sessionKey,read,write,login:(email,password)=>token('password',{email,password})};
+  async function recoveryRequest(endpoint,method,body,access){
+    let response;
+    try{
+      response=await fetch(url+'/auth/v1/'+endpoint,{
+        method,headers:{apikey:publicKey,'Content-Type':'application/json',...(access?{Authorization:'Bearer '+access}:{})},
+        body:JSON.stringify(body),signal:AbortSignal.timeout(12000)
+      });
+    }catch{
+      throw new Error('Нет связи с сервисом входа. Попробуй ещё раз.');
+    }
+    if(response.ok)return;
+    const value=await response.json().catch(()=>({}));
+    if(response.status===429)throw new Error('Слишком много попыток. Попробуй через несколько минут.');
+    if(access&&(response.status===401||['bad_jwt','otp_expired','session_not_found','session_expired'].includes(value?.code||value?.error_code))){
+      throw new Error('Ссылка больше не действует. Запроси новое письмо.');
+    }
+    if(access&&(value?.code==='weak_password'||value?.error_code==='weak_password')){
+      throw new Error('Выбери более сложный пароль.');
+    }
+    if(access&&(value?.code==='same_password'||value?.error_code==='same_password')){
+      throw new Error('Новый пароль должен отличаться от прежнего.');
+    }
+    throw new Error(access?'Не удалось изменить пароль. Попробуй ещё раз.':'Не удалось отправить письмо. Попробуй ещё раз.');
+  }
+  return {session,sessionKey,read,write,login:(email,password)=>token('password',{email,password}),
+    recover:(email,redirect)=>recoveryRequest('recover?redirect_to='+encodeURIComponent(redirect),'POST',{email}),
+    setPassword:(access,password)=>recoveryRequest('user','PUT',{password},access)};
+
 })();
 
 const $ = id => document.getElementById(id);
@@ -568,8 +623,59 @@ $('cloud-local').addEventListener('click',async()=>{
   }catch(error){issue(error.message||'Локальная копия недоступна.');}
   finally{unlock.disabled=false;busy=false;}
 });
+function recoveryEmail(email=''){
+  const form=sheetForm('<h2>Восстановить пароль</h2><label>Почта пользователя «ЖИЗНЬ.exe»<input name="email" type="email" autocomplete="username" required></label><p role="status"></p><button class="lilac">Отправить письмо</button>');
+  field(form,'email').value=email;
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const submit=form.querySelector('button');
+    if(submit.disabled)return;
+    submit.disabled=true;
+    formIssue(form,'');
+    try{
+      const redirect=new URL('finance.html',location.href).href;
+      await financeCloud.recover(field(form,'email').value.trim(),redirect);
+      formIssue(form,'Если такой аккаунт есть, на эту почту придёт новая ссылка.');
+    }catch(error){formIssue(form,error.message);}
+    finally{submit.disabled=false;}
+  });
+}
+function chooseNewPassword(access){
+  const form=sheetForm('<h2>Новый пароль</h2><p class="muted">Этот пароль нужен для входа в аккаунт «ЖИЗНЬ.exe». PIN для финансов вводится отдельно.</p><label>Новый пароль<input name="password" type="password" autocomplete="new-password" minlength="8" required></label><label>Повтори пароль<input name="repeat" type="password" autocomplete="new-password" minlength="8" required></label><p role="status"></p><div class="actions"><button class="lilac">Сохранить пароль</button><button type="button" name="retry">Запросить новую ссылку</button></div>');
+  field(form,'retry').addEventListener('click',()=>{access=null;recoveryEmail();});
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const submit=form.querySelector('button');
+    if(submit.disabled||!access)return;
+    const password=field(form,'password').value;
+    if(password!==field(form,'repeat').value){formIssue(form,'Пароли должны совпадать.');return;}
+    submit.disabled=true;
+    formIssue(form,'');
+    try{
+      await financeCloud.setPassword(access,password);
+      access=null;
+      form.reset();
+      cloudLogin();
+      formIssue($('sheet-body').querySelector('form'),'Пароль обновлён. Войди с новым паролем.');
+    }catch(error){formIssue(form,error.message);}
+    finally{submit.disabled=false;}
+  });
+}
+function showRecoveryCallback(){
+  const callback=window.takeFinanceRecovery?.();
+  if(!callback?.token&&!callback?.error)return false;
+  showGate();
+  if(callback.token)chooseNewPassword(callback.token);
+  else{
+    recoveryEmail();
+    formIssue($('sheet-body').querySelector('form'),'Ссылка больше не действует. Запроси новое письмо.');
+  }
+  return true;
+}
+window.addEventListener('finance-recovery',()=>{if(db)showRecoveryCallback();});
 function cloudLogin(){
-  const form=sheetForm('<h2>Общие финансы</h2><p class="muted">Войди в свой аккаунт «ЖИЗНЬ.exe» на обоих устройствах.</p><label>Почта<input name="email" type="email" autocomplete="username" required></label><label>Пароль<input name="password" type="password" autocomplete="current-password" required></label><p role="status"></p><button class="lilac">Войти</button>');
+  const form=sheetForm('<h2>Общие финансы</h2><p class="muted">На обоих устройствах используй почту и пароль пользователя «ЖИЗНЬ.exe» из проекта Supabase. PIN понадобится после входа.</p><label>Почта<input name="email" type="email" autocomplete="username" required></label><label>Пароль<input name="password" type="password" autocomplete="current-password" required></label><p role="status"></p><div class="actions"><button class="lilac">Войти</button><button type="button" name="recover">Забыли пароль?</button></div>');
+  field(form,'recover').addEventListener('click',()=>recoveryEmail(field(form,'email').value.trim()));
   form.addEventListener('submit',async event=>{
     event.preventDefault();
     if(busy)return;
@@ -578,7 +684,7 @@ function cloudLogin(){
       const result=await financeCloud.login(field(form,'email').value.trim(),field(form,'password').value);
       await selectCloud(result.user.id);
     }catch(error){
-      formIssue(form,error.code==='login'?'Проверь почту и пароль.':error.message||'Не удалось войти.');
+      formIssue(form,error.message||'Не удалось войти.');
     }finally{
       busy=false;field(form,'password').value='';form.querySelector('button').disabled=false;
     }
@@ -1221,6 +1327,7 @@ function restoreSheet(file){
     if(!crypto.subtle)throw new Error('Открой «Финансы» по HTTPS или через локальный предпросмотр.');
     db=await openDatabase();
     record=await readLocalVault();
+    if(showRecoveryCallback())return;
     const owner=financeCloud.session()?.user?.id;
     if(owner){
       try{if(await selectCloud(owner,{automatic:true}))return;}
