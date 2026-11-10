@@ -531,6 +531,8 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 #page-project #pc-settings{margin-top:14px}
 #page-project .form-row :is(input,textarea,select){min-width:0;max-width:100%}
 @media(max-width:700px){#page-project{padding:8px 12px 24px}}
+.task-note-field textarea{width:100%;resize:vertical;min-height:58px}
+.task-notes-mark{font-size:10px;color:#645546;background:#efe3ce;border-radius:20px;padding:2px 6px}
 .project-description{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--t2);margin:0 0 12px}
 .project-description:empty,.project-section p:empty,#pc-board-status:empty{display:none}
 .project-section{background:#fff9ee;border:1px solid var(--bd);border-radius:12px;padding:10px 12px;margin:0 0 10px}
@@ -1547,11 +1549,19 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
     </div>
     <input type="hidden" id="tc-id">
     <div class="form-row"><label class="field-label">Что сделать</label><input type="text" id="tc-title"></div>
+    <div class="form-row task-note-field">
+      <label class="field-label" for="tc-details">Подробности</label>
+      <textarea id="tc-details" class="f" rows="3" placeholder="Что проверить, какие шаги и договорённости важны"></textarea>
+    </div>
     <div id="tc-work-fields">
     <div class="form-row"><label class="field-label">Тип</label>
       <select id="tc-kind"><option value="задача">Задача</option><option value="дизайн">Дизайн</option></select>
     </div>
     <div class="form-row"><label class="field-label">От кого</label><input type="text" id="tc-assigned" placeholder="Денис, Марго, Таня…"></div>
+    <div class="form-row task-note-field">
+      <label class="field-label" for="tc-coordination">С кем связаться или кого позвать</label>
+      <textarea id="tc-coordination" class="f" rows="2" placeholder="С кем согласовать, у кого попросить помощь, кого взять с собой"></textarea>
+    </div>
     <div class="form-row"><label class="field-label">Позиция прайса</label>
       <select id="tc-price" onchange="tcRecalc()"></select>
     </div>
@@ -1689,8 +1699,16 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       <select id="task-kind" onchange="qaAutoHint()"><option value="задача">Задача</option><option value="дизайн">Дизайн</option></select>
     </div>
     <div class="form-row"><label class="field-label">Задача</label><input type="text" id="task-title" placeholder="Что нужно сделать?" oninput="qaAutoHint()"></div>
+    <div class="form-row task-note-field">
+      <label class="field-label" for="task-details">Подробности</label>
+      <textarea id="task-details" class="f" rows="3" placeholder="Что проверить, какие шаги и договорённости важны"></textarea>
+    </div>
     <div id="task-work-fields">
     <div class="form-row"><label class="field-label">От кого (поручил)</label><input type="text" id="task-assigned" placeholder="Денис, Марго, Таня…"></div>
+    <div class="form-row task-note-field">
+      <label class="field-label" for="task-coordination">С кем связаться или кого позвать</label>
+      <textarea id="task-coordination" class="f" rows="2" placeholder="С кем согласовать, у кого попросить помощь, кого взять с собой"></textarea>
+    </div>
     <div class="form-row"><label class="field-label">Позиция прайса <span id="task-auto-hint" style="font-weight:400;color:var(--t3)"></span></label>
       <select id="task-price" onchange="qaRecalc()"></select>
     </div>
@@ -2601,6 +2619,7 @@ function projectTaskRows(tasks,showMissingPrice=false){
       <div class="task-check ${cls}" onclick="cycleTask(${t.id},'${t.status}')">${icon}</div>
       <span class="task-text ${t.status==='готово'?'done':''}" onclick="openTaskCard(${t.id})">${badge}${avEscape(t.title||'')}</span>
       ${!personal&&t.status!=='готово'&&t.waiting_for!=null?'<span class="work-wait-tag">Жду ответа</span>':''}
+      ${t.task_details||(!personal&&t.coordination)?'<span class="task-notes-mark">Есть детали</span>':''}
       ${who}${dd?`<span class="task-date">${fmtShort(dd)}</span>`:''}
       ${!personal&&t.amount!=null?`<span class="task-date" style="font-weight:600">${fmtMoney(t.amount)}</span>`:
         showMissingPrice?'<span class="task-date" style="color:#C4552A" title="цена не проставлена">— ₴</span>':''}
@@ -2737,6 +2756,18 @@ function setTaskFields(prefix,personal){
   document.getElementById(prefix+'-work-fields').hidden=personal;
   document.getElementById(prefix+'-assigned-date-row').hidden=personal;
 }
+function fillTaskNotes(prefix,task={}){
+  document.getElementById(prefix+'-details').value=task.task_details||'';
+  document.getElementById(prefix+'-coordination').value=task.coordination||'';
+}
+function applyTaskNotes(payload,prefix,task,personal){
+  const fields=[['task_details','details']];
+  if(!personal)fields.push(['coordination','coordination']);
+  for(const [column,field] of fields){
+    const value=document.getElementById(prefix+'-'+field).value.trim()||null;
+    if(value!==(task?.[column]??null))payload[column]=value;
+  }
+}
 function openAddTask(projId){
   document.getElementById('task-proj-id').value=projId;
   const personal=isPersonalTask({project_id:projId});
@@ -2744,6 +2775,7 @@ function openAddTask(projId){
   setTaskFields('task',personal);
   document.getElementById('task-kind').value='задача';
   document.getElementById('task-title').value='';
+  fillTaskNotes('task');
   document.getElementById('task-assigned').value='';
   document.getElementById('task-date').value='';
   qaResetPrice();
@@ -2756,6 +2788,7 @@ function openAddStandaloneTask(kind){
   setTaskFields('task',false);
   document.getElementById('task-kind').value=kind||'задача';
   document.getElementById('task-title').value='';
+  fillTaskNotes('task');
   document.getElementById('task-assigned').value='';
   document.getElementById('task-date').value='';
   qaResetPrice();
@@ -2792,6 +2825,7 @@ async function saveTask(){
     status:'в работе',
     done_date:null
   };
+  applyTaskNotes(row,'task',null,personal);
   if(!await dbPost('tasks',row)){alert('Задача не сохранена'+dbErrHint());return;}
   hideModal('modal-task');await load();
 }
@@ -3410,6 +3444,7 @@ function openTaskCard(id){
   setTaskFields('tc',isPersonalTask(t));
   document.getElementById('tc-head').textContent=t.kind==='дизайн'?'🎨 Дизайн':'📋 Задача';
   document.getElementById('tc-title').value=t.title||'';
+  fillTaskNotes('tc',t);
   document.getElementById('tc-kind').value=t.kind||'задача';
   document.getElementById('tc-assigned').value=t.assigned_by||'';
   document.getElementById('tc-price').innerHTML=priceOptionsHtml(t.price_code||'');
@@ -3452,8 +3487,10 @@ async function saveTaskCard(){
     status,done_date:doneDate
   };
   const task=DB.tasks.find(task=>task.id===id);
-  setWaitingUpdate(update,'tc',task,task&&isPersonalTask(task));
-  if(task&&isPersonalTask(task)){
+  const personal=task&&isPersonalTask(task);
+  applyTaskNotes(update,'tc',task,personal);
+  setWaitingUpdate(update,'tc',task,personal);
+  if(personal){
     for(const field of ['kind','assigned_by','price_code','qty','surcharge','extra','amount','assigned_date'])delete update[field];
   }
   if(!await dbPatch('tasks',id,update)){alert('Задача не сохранена'+dbErrHint());return;}
