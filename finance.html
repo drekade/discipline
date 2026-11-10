@@ -30,7 +30,7 @@
 <link rel="stylesheet" href="finance.css?v=20261110-3">
 <script defer src="jszip.min.js"></script>
 <script defer src="finance-xlsx.js?v=20261110-3"></script>
-<script defer src="finance.js?v=20261110-8"></script>
+<script defer src="finance.js?v=20261110-10"></script>
 </head>
 <body>
 <main>
@@ -44,6 +44,8 @@
       <p class="muted" id="gate-note"></p>
       <label>PIN-код<input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6,12}" maxlength="12" required></label>
       <label id="pin-again" hidden>Повтори PIN-код<input name="again" type="password" inputmode="numeric" maxlength="12"></label>
+      <label class="check"><input type="checkbox" name="remember">Запомнить вход на этом устройстве</label>
+      <p class="muted">На 30 дней или до нажатия «Заблокировать». Подходит для личного устройства.</p>
       <button class="wide lilac">Открыть</button>
     </form>
     <div class="actions">
@@ -62,6 +64,7 @@
   <section id="budget" hidden>
     <header class="budget-head"><h1>Личный бюджет</h1><button class="lilac" id="period-button"></button><p id="period-note" class="muted"></p><button id="cards-filter" hidden>Все карты</button></header>
     <dl class="card sage metrics" id="summary"></dl>
+    <p class="muted">По записанным операциям. Расход наличных по остаткам показан отдельно.</p>
     <details class="card" id="obligations">
       <summary>Обязательные платежи<small id="obligation-summary"></small></summary>
       <div class="actions"><button id="add-obligation">+ Обязательство</button><label class="file-button">Загрузить шаблоны<input id="bill-presets" type="file" accept=".json,application/json" aria-label="Шаблоны обязательств"></label></div><div id="obligation-list"></div>
@@ -78,6 +81,10 @@
       <p class="muted" id="history-merchant" hidden></p>
       <div id="history-list"></div>
     </details>
+    <details class="card"><summary>Наличные</summary><div id="budget-cash"></div></details>
+    <details class="card"><summary>Разовые планы</summary>
+      <div class="actions"><button id="add-plan">+ Добавить план</button></div><div id="plan-list"></div>
+    </details>
     <div class="actions utility"><button data-view="subscriptions">Подписки</button><button data-view="review">Проверка импорта</button><button id="export-menu">Экспорт и копии</button></div>
     <button id="plus" class="lilac" aria-label="Добавить">+</button>
   </section>
@@ -90,6 +97,7 @@
   <section id="review" hidden>
     <h1>Проверка импорта</h1>
     <p id="import-summary"></p>
+    <section class="card" id="review-cash" hidden aria-label="Наличные после импорта"></section>
     <div class="actions"><button id="undo-import">Отменить последний импорт</button></div>
     <div id="review-list"></div>
   </section>

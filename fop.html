@@ -46,6 +46,8 @@ else location.replace('finance.html#fop');
   .money-switch button[aria-pressed="true"]{background:var(--lilac)}
   .money-summary{margin-top:12px;padding:9px 10px;border-radius:10px;background:#f5eddd}
   .money-summary dd{font-size:13px}
+  .cushion{margin-top:12px;border:1.4px solid var(--ink);border-radius:12px;padding:11px;background:#e8ddef}
+  .cushion details{margin-top:8px}
   .money-summary dt small{display:block;font-size:11px;color:#5b4e40}
   #money-log{margin-top:10px}
   #money-entries .receipt:first-child{border-top:0}
@@ -103,6 +105,20 @@ else location.replace('finance.html#fop');
     <button class="month-today" id="month-today" type="button">К текущему месяцу</button>
   </div>
   <dl class="figures money-summary" id="money-summary"></dl>
+  <section class="cushion" aria-labelledby="cushion-title">
+    <h2 id="cushion-title">Накопления</h2>
+    <div id="cushion-summary"></div>
+    <details id="cushion-unassigned" hidden><summary>Распределить прежние накопления</summary><div id="cushion-unassigned-list"></div></details>
+    <details><summary>Цель на месяц</summary>
+      <form id="cushion-goal-form">
+        <label>Подушка<select id="cushion-goal-pool"><option value="shared">Общая</option><option value="personal">Личная</option></select></label>
+        <label>Цель, USD<input id="cushion-goal" inputmode="decimal" placeholder="Например, 1000" required></label>
+        <p class="sub">Действует с выбранного месяца, пока не задашь новую цель. Введи 0, чтобы отключить.</p>
+        <button class="lilac" type="submit">Сохранить цель</button>
+        <p class="status" id="cushion-status" role="status"></p>
+      </form>
+    </details>
+  </section>
   <div class="money-forms">
     <nav class="money-switch" aria-label="Тип записи">
       <button type="button" data-money-mode="usd" aria-pressed="true">Поступление на ФОП</button>
@@ -139,6 +155,12 @@ else location.replace('finance.html#fop');
       <form id="money-form">
         <div class="row">
           <label>Дата<input id="money-date" type="date" required></label>
+          <label id="money-pool-label">Подушка
+            <select id="money-pool"><option value="">Выбрать</option><option value="shared">Общая</option><option value="personal">Личная</option></select>
+          </label>
+          <label id="money-storage-label">Где лежат
+            <select id="money-storage"><option value="">Не указано</option><option value="cash">Наличные</option><option value="account">На счёте</option></select>
+          </label>
           <label id="money-currency-label">Валюта
             <select id="money-currency"><option value="uah">Гривны</option><option value="usd">Доллары</option><option value="eur">Евро</option></select>
           </label>
@@ -174,6 +196,10 @@ else location.replace('finance.html#fop');
   <p class="sub" id="tax-note"></p>
   <div id="month-tax" aria-live="polite"></div>
   <ul class="tax-actions" id="tax-next"></ul>
+  <details class="tax-block">
+    <summary>Аналитика налогов</summary>
+    <div id="tax-analytics"></div>
+  </details>
   <details class="tax-block">
     <summary>Платежи и авансы</summary>
     <p class="sub">В расчёте учитываются платежи с датой и банковским подтверждением. Переплата из Дії хранится отдельно.</p>
@@ -350,9 +376,9 @@ else location.replace('finance.html#fop');
       .filter(entry=>quarterOf(entry.date)<q&&confirmedRate(entry)).reduce((total,entry)=>total+entry.uah,0);
     const obligations=incomeTaxes(income,prior);
     const payments=state.payments.filter(row=>row.quarter===q);
-    const paid=Object.fromEntries(Object.keys(taxNames).map(tax=>[tax,payments
-      .filter(row=>row.tax===tax&&row.status==='confirmed'&&validPast(row.date)&&row.proof&&row.actual>0)
-      .reduce((sum,row)=>sum+row.actual,0)]));
+    const confirmed=payments.filter(isConfirmedPayment);
+    const paid=Object.fromEntries(Object.keys(taxNames).map(tax=>[tax,confirmed
+      .filter(row=>row.tax===tax).reduce((sum,row)=>sum+row.actual,0)]));
     const remaining=Object.keys(obligations).reduce((sum,tax)=>sum+Math.max(0,obligations[tax]-paid[tax]),0);
     const lines=[
       ['Доход с подтверждённым курсом',uah(income)],
@@ -377,6 +403,7 @@ else location.replace('finance.html#fop');
       'Для аванса · '+monthNames[Number(month.slice(5))-1].toLowerCase(),
       ['ЕН '+uah(monthTaxes.unified)+' · ВС '+uah(monthTaxes.military),
        monthRows.some(row=>!confirmedRate(row))?'Есть поступления, по которым нужно сверить курс.':''])]:[]));
+    renderTaxAnalytics(confirmed,obligations,paid,pending);
     renderTaxRecords(q,payments,pending,remaining);
     $('receipt-count').textContent=rows.length ? 'Записей: '+rows.length+(pending?' · нужен курс: '+pending:'') : 'Пока нет записей';
     $('entries').replaceChildren(...rows.map(entry=>{
@@ -524,6 +551,8 @@ else location.replace('finance.html#fop');
     });
     if(mode==='usd')return;
     $('money-currency-label').hidden=mode!=='savings';
+    $('money-pool-label').hidden=mode!=='savings';
+    $('money-storage-label').hidden=mode!=='savings';
     $('money-single-label').hidden=mode==='balance';
     $('money-uah-label').hidden=mode!=='balance';
     $('money-usd-label').hidden=mode!=='balance';
@@ -545,6 +574,8 @@ else location.replace('finance.html#fop');
   function editMoney(entry){
     moneyEdit=entry.id;
     $('money-currency').value=entry.currency||'uah';
+    $('money-pool').value=entry.pool||'';
+    $('money-storage').value=entry.storage||'';
     selectMoneyMode(entry.type);
     $('money-date').value=entry.date;
     $('money-note').value=entry.note||'';
@@ -568,6 +599,24 @@ else location.replace('finance.html#fop');
     return parts.join(' · ');
   }
 
+  const cushionNames={shared:'Общая подушка',personal:'Личная подушка'};
+  function goalFor(pool,month){
+    const goals=state.savingsGoals?.[pool]||{};
+    const start=Object.keys(goals).filter(key=>key<=month).sort().at(-1);
+    return start?goals[start]:null;
+  }
+  function renderGoalInput(){
+    const goal=goalFor($('cushion-goal-pool').value,$('money-month').value);
+    $('cushion-goal').value=goal==null?'':(goal/100).toFixed(2);
+  }
+  function beginSavings(pool){
+    moneyMode='savings';resetMoneyForm();
+    $('money-pool').value=pool;
+    $('money-storage').value=pool==='personal'?'cash':'';
+    $('money-currency').value=pool==='shared'?'usd':'uah';
+    selectMoneyMode('savings');
+    $('money-amount').focus();
+  }
   function renderMoney(){
     const month=$('money-month').value;
     renderMonthCaption(month);
@@ -582,24 +631,50 @@ else location.replace('finance.html#fop');
     const savingsTotal=items=>items.reduce((sum,row)=>{
       sum[row.currency]+=row.amount;return sum;
     },{uah:0,usd:0,eur:0});
-    const cushion=savingsTotal(savings);
-    const savedThisMonth=savingsTotal(savings.filter(row=>row.date.slice(0,7)===month));
     const latest=rows.find(row=>row.type==='balance');
+    const personalFunding=parent.financeFopFunding?.(month)||0;
     const lines=[
       ['Поступило на ФОП',savingsText(received)],
       ['Оплата в гривнах',uah(receivedUah)],
-      ['Отложено за месяц',savingsText(savedThisMonth)],
-      ['Подушка · всего',savingsText(cushion)],
-      ['Остаток',latest?balanceText(latest):'Нет записи',latest?dateText(latest.date):'']
+      ...(personalFunding?[['На личную карту · по выписке',uah(personalFunding)]]:[]),
+      ['Записанный остаток',latest?balanceText(latest):'Нет записи',latest?dateText(latest.date):'']
     ];
-    $('money-summary').replaceChildren(...lines.map(([name,value,sub])=>{
+    const figures=entries=>entries.map(([name,value,sub])=>{
       const line=document.createElement('div');
       const label=document.createElement('dt');
       const number=document.createElement('dd');
       label.textContent=name;
       if(sub){const small=document.createElement('small');small.textContent=sub;label.append(small);}
       number.textContent=value;line.append(label,number);return line;
+    });
+    $('money-summary').replaceChildren(...figures(lines));
+    $('cushion-summary').replaceChildren(...Object.entries(cushionNames).map(([pool,name])=>{
+      const entries=savings.filter(row=>row.pool===pool);
+      const total=savingsTotal(entries);
+      const monthly=savingsTotal(entries.filter(row=>row.date.startsWith(month+'-')));
+      const goal=goalFor(pool,month);
+      const panel=document.createElement('section');
+      panel.className='receipt';
+      panel.dataset.pool=pool;
+      const head=document.createElement('div');head.className='section-head';
+      const title=document.createElement('strong');title.textContent=name;
+      const add=document.createElement('button');add.type='button';add.textContent=pool==='shared'?'В общую':'В личную';
+      add.addEventListener('click',()=>beginSavings(pool));
+      head.append(title,add);
+      const totals=document.createElement('dl');totals.className='figures';
+      const rows=[['Всего отложено',savingsText(total)],['Отложено за месяц',savingsText(monthly)]];
+      if(pool==='personal'&&entries.some(row=>row.storage==='cash')){
+        rows.push(['Из них наличными',savingsText(savingsTotal(entries.filter(row=>row.storage==='cash')))]);
+      }
+      if(goal)rows.push(['Цель на месяц',dollars(goal)],['До цели',dollars(Math.max(0,goal-monthly.usd))]);
+      totals.append(...figures(rows));
+      panel.append(head,totals);return panel;
     }));
+    const unassigned=savings.filter(row=>!Object.hasOwn(cushionNames,row.pool));
+    $('cushion-unassigned').hidden=!unassigned.length;
+    $('cushion-unassigned-list').replaceChildren(...unassigned.map(row=>recordCard(
+      dateText(row.date)+' · '+currencyFormatters[row.currency](row.amount),[row.note],()=>editMoney(row))));
+    renderGoalInput();
 
     const combined=[...rows,...receipts.map(row=>({...row,type:'usd'}))]
       .sort((a,b)=>b.date.localeCompare(a.date));
@@ -697,6 +772,25 @@ else location.replace('finance.html#fop');
   $('money-date').value=today;
   $('money-currency').addEventListener('change',()=>selectMoneyMode(moneyMode));
   $('money-cancel').addEventListener('click',resetMoneyForm);
+  $('money-pool').addEventListener('change',()=>{
+    if($('money-pool').value==='personal'&&!$('money-storage').value)$('money-storage').value='cash';
+  });
+  $('cushion-goal-pool').addEventListener('change',()=>{
+    $('cushion-status').textContent='';
+    renderGoalInput();
+  });
+  $('cushion-goal-form').addEventListener('submit',async event=>{
+    event.preventDefault();
+    const month=$('money-month').value,pool=$('cushion-goal-pool').value;
+    const goal=decimal($('cushion-goal').value,2);
+    if(goal==null){$('cushion-status').textContent='Проверь сумму в долларах.';return;}
+    const goals=state.savingsGoals||{};
+    if(!await persist({...state,savingsGoals:{...goals,[pool]:{...goals[pool],[month]:goal}}})){
+      $('cushion-status').textContent='Не удалось сохранить цель.';return;
+    }
+    render();
+    $('cushion-status').textContent='Цель сохранена.';
+  });
   document.querySelectorAll('[data-money-mode]').forEach(button=>{
     button.addEventListener('click',()=>{
       if(moneyMode===button.dataset.moneyMode)return;
@@ -721,6 +815,13 @@ else location.replace('finance.html#fop');
       entry.currency=moneyMode==='uah'?'uah':$('money-currency').value;
       entry.amount=decimal($('money-amount').value,2);
       if(!entry.amount){$('money-status').textContent='Введи сумму больше нуля.';return;}
+      if(moneyMode==='savings'){
+        entry.pool=$('money-pool').value;
+        entry.storage=$('money-storage').value;
+        if(!Object.hasOwn(cushionNames,entry.pool)){
+          $('money-status').textContent='Выбери общую или личную подушку.';return;
+        }
+      }
     }
     const money=old?state.money.map(row=>row.id===old.id?entry:row):[...state.money,entry];
     if(!await persist({...state,money})){
@@ -764,6 +865,27 @@ else location.replace('finance.html#fop');
   const draftDeclaration={period:'q4',status:'draft',due:q4DeclarationDue};
   const sortDates=(a,b)=>b.date.localeCompare(a.date);
 
+  function isConfirmedPayment(row){
+    return row.status==='confirmed'&&validPast(row.date)&&row.proof&&row.actual>0;
+  }
+  function renderTaxAnalytics(confirmed,obligations,paid,pending){
+    const taxes=Object.keys(taxNames);
+    const cards=taxes.map(tax=>recordCard(taxNames[tax],[
+      tax==='esv'?'Покрытие месяцев уточняется по сверке с ДПС.':'Расчёт за квартал · '+uah(obligations[tax]),
+      'Подтверждено · '+uah(paid[tax]),
+      tax==='esv'?'':pending?'Остаток после проверки курса':'Осталось по расчёту · '+uah(Math.max(0,obligations[tax]-paid[tax]))
+    ]));
+    const byMonth=new Map();
+    for(const row of confirmed){
+      const month=row.date.slice(0,7);
+      const sums=byMonth.get(month)||{unified:0,military:0,esv:0};
+      sums[row.tax]+=row.actual;byMonth.set(month,sums);
+    }
+    const history=[...byMonth].sort(([a],[b])=>b.localeCompare(a)).map(([month,sums])=>recordCard(
+      'Фактические оплаты · '+monthNames[Number(month.slice(5))-1]+' '+month.slice(0,4),
+      taxes.filter(tax=>sums[tax]>0).map(tax=>taxNames[tax]+' · '+uah(sums[tax]))));
+    $('tax-analytics').replaceChildren(...cards,...(history.length?history:[recordCard('Подтверждённых оплат за выбранный квартал пока нет',[])]));
+  }
   function renderTaxRecords(q,payments,pending,remaining){
     const paymentRows=payments.map(row=>recordCard(
       taxNames[row.tax]+' · '+paymentStatuses[row.status],

@@ -170,7 +170,7 @@ const knownMerchants=[
   [/rozetka|розетк/,'Rozetka','shopping'],[/sinsay/,'Sinsay','clothes']
 ];
 const blank = () => ({version:1,operations:[],deleted:[],categories:{...baseCategories},rules:{},obligations:[],
-  subscriptions:[],dismissed:[],open:{},lastImport:null});
+  subscriptions:[],dismissed:[],open:{},cashBalances:[],lastImport:null});
 const normalize = financeExcel.words;
 const uuid = () => crypto.randomUUID();
 const utf8 = new TextEncoder();
@@ -210,6 +210,35 @@ function openDatabase(){
     req.onerror=()=>reject(req.error);
     req.onblocked=()=>reject(new Error('Закрой другую вкладку «Финансов» и обнови страницу.'));
   });
+}
+const deviceSlot=()=> 'remembered-finance:'+ (cloudOwner||'local');
+function readDeviceAccess(slot){
+  return new Promise((resolve,reject)=>{
+    const req=db.transaction('vault').objectStore('vault').get(slot);
+    req.onsuccess=()=>resolve(req.result||null);
+    req.onerror=()=>reject(req.error);
+  });
+}
+function writeDeviceAccess(slot,access){
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction('vault','readwrite'),store=tx.objectStore('vault');
+    if(access)store.put(access,slot);
+    else store.delete(slot);
+    tx.oncomplete=()=>resolve();
+    tx.onabort=()=>reject(tx.error);
+  });
+}
+async function tryDeviceUnlock(){
+  if(key||!record||view!=='gate')return false;
+  const current=record, slot=deviceSlot();
+  try{
+    const saved=await readDeviceAccess(slot);
+    if(!saved||saved.salt!==current.salt||saved.until<=Date.now())return false;
+    const loaded=await decrypt(current,saved.key);
+    if(record!==current||slot!==deviceSlot()||key||view!=='gate')return false;
+    finishUnlock(saved.key,loaded);
+    return true;
+  }catch{return false;}
 }
 function readLocalVault(){
   return new Promise((resolve,reject)=>{
@@ -251,6 +280,7 @@ async function selectCloud(owner,{automatic=false}={}){
   if(shared)rememberCloud(owner);
   showGate();
   issue(shared?'':'Общая копия ещё не создана. Заверши настройку на устройстве, где есть актуальные записи.');
+  if(shared)await tryDeviceUnlock();
   return true;
 }
 async function refreshCloud({manual=false}={}){
@@ -290,6 +320,7 @@ async function decrypt(vault,secret){
     !Array.isArray(value.obligations)||!Array.isArray(value.subscriptions)||!Array.isArray(value.dismissed)||!value.rules||!value.open){
     throw new Error('Неизвестный формат бюджета.');
   }
+  if(!Array.isArray(value.cashBalances))value.cashBalances=[];
   return updateImported(value);
 }
 async function encrypt(value,secret,salt){
@@ -327,7 +358,7 @@ function commit(change){
 }
 function showGate(){
   key=null;state=null;
-  for(const id of ['home-summary','summary','category-list','history-list','obligation-list','review-list','analytics-content','comparison','subscription-list']){
+  for(const id of ['home-summary','summary','category-list','history-list','obligation-list','review-list','review-cash','budget-cash','plan-list','analytics-content','comparison','subscription-list']){
     $(id).replaceChildren();
   }
   document.querySelector('.print-report')?.remove();
@@ -362,7 +393,7 @@ function openView(next){
     $('finance-sync-actions').hidden=Boolean(cloudOwner);
   }
   if(next==='fop'){
-    const launch=()=>{if(view==='fop'&&key)$('fop-frame').src='fop.html?v=20261110-2';};
+    const launch=()=>{if(view==='fop'&&key)$('fop-frame').src='fop.html?v=20261110-10';};
     if(cloudOwner)refreshCloud().then(launch);
     else launch();
   }
@@ -372,8 +403,21 @@ function openView(next){
 window.financeFopAllowed=()=>Boolean(key)&&view==='fop';
 window.financeFopBack=()=>openView('finance-home');
 window.financeFopRead=()=>cloudOwner&&window.financeFopAllowed()?structuredClone(state.fop??null):undefined;
+window.financeFopFunding=month=>window.financeFopAllowed()?state.operations
+  .filter(row=>!row.pending&&row.type==='income'&&row.fopFunding&&isoMonth(row.date)===month)
+  .reduce((sum,row)=>sum+row.amount,0):0;
 window.financeFopWrite=next=>cloudOwner&&window.financeFopAllowed()?commit(value=>{value.fop=next;}):Promise.resolve(false);
 
+function finishUnlock(secret,loaded,message=''){
+  key=secret;state=loaded;
+  range=monthRange(isoMonth(today()));compare=null;historyMerchant='';categoryLila=false;analyticsLila=false;
+  $('search').value='';$('history-category').value='';$('history-type').value='';$('history-lila').checked=false;cardSelection=null;
+  for(const id of ['obligations','categories','history'])$(id).open=Boolean(state.open[id]);
+  issue(message);
+  openView(wantedFop?'fop':'finance-home');
+  if(wantedFop)history.replaceState(null,'',location.pathname+location.search);
+  wantedFop=false;
+}
 $('unlock').addEventListener('submit',async event=>{
   event.preventDefault();
   if(busy)return;
@@ -398,14 +442,15 @@ $('unlock').addEventListener('submit',async event=>{
       if(cloudOwner)rememberCloud(cloudOwner);
       else navigator.storage?.persist?.().catch(()=>{});
     }
-    key=secret;state=loaded;
-    range=monthRange(isoMonth(today()));compare=null;historyMerchant='';categoryLila=false;analyticsLila=false;
-    $('search').value='';$('history-category').value='';$('history-type').value='';$('history-lila').checked=false;cardSelection=null;
-    for(const id of ['obligations','categories','history'])$(id).open=Boolean(state.open[id]);
-    issue(connectedNow?'Синхронизация завершена. На втором устройстве войди в тот же аккаунт и введи общий PIN.':'');
-    openView(wantedFop?'fop':'finance-home');
-    if(wantedFop)history.replaceState(null,'',location.pathname+location.search);
-    wantedFop=false;
+    let notice=connectedNow?'Синхронизация завершена. На втором устройстве войди в тот же аккаунт и введи общий PIN.':'';
+    if(values.has('remember')){
+      try{
+        await writeDeviceAccess(deviceSlot(),{key:secret,salt:record.salt,until:Date.now()+30*86400000});
+      }catch{
+        notice=(notice?notice+' ':'')+'Браузер не сохранил вход на этом устройстве.';
+      }
+    }
+    finishUnlock(secret,loaded,notice);
   }catch(error){
     if(error.code==='login'){cloudOwner=null;cloudSeed=null;record=await readLocalVault();showGate();}
     issue(error.name==='OperationError'?'PIN не подошёл.':error.message||'Не удалось открыть бюджет.');
@@ -414,7 +459,13 @@ $('unlock').addEventListener('submit',async event=>{
   }
 });
 $('exit').addEventListener('click',showGate);
-$('lock').addEventListener('click',()=>{issue();showGate();});
+$('lock').addEventListener('click',async()=>{
+  const slot=deviceSlot();
+  issue();
+  showGate();
+  try{await writeDeviceAccess(slot,null);}
+  catch{issue('Браузер не смог удалить сохранённый вход.');}
+});
 $('cloud-refresh').addEventListener('click',()=>refreshCloud({manual:true}));
 window.addEventListener('focus',()=>{if(view!=='fop')refreshCloud();});
 document.addEventListener('visibilitychange',()=>{
@@ -422,6 +473,7 @@ document.addEventListener('visibilitychange',()=>{
 });
 window.addEventListener('storage',event=>{
   if(event.key===financeCloud.sessionKey&&cloudOwner&&financeCloud.session()?.user?.id!==cloudOwner){
+    writeDeviceAccess(deviceSlot(),null).catch(()=>{});
     key=null;
     cloudOwner=null;cloudSeed=null;record=null;showGate();
     readLocalVault().then(local=>{if(!cloudOwner&&!key){record=local;showGate();}}).catch(()=>{});
@@ -431,6 +483,13 @@ window.addEventListener('storage',event=>{
 $('up').addEventListener('click',()=>openView(['budget','fop'].includes(view)?'finance-home':'budget'));
 window.addEventListener('pagehide',()=>{
   if(key)showGate();
+});
+window.addEventListener('pageshow',async event=>{
+  if(!event.persisted||key||!db||view!=='gate')return;
+  try{
+    record=await readVault();
+    await tryDeviceUnlock();
+  }catch{}
 });
 document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click',()=>openView(el.dataset.view)));
 
@@ -592,9 +651,17 @@ function render(){
     $('category-summary').textContent=breakdown.slice(0,3).map(([id])=>categoryName(id)).join(' · ')||'Нет расходов за период';
     $('category-list').replaceChildren(...breakdown.map(([id,value])=>rowButton(categoryName(id),'',money(value.amount),()=>drill(id,'',categoryLila))));
     renderObligations();
+    $('budget-cash').replaceChildren(...cashContent(range));
+    renderPlans();
   }
   if(view==='analytics')renderAnalytics();
-  if(view==='review')renderReview();
+  if(view==='review'){
+    renderReview();
+    const reviewCash=$('review-cash');
+    reviewCash.hidden=!state.lastImport;
+    reviewCash.replaceChildren(n('h2','Наличные за неделю'),
+      empty('Если сверяешь наличные вместе с выпиской, запиши полученную сумму и остаток.'),cashActions());
+  }
   if(view==='subscriptions')renderSubscriptions();
 }
 for(const id of ['history-category','history-type','history-lila','search'])$(id).addEventListener('input',()=>{historyLimit=100;renderHistory();});
@@ -783,7 +850,7 @@ function cloudLogin(){
 }
 $('plus').addEventListener('click',()=>{
   const actions=n('div','','sheet-menu');
-  actions.append(button('Добавить операцию',()=>operationSheet(),'yellow'),button('Импортировать выписку',importSheet));
+  actions.append(button('Добавить операцию',()=>operationSheet(),'yellow'),button('Импорт выписки Приват24',importSheet));
   sheet([n('h2','Добавить'),actions]);
 });
 function ruleKey(merchant){return normalize(merchant);}
@@ -956,7 +1023,7 @@ $('manage-categories').addEventListener('click',()=>{
 });
 
 function importSheet(){
-  const title=n('h2','Импорт выписки');
+  const title=n('h2','Импорт выписки Приват24');
   const hint=empty('Выбери выписку .xlsx из Приват24. В одном файле могут быть операции по нескольким гривневым картам.');
   const file=n('input');file.type='file';file.accept='.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
   file.setAttribute('aria-label','Выписка Excel');
@@ -980,6 +1047,9 @@ function classifyBank(row){
   const text=normalize(row.original);
   if(row.amount<0&&/^(?:комісія|комиссия|bank fee)(?:\s|$)/.test(text))return {type:'expense',category:'bank'};
   if(row.amount>0&&fopTransfer(row.original))return {type:'income',fopFunding:true};
+  if(/^(?:зняття готівки|снятие наличных|поповнення готівкою|внесення готівки|пополнение наличными)/.test(text)){
+    return {type:'internal',bankDirection:row.amount<0?'expense':'income'};
+  }
   if(ownTransfer(row.original))return {type:'internal',bankDirection:row.amount<0?'expense':'income'};
   const type=row.amount<0?'expense':'income';
   if(/крипт|crypto|зняття готівки|снятие налич|поповнення готівкою|внесення готівки|пополнение налич|переказ|перевод/.test(text)){
@@ -1143,6 +1213,7 @@ function renderObligations(){
   let paid=0,left=0,unknown=0;
   const rows=[];
   for(const bill of state.obligations){
+    if(bill.oneOff)continue;
     for(const period of obligationPeriods(bill,month)){
       const status=billStatus(bill,period,through);
       if(period!==month&&(status.left===0||(bill.ended&&period>bill.ended)))continue;
@@ -1160,10 +1231,27 @@ function renderObligations(){
   $('obligation-summary').textContent=rows.length?'Оплачено '+money(paid)+' · осталось '+money(left)+(unknown?' · есть суммы к уточнению':''):'Нет обязательств';
   $('obligation-list').replaceChildren(...(rows.length?rows:[empty('На '+monthName(month)+' обязательств нет.')]));
 }
-function obligationForm(old=null){
+function renderPlans(){
+  const month=obligationMonth();
+  const plans=state.obligations.filter(bill=>bill.oneOff&&bill.start>=month).sort((a,b)=>a.start.localeCompare(b.start));
+  const display=plans.map(bill=>{
+    const status=billStatus(bill,bill.start,today());
+    const label=status.left===0?'Оплачено':status.paid?'Оплата '+money(status.paid):'Запланировано';
+    return rowButton(bill.name,monthName(bill.start)+' · '+label,status.expected==null?'Сумма уточняется':money(status.expected),
+      ()=>billSheet(bill,bill.start));
+  });
+  $('plan-list').replaceChildren(...(display.length?display:[empty('Можно добавить день рождения, Новый год или другую разовую трату.')]));
+}
+function obligationForm(old=null,oneOff=Boolean(old?.oneOff)){
   const form=sheetForm('<h2>Обязательство</h2><label>Название<input name="name" maxlength="90" required></label><label>Получатель<input name="merchant" maxlength="160"></label><div class="grid"><label>Первый месяц<input name="start" type="month" required></label><label>Сумма, грн<input name="amount" inputmode="decimal" placeholder="Если фиксированная"></label></div><label>Категория<select name="category"></select></label><label>Способ оплаты<select name="method"><option value="card">Карта</option><option value="cash">Наличные</option></select></label><div class="grid"><label>Ранее оплачено по<input name="covered" type="month"></label><label>Последний месяц, если завершено<input name="ended" type="month"></label></div><p class="muted">Период «Ранее оплачено по» отмечает старые обязательства без создания расходов.</p><p role="status"></p><button class="lilac">Сохранить</button>');
   categoryOptions(field(form,'category'));
   field(form,'start').value=old?.start||obligationMonth();
+  if(oneOff){
+    form.querySelector('h2').textContent='Разовый план';
+    field(form,'amount').placeholder='Ориентир по сумме';
+    for(const name of ['covered','ended'])field(form,name).closest('label').hidden=true;
+    form.querySelector('.muted').textContent='Укажи месяц и, если знаешь, примерную сумму. Расход появится после фактической оплаты.';
+  }
   if(old){
     for(const id of ['name','merchant','category','method','covered','ended'])field(form,id).value=old[id]||'';
     field(form,'amount').value=inputMoney(old.amount);
@@ -1178,13 +1266,14 @@ function obligationForm(old=null){
       formIssue(form,'Проверь название, периоды и сумму.');return;
     }
     const bill={...old,id:old?.id||uuid(),name:data.name.trim(),merchant:data.merchant.trim(),
-      start,amount,category:data.category,method:data.method,covered:data.covered,ended:data.ended};
+      start,amount,category:data.category,method:data.method,covered:oneOff?'':data.covered,ended:oneOff?start:data.ended,oneOff};
     if(await commit(next=>{
       next.obligations=old?next.obligations.map(item=>item.id===old.id?bill:item):[...next.obligations,bill];
     }))closeSheet();
   });
 }
 $('add-obligation').addEventListener('click',()=>obligationForm());
+$('add-plan').addEventListener('click',()=>obligationForm(null,true));
 $('bill-presets').addEventListener('change',async event=>{
   const file=event.target.files[0];
   event.target.value='';
@@ -1269,6 +1358,8 @@ function billPaymentForm(bill,period){
   field(form,'date').value=today();field(form,'date').max=today();
   field(form,'method').value=bill.method;
   field(form,'lila').checked=Boolean(bill.lila);
+  const outstanding=billStatus(bill,period,today()).left;
+  if(bill.method==='cash'&&outstanding>0)field(form,'amount').value=inputMoney(outstanding);
   form.addEventListener('submit',async event=>{
     event.preventDefault();
     const data=formData(form), amount=financeExcel.number(data.amount);
@@ -1281,13 +1372,96 @@ function billPaymentForm(bill,period){
   });
 }
 
+function cashActions(){
+  const actions=n('div','','actions');
+  actions.append(button('Получила наличными',()=>cashEntry('income'),'lilac'),
+    button('Записать остаток',()=>cashEntry('balance')));
+  return actions;
+}
+function cashEntry(kind,existing=null){
+  const isBalance=kind==='balance';
+  const form=sheetForm('<h2></h2><p class="muted"></p><label>Сумма, грн<input name="amount" inputmode="decimal" required></label><label>Дата<input name="date" type="date" required></label><p role="status"></p><button class="lilac">Сохранить</button>');
+  form.querySelector('h2').textContent=isBalance?'Осталось наличными':'Получила наличными';
+  form.querySelector('.muted').textContent=isBalance?'Запиши остаток на конец дня вместе с наличными, которые отложены в личную подушку. Повторная запись за ту же дату обновит остаток.':
+    'Можно записать общую сумму, полученную с прошлой сверки. Снятие денег со своей карты учитывается как перемещение.';
+  field(form,'date').value=existing?.date||today();
+  field(form,'date').max=today();
+  if(existing)field(form,'amount').value=inputMoney(existing.amount);
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const submit=form.querySelector('button');
+    if(submit.disabled)return;
+    const data=formData(form), amount=financeExcel.number(data.amount);
+    if(amount==null||amount<(isBalance?0:1)||!validDate(data.date)||data.date>today()){
+      formIssue(form,'Проверь сумму и дату.');return;
+    }
+    if(isBalance&&state.cashBalances.some(row=>row.date===data.date&&row.date!==existing?.date)&&
+      !confirm('За этот день уже есть остаток. Обновить его?'))return;
+    submit.disabled=true;
+    if(await commit(next=>{
+      if(isBalance){
+        next.cashBalances=next.cashBalances.filter(row=>row.date!==data.date&&row.date!==existing?.date);
+        next.cashBalances.push({date:data.date,amount});
+      }else next.operations.push({id:uuid(),date:data.date,amount,type:'income',method:'cash',category:'unknown',
+        merchant:'Получила наличными',note:'',lila:false});
+    }))closeSheet();
+    submit.disabled=false;
+  });
+}
+function cashMovement(row){
+  if(!row.importKey||row.pending||row.type!=='internal')return 0;
+  const description=normalize(row.original);
+  if(/^(?:зняття готівки|снятие наличных)/.test(description))return row.amount;
+  if(/^(?:термінал самообслуговування|решта в терміналі|поповнення готівкою|внесення готівки|пополнение наличными)/.test(description))return -row.amount;
+  return 0;
+}
+function cashContent(period,interactive=true){
+  const eligible=state.operations.filter(row=>!row.pending&&row.date<=period.end);
+  const selected=eligible.filter(row=>row.date>=period.start&&row.method==='cash');
+  const actual=totals(selected,period);
+  const snapshots=state.cashBalances.filter(row=>row.date<=period.end).sort((a,b)=>a.date.localeCompare(b.date));
+  const latest=snapshots.at(-1);
+  const earlier=snapshots.filter(row=>row.date<period.start).at(-1)||snapshots[0];
+  const result=[
+    metric('Получила наличными за период',money(actual.income)),
+    metric('Записанные расходы наличными',money(actual.expense))
+  ];
+  if(latest){
+    result.push(metric('Осталось на '+shortDate(latest.date),money(latest.amount)));
+  }
+  if(earlier&&latest!==earlier&&latest.date>=period.start){
+    const interval=eligible.filter(row=>row.date>earlier.date&&row.date<=latest.date);
+    const cash=totals(interval.filter(row=>row.method==='cash'),{start:earlier.date,end:latest.date});
+    const movement=interval.reduce((sum,row)=>sum+cashMovement(row),0);
+    const inferred=earlier.amount+cash.income+movement-latest.amount;
+    result.push(empty('Расход между остатками за '+shortDate(earlier.date)+' и '+shortDate(latest.date)+'.'));
+    if(inferred>=cash.expense){
+      result.push(metric('Потрачено наличными по остаткам',money(inferred),'total'),
+        metric('Из них без разбивки по покупкам',money(inferred-cash.expense)));
+    }else{
+      result.push(empty('Остатки и записанные операции расходятся. Проверь суммы и пополнения за эти даты.'));
+    }
+  }else result.push(empty('Для расчёта расхода нужны остатки на две разные даты.'));
+  if(interactive){
+    const actions=cashActions();
+    if(latest)actions.append(button('Изменить последний остаток',()=>cashEntry('balance',latest)));
+    result.push(actions);
+  }
+  return result;
+}
+
 function renderAnalytics(){
   $('analytics-period').textContent=range.label+' ⌄';
   $('analytics-lila').setAttribute('aria-pressed',String(analyticsLila));
   $('analytics-lila').classList.toggle('lilac',analyticsLila);
   const rows=operations(range,analyticsLila), summary=totals(rows,range);
   const parts=[n('div','','card sage')];
-  parts[0].append(...stats(summary));
+  parts[0].append(n('h2','Записанные операции'),...stats(summary));
+  if(!analyticsLila){
+    const cash=n('section','','card');
+    cash.append(n('h2','Наличные'),...cashContent(range));
+    parts.push(cash);
+  }
   const categories=n('section','','card');categories.append(n('h2','Категории'));
   for(const [id,value] of group(rows,row=>row.category)){
     categories.append(rowButton(categoryName(id),'',money(value.amount),()=>drill(id,'',analyticsLila)));
@@ -1492,6 +1666,7 @@ function restoreSheet(file){
       const restored=await encrypt(loaded,secret,decode64(backup.salt));
       await writeVault(restored,record?.revision||null);
       record=restored;
+      await writeDeviceAccess(deviceSlot(),null).catch(()=>{});
       issue('Бюджет восстановлен. Войди с PIN этой копии.');
       showGate();
     }catch(error){
@@ -1518,6 +1693,7 @@ function restoreSheet(file){
       }
     }
     showGate();
+    await tryDeviceUnlock();
   }catch(error){
     issue(error.message||'Не удалось открыть хранилище браузера.');
   }
