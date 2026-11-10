@@ -321,9 +321,9 @@ body.show-extra .nb-extra{display:flex}
 :is(#page-life-cal,#page-all-cal) #events-list { margin-top:8px; }
 :is(#page-life-cal,#page-all-cal) .life-sync { font-size:12px; margin:0 0 9px; color:#77503c; }
 :is(#page-life-cal,#page-all-cal) :focus-visible { outline:2px solid #65407b; outline-offset:2px; }
-body:has(#page-life-cal.active,#page-all-cal.active,#page-projects.active){background:#fbf1e3}
-body:has(#page-life-cal.active,#page-all-cal.active,#page-projects.active) :is(.sidebar,.mob-header,.mob-fab){display:none!important}
-body:has(#page-life-cal.active,#page-all-cal.active,#page-projects.active) .main{margin:0 auto;width:100%;min-width:0}
+body:has(#page-life-cal.active,#page-all-cal.active,#page-projects.active,#page-project.active){background:#fbf1e3}
+body:has(#page-life-cal.active,#page-all-cal.active,#page-projects.active,#page-project.active) :is(.sidebar,.mob-header,.mob-fab){display:none!important}
+body:has(#page-life-cal.active,#page-all-cal.active,#page-projects.active,#page-project.active) .main{margin:0 auto;width:100%;min-width:0}
 :is(#page-life-cal,#page-all-cal,#page-projects){margin-inline:auto;padding:24px 14px 36px}
 @media(max-width:768px){
   :is(#page-life-cal,#page-all-cal,#page-projects){padding:8px 14px 24px}
@@ -387,15 +387,15 @@ body:has(#page-home.active) .main{margin:0 auto;width:100%;min-width:0}
 #home-todo-status,#todo-edit-status{font-size:12px;color:#5d5141}
 #home-todo-status:empty,#todo-edit-status:empty{display:none}
 #modal-home-todo .modal{max-height:90vh;overflow-y:auto}
-.jl-bottom{display:flex;justify-content:center;gap:clamp(24px,12vw,64px);align-items:center;margin-top:10px;border-top:1.5px solid var(--ink);padding-top:7px}
+.jl-bottom{display:flex;justify-content:center;align-items:center;margin-top:10px;border-top:1.5px solid var(--ink);padding-top:7px}
 .jl-bottom button{display:grid;justify-items:center;align-content:center;min-width:66px;min-height:42px;border:0;background:transparent;color:var(--ink);cursor:pointer;font:650 11px var(--ff)}
 .jl-bottom svg{width:28px;height:25px}
 .jl-bottom .jl-plus{min-width:42px;border:1.6px solid var(--ink);border-radius:13px;background:#dfcdee;font-size:25px}
 #page-home :focus-visible{outline:2px solid #6c4782;outline-offset:2px}
 </style>
 <style>
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active){background:#fbf1e3}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .main{min-width:0}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active){background:#fbf1e3}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .main{min-width:0}
 :is(#page-shoots-cal,#page-report){--work-ink:#241e19;--work-cream:#fff9ee;--work-blue:#d2e3ec;--work-lilac:#e4d5ef;color:var(--work-ink);max-width:820px}
 .work-nav{display:flex;justify-content:space-between;gap:10px;margin-bottom:15px}
 .work-nav button,.work-today{background:none;border:0;color:#4c355e;font:700 13px var(--ff);min-height:34px;padding:4px 0;cursor:pointer;text-align:left}
@@ -443,18 +443,18 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 #page-report .report-period input{display:block;width:100%;min-width:0;min-height:38px;margin-top:3px;background:var(--work-cream);color:var(--work-ink)}
 #page-report :is(#rp-summary,#rp-blocks,#rp-advances,#advance-list){overflow-wrap:anywhere}
 :is(#page-shoots-cal,#page-report) :focus-visible{outline:2px solid #704d83;outline-offset:2px}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal{background:#fff9ee;border:1.6px solid #241e19;padding:0 16px 16px;max-height:calc(100dvh - 26px);overscroll-behavior:contain}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal-head{position:sticky;top:0;z-index:2;background:#fff9ee;padding:13px 0 9px;border-bottom:1px solid #dfd1bc;margin-bottom:13px;gap:10px}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal-title{font:700 22px Georgia,serif}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal-close{flex-shrink:0;background:#e4d5ef;color:#241e19}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal .form-row{min-width:0}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal input[type="number"]{display:block;width:100%;min-height:38px;border:1px solid #dbceb8;border-radius:9px;padding:7px 9px;color:#241e19;font:inherit}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal div:has(> .form-row + .form-row) > .form-row:not([hidden]){display:flex;flex-direction:column}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal div:has(> .form-row + .form-row) > .form-row > :is(input,select){margin-top:auto}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal :is(input,select,textarea){min-width:0;max-width:100%;background:#fffcf6}
-body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) .modal .btn-primary{background:#d2e3ec;color:#241e19;border:1px solid #241e19}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal{background:#fff9ee;border:1.6px solid #241e19;padding:0 16px 16px;max-height:calc(100dvh - 26px);overscroll-behavior:contain}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal-head{position:sticky;top:0;z-index:2;background:#fff9ee;padding:13px 0 9px;border-bottom:1px solid #dfd1bc;margin-bottom:13px;gap:10px}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal-title{font:700 22px Georgia,serif}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal-close{flex-shrink:0;background:#e4d5ef;color:#241e19}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal .form-row{min-width:0}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal input[type="number"]{display:block;width:100%;min-height:38px;border:1px solid #dbceb8;border-radius:9px;padding:7px 9px;color:#241e19;font:inherit}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal div:has(> .form-row + .form-row) > .form-row:not([hidden]){display:flex;flex-direction:column}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal div:has(> .form-row + .form-row) > .form-row > :is(input,select){margin-top:auto}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal :is(input,select,textarea){min-width:0;max-width:100%;background:#fffcf6}
+body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) .modal .btn-primary{background:#d2e3ec;color:#241e19;border:1px solid #241e19}
 @media(max-width:768px){
-  body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active) :is(.mob-header,.mob-fab){display:none!important}
+  body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active,#page-project.active) :is(.mob-header,.mob-fab){display:none!important}
   :is(#page-shoots-cal,#page-report){padding:8px 14px 24px}
 }
 @media(max-width:350px){
@@ -496,11 +496,21 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 #page-projects .proj-card{background:#fff9ee;border-color:#231d17;border-top-width:4px;box-shadow:none;transform:none;padding:12px;min-width:0;overflow-wrap:anywhere}
 #page-projects .proj-name{font:700 21px Georgia,serif;color:#231d17}
 #page-projects .proj-meta{color:#574c42}
-:is(#page-projects,.work-tasks-panel) .task-item{background:#f3ead9;flex-wrap:wrap}
-:is(#page-projects,.work-tasks-panel) .task-text{min-width:110px;overflow-wrap:anywhere}
-:is(#page-projects,.work-tasks-panel) .task-date{color:#574c42}
+:is(#page-projects,#page-project,.work-tasks-panel) .task-item{background:#f3ead9;flex-wrap:wrap}
+:is(#page-projects,#page-project,.work-tasks-panel) .task-text{min-width:110px;overflow-wrap:anywhere}
+:is(#page-projects,#page-project,.work-tasks-panel) .task-date{color:#574c42}
 .proj-open{display:block;text-align:left;border:0;background:none;padding:0;color:inherit;cursor:pointer}
 .proj-open:hover{text-decoration:underline}
+#page-project{width:100%;max-width:820px;min-width:0}
+.project-page-header{background:#f4e5b6;border:1px solid #78674e;border-radius:15px;padding:14px 16px;margin:0 0 14px}
+#page-project[data-scope="work"] .project-page-header{background:#e5ecdf;border-color:#a6b29a}
+.project-page-header h1{margin:4px 0 0;font:700 clamp(26px,6vw,39px)/1.08 Georgia,serif;letter-spacing:-.035em;overflow-wrap:anywhere}
+.project-page-label{font-size:11px;font-weight:700;color:#57483b}
+.project-page-header .project-description{margin:7px 0 0}
+#page-project .project-section{padding:12px 14px}
+#page-project #pc-settings{margin-top:14px}
+#page-project .form-row :is(input,textarea,select){min-width:0;max-width:100%}
+@media(max-width:700px){#page-project{padding:8px 12px 24px}}
 .project-description{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--t2);margin:0 0 12px}
 .project-description:empty,.project-section p:empty,#pc-board-status:empty{display:none}
 .project-section{background:#fff9ee;border:1px solid var(--bd);border-radius:12px;padding:10px 12px;margin:0 0 10px}
@@ -534,6 +544,34 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 .work-project-archive .work-project-row{margin-top:5px}
 .project-card-actions{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
 .project-card-actions .btn-ghost{padding:5px 8px}
+#page-projects .personal-project-open{background:#f5e5b4;color:#30251b}
+#page-projects .personal-project-open span{margin-left:3px}
+.personal-project-description{font-size:13px;line-height:1.4;color:#635748;margin:4px 0 8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.personal-project-highlight{display:grid;gap:3px;padding:8px 9px;margin:7px 0;background:#f1e9dc;border-radius:9px;overflow-wrap:anywhere}
+.personal-project-highlight small{font-size:10px;font-weight:700;color:#6a5141}
+.personal-project-highlight strong{font-size:14px;line-height:1.2}
+.personal-project-highlight span{font-size:12px;color:#51463b}
+#page-shoots-cal .work-head{align-items:center;margin-bottom:12px}
+#page-shoots-cal .work-quick-add{gap:6px;align-items:center;padding:8px;background:#f2e6d3;border:1px solid #d8c8af;border-radius:12px}
+#page-shoots-cal .work-quick-add .work-project-jump{margin-left:auto;background:#fff9ee}
+#page-shoots-cal .work-quick-add .work-add-task{background:#fff9ee}
+#page-shoots-cal .work-report{background:#e3e9d8}
+.work-overview{display:grid;gap:12px;align-items:start;margin-bottom:14px}
+.work-agenda{min-width:0;display:grid;gap:8px}
+#page-shoots-cal .work-overview .cal-wrap{margin:0;padding:13px}
+#page-shoots-cal .work-agenda .day-panel{margin:0;background:#e5ecdf;border:1px solid #a6b29a}
+#page-shoots-cal .work-agenda .work-tasks-panel{margin:0;border:1px solid #cebea7;border-radius:12px;padding:8px 10px;background:#fff9ee}
+#page-shoots-cal .work-agenda summary{padding:4px 0;min-height:28px}
+.work-cal-legend{display:flex;gap:5px 10px;margin-top:8px;color:#5f5347;flex-wrap:wrap;font-size:10px}
+#page-shoots-cal .work-list-head{margin-top:0}
+#page-shoots-cal .work-tasks-panel:not(.project-fold){border-color:#c9b99f}
+@media(min-width:1000px){
+  .work-overview{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}
+}
+@media(max-width:520px){
+  #page-shoots-cal .work-quick-add .work-project-jump{margin-left:0}
+  #page-shoots-cal .work-overview .cal-wrap{padding:10px}
+}
 .project-section .task-list{margin:8px 0 0}
 .project-section .btn-ghost{padding:5px 8px}
 .project-section summary{font-weight:700;cursor:pointer}
@@ -542,6 +580,10 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 .project-goal details{padding-left:10px}
 .project-goal details .project-entry{margin-left:0}
 #task-assigned-date-row[hidden],#tc-assigned-date-row[hidden],#task-kind-row[hidden],#pc-work-settings[hidden],#pr-kind-row[hidden]{display:none}
+.work-wait-fields [hidden]{display:none}
+.work-wait-tag{display:inline-block;font-size:11px;border-radius:20px;padding:2px 6px;background:#f2e3b3;color:#5f4319}
+.work-wait-row{display:block;text-align:left;width:100%;border:0;border-top:1px solid var(--b);padding:8px 0;background:none;color:var(--ink);cursor:pointer;font:inherit;overflow-wrap:anywhere}
+.work-wait-row small{display:block;color:#645343;margin-top:3px}
 .project-pub-status{display:inline-block;border-radius:20px;background:#eadcf0;padding:3px 7px;margin-left:5px;font-size:11px;color:#493257}
 .project-entry p{font-size:13px;color:var(--t2);margin:4px 0;white-space:pre-wrap}
 .project-entry-controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px}
@@ -786,7 +828,6 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       </details>
       <nav class="jl-bottom" aria-label="Основная навигация">
         <button class="jl-plus" type="button" aria-label="Добавить" onclick="showModal('modal-add')">+</button>
-        <button type="button" onclick="goToPage('all-cal')"><svg viewBox="0 0 48 40" aria-hidden="true"><rect x="8" y="8" width="32" height="28" rx="4" fill="#fff5dd"/><path d="M8 16h32m-23-12v8m14-8v8m-16 11h3m5 0h3m5 0h3m-19 6h3m5 0h3"/></svg><span>Календарь</span></button>
       </nav>
     </section>
     <section class="page" id="page-ritual" aria-labelledby="ritual-title">
@@ -917,21 +958,11 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
         <button class="btn-ghost work-add" type="button" onclick="openWorkShoot()">+ Съёмка</button>
         <button class="btn-ghost work-add-task" type="button" onclick="openWorkTask('задача')">+ Задача</button>
         <button class="btn-ghost" type="button" onclick="openWorkTask('дизайн')">+ Дизайн</button>
-      </div>
-      <div class="work-quick-add" aria-label="Рабочие проекты">
         <button class="btn-ghost" type="button" onclick="openProjectForm('work')">+ Проект</button>
-        <button class="btn-ghost" type="button" onclick="openWorkProjects()">Рабочие проекты ↓</button>
+        <button class="btn-ghost work-project-jump" type="button" onclick="openWorkProjects()">К проектам ↓</button>
       </div>
       <p class="work-sync" id="work-sync" role="status" hidden></p>
-      <details class="work-tasks-panel project-fold" id="work-month" ontoggle="if(this.open)loadWorkMonth()">
-        <summary>Съёмки за месяц</summary>
-        <div class="project-month-controls">
-          <button type="button" class="cal-nav-btn" onclick="changeWorkMonth(-1)" aria-label="Предыдущий месяц">‹</button>
-          <strong id="work-month-label"></strong>
-          <button type="button" class="cal-nav-btn" onclick="changeWorkMonth(1)" aria-label="Следующий месяц">›</button>
-        </div>
-        <div id="work-month-results" role="status"></div>
-      </details>
+      <div class="work-overview">
       <div class="cal-wrap">
         <div class="cal-row">
           <div class="cal-month" id="sc-title" aria-live="polite"></div>
@@ -945,14 +976,30 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
           <span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span>
         </div>
         <div class="cal-grid" id="sc-grid" aria-labelledby="sc-title"></div>
-        <div style="display:flex;gap:14px;margin-top:14px;font-size:11px;color:var(--t2);flex-wrap:wrap">
+        <div class="work-cal-legend">
           <span style="display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;background:#3A5F8E;border-radius:50%"></span><span style="width:6px;height:6px;background:#5D3A8E;border-radius:50%;margin-left:-2px"></span><span style="width:6px;height:6px;background:#C47A0A;border-radius:50%;margin-left:-2px"></span>съёмка — цвет проекта</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;background:#FE702D;border-radius:2px"></span>дизайн</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;background:#3A6E4A;border-radius:2px"></span>задача</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;background:#C4552A;opacity:.28;border-radius:50%"></span>отменена</span>
         </div>
       </div>
-      <div id="sc-day-detail"></div>
+      <aside class="work-agenda" aria-label="Выбранный день и сводка">
+        <div id="sc-day-detail"></div>
+        <details class="work-tasks-panel project-fold" id="work-waiting">
+          <summary id="work-waiting-title">Жду ответа</summary>
+          <div id="work-waiting-list"></div>
+        </details>
+        <details class="work-tasks-panel project-fold" id="work-month" ontoggle="if(this.open)loadWorkMonth()">
+          <summary>Съёмки за месяц</summary>
+          <div class="project-month-controls">
+            <button type="button" class="cal-nav-btn" onclick="changeWorkMonth(-1)" aria-label="Предыдущий месяц">‹</button>
+            <strong id="work-month-label"></strong>
+            <button type="button" class="cal-nav-btn" onclick="changeWorkMonth(1)" aria-label="Следующий месяц">›</button>
+          </div>
+          <div id="work-month-results" role="status"></div>
+        </details>
+      </aside>
+      </div>
       <section class="work-tasks-panel" aria-labelledby="standalone-title">
         <div class="sec-row work-list-head">
           <h2 class="sec-title" id="standalone-title">Задачи и дизайн</h2>
@@ -1021,6 +1068,84 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
         <div class="proj-grid" id="projects-list"></div>
       </section>
     </div>
+
+    <section class="page" id="page-project" aria-labelledby="pc-heading">
+      <nav class="work-nav" aria-label="Навигация проекта">
+        <button type="button" id="pc-back" onclick="returnFromProject()">← К проектам</button>
+      </nav>
+      <header class="project-page-header">
+        <span id="pc-section-label" class="project-page-label">Проект</span>
+        <h1 id="pc-heading" tabindex="-1">Проект</h1>
+        <p class="project-description" id="pc-description"></p>
+      </header>
+      <p id="pc-route-status" role="status" hidden></p>
+      <button class="btn-ghost" type="button" id="pc-route-retry" onclick="load()" hidden>Повторить загрузку проекта</button>
+      <div id="pc-content" hidden>
+        <input type="hidden" id="pc-id">
+        <details class="project-section" id="pc-task-list">
+          <summary id="pc-tasks-title">Задачи</summary>
+          <div id="pc-tasks" class="task-list"></div>
+          <button type="button" class="btn-ghost" onclick="openAddTask(Number(document.getElementById('pc-id').value))">+ Задача</button>
+        </details>
+        <details class="project-section" id="pc-task-archive" hidden>
+          <summary>Выполненные задачи</summary>
+          <div class="task-list"></div>
+        </details>
+        <p id="pc-board-status" role="status"></p>
+        <button id="pc-board-retry" type="button" class="btn-ghost" onclick="retryProjectWorkspace()" hidden>Повторить загрузку</button>
+        <div id="pc-board"></div>
+        <details class="project-section project-settings" id="pc-settings">
+        <summary>Настройки проекта</summary>
+        <div class="form-row"><label class="field-label">Название</label><input type="text" id="pc-name"></div>
+        <div class="form-row"><label class="field-label">Описание</label><textarea class="f" id="pc-desc" rows="2"></textarea></div>
+        <div class="form-row"><label class="field-label" for="pc-link">Ссылка</label><input type="text" id="pc-link" placeholder="https://..."></div>
+        <div class="form-row"><label class="field-label" for="pc-scope">Раздел</label>
+          <select id="pc-scope"><option value="work">Работа</option><option value="personal">Мои проекты</option></select>
+        </div>
+        <label class="project-workflow"><input type="checkbox" id="pc-multistage"> Вести проект по этапам</label>
+        <div id="pc-work-settings">
+        <div class="form-row"><label class="field-label" for="pc-kind">Тип проекта</label>
+          <select id="pc-kind" onchange="suggestProjectWorkflow('pc')">
+            <option value="other">Другое</option><option value="ad">Реклама</option><option value="course">Курсы</option><option value="design">Дизайн</option>
+          </select>
+        </div>
+        <div class="form-row"><label class="field-label">От кого</label><input type="text" id="pc-assigned" placeholder="Денис, Марго, Таня…"></div>
+        <div class="form-row"><label class="field-label">Тип</label>
+          <select id="pc-billing" onchange="pcRecalc()">
+            <option value="project">Проект под ключ — цена целиком, делится по съёмкам</option>
+            <option value="category">Категория — ставка за каждую съёмку</option>
+            <option value="personal">Личное — без оплаты, не в отчёт</option>
+          </select>
+        </div>
+        <div class="form-row"><label class="field-label" id="pc-price-label">Позиция прайса</label>
+          <select id="pc-price" onchange="pcRecalc()"></select>
+        </div>
+        <div style="display:flex;gap:8px">
+          <div class="form-row" style="flex:1"><label class="field-label">Надбавка</label>
+            <select id="pc-surch" onchange="pcRecalc()"><option value="0">нет</option><option value="30">+30%</option></select>
+          </div>
+          <div class="form-row" style="flex:1"><label class="field-label">Доплата ₴</label><input type="number" id="pc-extra" step="100" value="0" oninput="pcRecalc()"></div>
+          <div class="form-row" style="flex:1"><label class="field-label">Сумма ₴</label><input type="number" id="pc-amount" step="100"></div>
+        </div>
+        <div style="font-size:12px;color:var(--t3);margin:-4px 0 10px" id="pc-split"></div>
+        </div>
+        <div class="form-row"><label class="field-label">Статус</label>
+          <select id="pc-status"><option value="в работе">В работе</option><option value="готово">Готово</option></select>
+        </div>
+        <div class="work-wait-fields" id="pc-wait-fields">
+          <label class="project-workflow"><input type="checkbox" id="pc-waiting" onchange="renderWaitingFields('pc')"> Жду ответа</label>
+          <div class="form-row" id="pc-waiting-note-row" hidden>
+            <label class="field-label" for="pc-waiting-note">От кого или по какому вопросу</label>
+            <input id="pc-waiting-note" type="text" maxlength="180">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:14px">
+          <button class="btn-primary full" onclick="saveProjCard()" style="flex:1">Сохранить настройки</button>
+          <button onclick="deleteProjCard()" style="padding:11px 16px;border:1.5px solid var(--bd);background:var(--peachbg);color:var(--peach);border-radius:10px;cursor:pointer">🗑</button>
+        </div>
+        </details>
+      </div>
+    </section>
 
     <!-- IDEAS -->
     <div class="page" id="page-ideas">
@@ -1335,6 +1460,13 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
     <div class="form-row"><label class="field-label">Статус</label>
       <select id="tc-status"><option value="в работе">В работе</option><option value="готово">Готово</option></select>
     </div>
+    <div class="work-wait-fields" id="tc-wait-fields">
+      <label class="project-workflow"><input type="checkbox" id="tc-waiting" onchange="renderWaitingFields('tc')"> Жду ответа</label>
+      <div class="form-row" id="tc-waiting-note-row" hidden>
+        <label class="field-label" for="tc-waiting-note">От кого или по какому вопросу</label>
+        <input id="tc-waiting-note" type="text" maxlength="180">
+      </div>
+    </div>
     <div class="form-row" id="tc-done-wrap"><label class="field-label">Сдано</label><input type="date" id="tc-done-date"></div>
     <div style="display:flex;gap:10px;margin-top:14px">
       <button class="btn-primary full" onclick="saveTaskCard()" style="flex:1">💾 Сохранить</button>
@@ -1431,72 +1563,6 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       <select id="as-proj"></select>
     </div>
     <button class="btn-primary full" onclick="applyAssign()">Назначить</button>
-  </div>
-</div>
-
-<div class="modal-bg hidden" id="modal-proj-card">
-  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
-    <div class="modal-head">
-      <span class="modal-title" id="pc-heading">Проект</span>
-      <button class="modal-close" onclick="hideModal('modal-proj-card')">✕</button>
-    </div>
-    <input type="hidden" id="pc-id">
-    <p class="project-description" id="pc-description"></p>
-    <details class="project-section" id="pc-task-list">
-      <summary id="pc-tasks-title">Задачи</summary>
-      <div id="pc-tasks" class="task-list"></div>
-      <button type="button" class="btn-ghost" onclick="openAddTask(Number(document.getElementById('pc-id').value))">+ Задача</button>
-    </details>
-    <details class="project-section" id="pc-task-archive" hidden>
-      <summary>Выполненные задачи</summary>
-      <div class="task-list"></div>
-    </details>
-    <p id="pc-board-status" role="status"></p>
-    <button id="pc-board-retry" type="button" class="btn-ghost" onclick="retryProjectWorkspace()" hidden>Повторить загрузку</button>
-    <div id="pc-board"></div>
-    <details class="project-section project-settings" id="pc-settings">
-    <summary>Настройки проекта</summary>
-    <div class="form-row"><label class="field-label">Название</label><input type="text" id="pc-name"></div>
-    <div class="form-row"><label class="field-label">Описание</label><textarea class="f" id="pc-desc" rows="2"></textarea></div>
-    <div class="form-row"><label class="field-label" for="pc-link">Ссылка</label><input type="text" id="pc-link" placeholder="https://..."></div>
-    <div class="form-row"><label class="field-label" for="pc-scope">Раздел</label>
-      <select id="pc-scope"><option value="work">Работа</option><option value="personal">Мои проекты</option></select>
-    </div>
-    <label class="project-workflow"><input type="checkbox" id="pc-multistage"> Вести проект по этапам</label>
-    <div id="pc-work-settings">
-    <div class="form-row"><label class="field-label" for="pc-kind">Тип проекта</label>
-      <select id="pc-kind" onchange="suggestProjectWorkflow('pc')">
-        <option value="other">Другое</option><option value="ad">Реклама</option><option value="course">Курсы</option><option value="design">Дизайн</option>
-      </select>
-    </div>
-    <div class="form-row"><label class="field-label">От кого</label><input type="text" id="pc-assigned" placeholder="Денис, Марго, Таня…"></div>
-    <div class="form-row"><label class="field-label">Тип</label>
-      <select id="pc-billing" onchange="pcRecalc()">
-        <option value="project">Проект под ключ — цена целиком, делится по съёмкам</option>
-        <option value="category">Категория — ставка за каждую съёмку</option>
-        <option value="personal">Личное — без оплаты, не в отчёт</option>
-      </select>
-    </div>
-    <div class="form-row"><label class="field-label" id="pc-price-label">Позиция прайса</label>
-      <select id="pc-price" onchange="pcRecalc()"></select>
-    </div>
-    <div style="display:flex;gap:8px">
-      <div class="form-row" style="flex:1"><label class="field-label">Надбавка</label>
-        <select id="pc-surch" onchange="pcRecalc()"><option value="0">нет</option><option value="30">+30%</option></select>
-      </div>
-      <div class="form-row" style="flex:1"><label class="field-label">Доплата ₴</label><input type="number" id="pc-extra" step="100" value="0" oninput="pcRecalc()"></div>
-      <div class="form-row" style="flex:1"><label class="field-label">Сумма ₴</label><input type="number" id="pc-amount" step="100"></div>
-    </div>
-    <div style="font-size:12px;color:var(--t3);margin:-4px 0 10px" id="pc-split"></div>
-    </div>
-    <div class="form-row"><label class="field-label">Статус</label>
-      <select id="pc-status"><option value="в работе">В работе</option><option value="готово">Готово</option></select>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:14px">
-      <button class="btn-primary full" onclick="saveProjCard()" style="flex:1">💾 Сохранить</button>
-      <button onclick="deleteProjCard()" style="padding:11px 16px;border:1.5px solid var(--bd);background:var(--peachbg);color:var(--peach);border-radius:10px;cursor:pointer">🗑</button>
-    </div>
-    </details>
   </div>
 </div>
 
@@ -1681,7 +1747,7 @@ async function doLogin(){
     renderDaily();
     void syncDaily();
     if(document.getElementById('home-todo').open)void loadHomeTodo();
-    if(!document.getElementById('modal-proj-card').classList.contains('hidden'))void loadProjectWorkspace();
+    if(document.getElementById('page-project').classList.contains('active')&&Number(document.getElementById('pc-id').value))void loadProjectWorkspace();
     await load();
   }catch(e){err.textContent='Ошибка сети: '+e;}
 }
@@ -1865,6 +1931,7 @@ async function load(){
   loadPending=loadData();
   try{return await loadPending;}finally{loadPending=null;}
 }
+let projectsLoaded=false;
 async function loadData(){
   const tables=['shoots','projects','tasks','ideas','diary','events','family','scripts','price_list'];
   try{
@@ -1876,11 +1943,15 @@ async function loadData(){
           DB.advances=r.value.filter(t=>t.kind==='аванс');
           DB.tasks=r.value.filter(t=>t.kind!=='аванс');
         }else DB[tables[i]]=r.value;
+        if(tables[i]==='projects')projectsLoaded=true;
       }
       else failures.push(r.reason.message||String(r.reason));
     });
     applyPriceList(DB.price_list||[]);
     renderAll();
+    if(document.getElementById('page-projects').classList.contains('active'))void loadPersonalProjectPreviews();
+    const linkedId=linkedProjectId();
+    if(linkedId&&Number(document.getElementById('pc-id').value)!==linkedId)showLinkedProject(linkedId);
     if(document.getElementById('work-month').open)void loadWorkMonth();
     const message=failures.join('\n');
     setSyncOk(!failures.length,message);
@@ -1889,6 +1960,10 @@ async function loadData(){
 }
 
 function setSyncOk(ok,message=''){
+  if(!ok&&!projectsLoaded&&linkedProjectId()){
+    document.getElementById('pc-route-status').textContent='Не удалось загрузить проект.';
+    document.getElementById('pc-route-retry').hidden=false;
+  }
   if(!ok && !homeMeeting) document.getElementById('jl-meeting-text').textContent='Не удалось обновить события';
   for(const id of ['work-sync','report-sync','projects-sync','overview-sync']){
     const indicator=document.getElementById(id);
@@ -1906,7 +1981,7 @@ function setSyncOk(ok,message=''){
 
 function renderAll(){
   renderHome();renderAllCal();renderShootsCal();renderLifeCal();renderShoots();renderEvents();
-  renderProjects();renderProjectTasks();renderStandaloneTasks();renderIdeas();renderDiary();renderFamily();renderWeek();renderScripts();renderPriceList();renderReportSafe();updateSelects();
+  renderProjects();renderProjectTasks();renderStandaloneTasks();renderWorkWaiting();renderIdeas();renderDiary();renderFamily();renderWeek();renderScripts();renderPriceList();renderReportSafe();updateSelects();
 }
 
 function fmtShort(d){
@@ -2279,10 +2354,89 @@ function isPersonalTask(task){
   return isPersonalProject(DB.projects.find(project=>project.id===task.project_id));
 }
 function workTasks(){return DB.tasks.filter(task=>!isPersonalTask(task));}
+let personalProjectPreviews=new Map();
+let personalPreviewOwner=null;
+let personalPreviewRequest=0;
+async function loadPersonalProjectPreviews(){
+  const owner=session?.user?.id;
+  const request=++personalPreviewRequest;
+  if(personalPreviewOwner!==owner){
+    personalPreviewOwner=owner;
+    personalProjectPreviews=new Map();
+    renderProjects();
+  }
+  const ids=DB.projects.filter(isPersonalProject).map(project=>project.id);
+  if(!owner||!ids.length)return;
+  try{
+    const response=await apiFetch(SB+'/rest/v1/project_workspaces?select=project_id,items&project_id=in.('+ids.join(',')+')',{cache:'no-store'});
+    if(!response.ok)return;
+    const rows=await response.json();
+    if(request!==personalPreviewRequest||session?.user?.id!==owner)return;
+    personalProjectPreviews=new Map(rows.map(row=>[Number(row.project_id),summarizePersonalProject(row.items)]));
+    if(document.getElementById('page-projects').classList.contains('active'))renderProjects();
+  }catch{}
+}
+function summarizePersonalProject(items=[]){
+  const goals=items.filter(item=>item.kind==='goal'&&!item.done);
+  const goal=goals[0];
+  const steps=goal?items.filter(item=>item.kind==='goal_step'&&item.goalId===goal.id):[];
+  const publications=items.filter(item=>item.kind==='publication'&&item.status!=='published');
+  const publication=publications.find(item=>item.date)||publications[0];
+  return {
+    goal:goal?.title,goals:goals.length,steps:steps.length,doneSteps:steps.filter(item=>item.done).length,
+    publication:publication?.title,publicationDate:publication?.date,
+    publications:items.some(item=>item.kind==='settings'&&item.publications),
+    plans:items.filter(item=>item.kind==='plan'&&!item.done).length,
+    ideas:items.filter(item=>item.kind==='idea').length
+  };
+}
+function renderPersonalProjectPreview(project){
+  const summary=personalPreviewOwner===session?.user?.id?personalProjectPreviews.get(project.id):null;
+  if(!summary&&!project.description?.trim())return '';
+  const counts=[summary?.plans?'План · '+summary.plans:'',summary?.ideas?'Идеи · '+summary.ideas:''].filter(Boolean);
+  const goal=summary?.goal?`<div class="personal-project-highlight">
+    <small>Цель${summary.goals>1?' · '+summary.goals+' открытых':''}</small>
+    <strong>${avEscape(summary.goal)}</strong>
+    ${summary.steps?`<span>${summary.doneSteps} из ${summary.steps} шагов</span>`:''}
+  </div>`:'';
+  const publications=summary?.publications?`<div class="personal-project-highlight">
+    <small>Публикации</small>
+    <span>${summary.publication?avEscape(summary.publication)+(summary.publicationDate?' · '+fmtShort(summary.publicationDate):''):'Можно добавить первый пост или видео'}</span>
+  </div>`:'';
+  return `${project.description?.trim()?`<p class="personal-project-description">${avEscape(project.description.trim())}</p>`:''}
+    ${goal}${publications}${counts.length?`<p class="proj-meta">${counts.join(' · ')}</p>`:''}`;
+}
 function renderProjects(){
   renderProjectList('projects-list',DB.projects.filter(isPersonalProject),'Личных проектов пока нет');
   const kind=document.getElementById('work-project-filter').value;
   renderProjectList('work-projects-list',workProjects().filter(project=>!kind||workProjectKind(project)===kind),'Рабочих проектов в этом списке пока нет');
+}
+function renderWaitingFields(prefix){
+  document.getElementById(prefix+'-waiting-note-row').hidden=!document.getElementById(prefix+'-waiting').checked;
+}
+function fillWaitingFields(prefix,record,personal){
+  document.getElementById(prefix+'-wait-fields').hidden=personal;
+  document.getElementById(prefix+'-waiting').checked=record.waiting_for!=null&&record.status!=='готово';
+  document.getElementById(prefix+'-waiting-note').value=record.waiting_for||'';
+  renderWaitingFields(prefix);
+}
+function setWaitingUpdate(update,prefix,record,personal){
+  if(personal)return;
+  const next=update.status!=='готово'&&document.getElementById(prefix+'-waiting').checked
+    ?document.getElementById(prefix+'-waiting-note').value.trim():null;
+  if(next!==(record?.waiting_for??null))update.waiting_for=next;
+}
+function renderWorkWaiting(){
+  const tasks=workTasks().filter(task=>task.status!=='готово'&&task.waiting_for!=null);
+  const projects=workProjects().filter(project=>project.status!=='готово'&&project.waiting_for!=null);
+  document.getElementById('work-waiting-title').textContent='Жду ответа · '+(tasks.length+projects.length);
+  const rows=[...projects.map(row=>({row,kind:'Проект',handler:'openProjCard'})),
+    ...tasks.map(row=>({row,kind:'Задача',handler:'openTaskCard'}))];
+  document.getElementById('work-waiting-list').innerHTML=rows.map(({row,kind,handler})=>
+    `<button type="button" class="work-wait-row" onclick="${handler}(${row.id})">
+      <strong>${avEscape(row.name||row.title||'Без названия')}</strong>
+      <small>${kind}${row.waiting_for?' · '+avEscape(row.waiting_for):''}</small></button>`
+  ).join('')||'<p class="project-empty">Пока ничего не ждёшь</p>';
 }
 function projectTaskRows(tasks,showMissingPrice=false){
   return tasks.map(t=>{
@@ -2295,6 +2449,7 @@ function projectTaskRows(tasks,showMissingPrice=false){
     return`<div class="task-item">
       <div class="task-check ${cls}" onclick="cycleTask(${t.id},'${t.status}')">${icon}</div>
       <span class="task-text ${t.status==='готово'?'done':''}" onclick="openTaskCard(${t.id})">${badge}${avEscape(t.title||'')}</span>
+      ${!personal&&t.status!=='готово'&&t.waiting_for!=null?'<span class="work-wait-tag">Жду ответа</span>':''}
       ${who}${dd?`<span class="task-date">${fmtShort(dd)}</span>`:''}
       ${!personal&&t.amount!=null?`<span class="task-date" style="font-weight:600">${fmtMoney(t.amount)}</span>`:
         showMissingPrice?'<span class="task-date" style="color:#C4552A" title="цена не проставлена">— ₴</span>':''}
@@ -2349,11 +2504,12 @@ function renderProjectList(id,projects,empty){
       ${archive.length?folded('archive','Выполненные задачи · '+archive.length,`<div class="task-list">${projectTaskRows(archive)}</div>`):''}
       ${projShoots.length?folded('shoots','Съёмки · '+projShoots.length,`<div class="project-shoots">${shootsHtml}</div>`):''}`;
     const actions=`<div class="project-card-actions">
-      ${compact?`<button class="btn-ghost" type="button" onclick="openProjCard(${p.id})">Открыть проект</button>`:''}
+      <button class="btn-ghost ${compact?'':'personal-project-open'}" type="button" onclick="openProjCard(${p.id})">Открыть проект <span aria-hidden="true">↗</span></button>
       <button class="btn-ghost" type="button" onclick="openAddTask(${p.id})">+ Задача</button>
     </div>`;
     if(!compact)return `<div class="proj-card" style="border-top-color:${PC[i%5]}">
       <button class="proj-name proj-open" type="button" onclick="openProjCard(${p.id})">${name}</button>
+      ${renderPersonalProjectPreview(p)}
       ${counts.length?`<p class="proj-meta">${counts.join(' · ')}</p>`:''}
       ${lists}${actions}
     </div>`;
@@ -2362,6 +2518,7 @@ function renderProjectList(id,projects,empty){
       <summary>
         <span class="work-project-label"><strong>${name}</strong>
           <span class="work-project-tags"><span class="work-project-kind" data-kind="${workProjectKind(p)}">${category}</span>
+          ${p.status!=='готово'&&p.waiting_for!=null?'<span class="work-wait-tag">Жду ответа</span>':''}
           ${counts.length?`<span>${counts.join(' · ')}</span>`:''}</span>
         </span>
         ${amount?`<span class="work-project-amount">${amount}</span>`:''}
@@ -2387,6 +2544,7 @@ async function cycleTask(id,cur){
   const patch=cur==='готово'
     ?{status:'в работе',done_date:null}
     :{status:'готово',done_date:localDateStr(new Date())};
+  if(cur!=='готово'&&DB.tasks.find(task=>task.id===id)?.waiting_for!=null)patch.waiting_for=null;
   await dbPatch('tasks',id,patch);await load();
 }
 function projectTaskPrice(title){
@@ -2756,6 +2914,7 @@ async function saveProjectWorkspace(items,section){
       return;
     }
     projectWorkspace={...board,revision:row.revision,items:row.items};
+    if(personalPreviewOwner===board.owner)personalProjectPreviews.set(board.projectId,summarizePersonalProject(row.items));
     renderProjectWorkspace(section);
     projectWorkspaceStatus();
   }catch{
@@ -2833,10 +2992,55 @@ document.getElementById('pc-board').addEventListener('change',event=>{
   void saveProjectWorkspace(items,box.closest('[data-kind]').dataset.kind);
 });
 
+function linkedProjectId(){
+  const match=location.hash.match(/^#project-(\d+)$/);
+  return match?Number(match[1]):0;
+}
+function returnFromProject(useHistory=true){
+  const project=DB.projects.find(p=>p.id===Number(document.getElementById('pc-id').value));
+  const fallback=project&&!isPersonalProject(project)?'shoots-cal':'projects';
+  const previous=history.state?.projectReturn;
+  if(useHistory&&previous){history.back();return;}
+  goToPage(previous||fallback);
+}
 function openProjCard(id){
-  const p=(DB.projects||[]).find(x=>x.id===id);
-  if(!p)return;
+  const project=DB.projects.find(p=>p.id===id);
+  if(!project)return;
+  if(linkedProjectId()!==id){
+    const current=document.querySelector('.page.active')?.id.slice(5)||'home';
+    if(current==='project'){
+      history.replaceState(history.state,'','#project-'+id);
+    }else{
+      if(location.hash!=='#'+current)history.replaceState(history.state,'','#'+current);
+      history.pushState({projectReturn:current},'','#project-'+id);
+    }
+  }
+  showLinkedProject(id);
+}
+function showLinkedProject(id){
+  const p=DB.projects.find(x=>x.id===id);
+  const content=document.getElementById('pc-content');
+  const status=document.getElementById('pc-route-status');
+  showPage('project');
+  content.hidden=!p;
+  status.hidden=!!p;
+  document.getElementById('pc-route-retry').hidden=true;
+  if(!p){
+    document.getElementById('pc-id').value='';
+    document.getElementById('pc-heading').textContent='Проект';
+    document.getElementById('pc-description').textContent='';
+    document.getElementById('pc-section-label').textContent='Проект';
+    document.getElementById('pc-back').textContent='← К проектам';
+    status.textContent=projectsLoaded?'Проект не найден.':'Загружаю проект…';
+    return;
+  }
   document.getElementById('pc-id').value=p.id;
+  const personal=isPersonalProject(p);
+  document.getElementById('page-project').dataset.scope=personal?'personal':'work';
+  document.getElementById('pc-section-label').textContent=personal?'Мои проекты':'Работа · '+projectKinds[workProjectKind(p)];
+  const source=history.state?.projectReturn;
+  document.getElementById('pc-back').textContent=source==='report'?'← К отчёту':
+    source==='home'?'← Главная':personal?'← Мои проекты':'← Работа';
   document.getElementById('pc-heading').textContent=p.name||'Без названия';
   document.getElementById('pc-description').textContent=p.description||'';
   for(const id of ['pc-settings','pc-task-list','pc-task-archive'])document.getElementById(id).open=false;
@@ -2859,8 +3063,9 @@ function openProjCard(id){
   if(p.amount!==null&&p.amount!==undefined)amt.dataset.touched='1';
   amt.oninput=()=>{amt.dataset.touched='1';pcRecalc();};
   document.getElementById('pc-status').value=p.status==='готово'?'готово':'в работе';
+  fillWaitingFields('pc',p,isPersonalProject(p));
   pcRecalc();
-  showModal('modal-proj-card');
+  document.getElementById('pc-heading').focus({preventScroll:true});
   void loadProjectWorkspace();
 }
 async function saveProjCard(){
@@ -2887,7 +3092,8 @@ async function saveProjCard(){
   if(multistage!==hasProjectStages(project)||('work_kind' in update&&multistage!==(kind==='course')))update.multistage=multistage;
   const scope=document.getElementById('pc-scope').value;
   const moving=scope!==(isPersonalProject(project)?'personal':'work');
-  const save=document.querySelector('#modal-proj-card button[onclick="saveProjCard()"]');
+  setWaitingUpdate(update,'pc',project,scope==='personal');
+  const save=document.querySelector('#page-project button[onclick="saveProjCard()"]');
   if(save.disabled)return;
   save.disabled=true;
   try{
@@ -2903,11 +3109,13 @@ async function saveProjCard(){
       }
       update.scope=scope;
       update.billing=scope==='personal'?'personal':'category';
+      if(scope==='personal'&&project?.waiting_for!=null)update.waiting_for=null;
     }
     if(!await dbPatch('projects',id,update)){alert('Настройки не сохранены'+dbErrHint());return;}
     await load();
-    if(moving)goToPage(scope==='personal'?'projects':'shoots-cal');
-    openProjCard(id);
+    if(linkedProjectId()!==id)return;
+    if(moving)history.replaceState(null,'',location.href);
+    showLinkedProject(id);
   }catch{alert('Не удалось сохранить настройки проекта. Проверь подключение.');}
   finally{save.disabled=false;}
 }
@@ -2920,8 +3128,9 @@ async function deleteProjCard(){
   if(!confirm(`Удалить проект «${p&&p.name?p.name:'без названия'}»?\n\n`+
     `Идеи, план, этапы и записи об оплате будут удалены. Съёмки (${n}) и задачи (${tn}) останутся без проекта.`))return;
   if(!await dbDelete('projects',id)){alert('Проект не удалён'+dbErrHint());return;}
+  returnFromProject(false);
   document.getElementById('pc-id').value='';
-  hideModal('modal-proj-card');await load();
+  await load();
 }
 function openTopics(){
   document.getElementById('tp-filter').value='none';
@@ -3052,6 +3261,7 @@ function openTaskCard(id){
   document.getElementById('tc-assigned-date').value=(t.assigned_date||'').slice(0,10);
   document.getElementById('tc-date').value=(t.date||'').slice(0,10);
   document.getElementById('tc-status').value=t.status==='готово'?'готово':'в работе';
+  fillWaitingFields('tc',t,isPersonalTask(t));
   document.getElementById('tc-done-date').value=(t.done_date||'').slice(0,10);
   tcRecalc();
   showModal('modal-task-card');
@@ -3079,6 +3289,7 @@ async function saveTaskCard(){
     status,done_date:doneDate
   };
   const task=DB.tasks.find(task=>task.id===id);
+  setWaitingUpdate(update,'tc',task,task&&isPersonalTask(task));
   if(task&&isPersonalTask(task)){
     for(const field of ['kind','assigned_by','price_code','qty','surcharge','extra','amount','assigned_date'])delete update[field];
   }
@@ -5342,9 +5553,10 @@ function showPage(id,btn,isMob){
     document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
   }
   if(btn)btn.classList.add('active');
-  if(location.hash && location.hash !== '#'+id) history.replaceState(null,'','#'+id);
+  if(id!=='project'&&location.hash&&location.hash!=='#'+id)history.replaceState(null,'','#'+id);
   if(id==='ritual')renderRitualRoom();
-  const workPages=['page-shoots-cal','page-report','page-life-cal','page-all-cal','page-projects','page-overview','page-ritual'];
+  if(id==='projects'&&previous!=='page-projects')void loadPersonalProjectPreviews();
+  const workPages=['page-shoots-cal','page-report','page-life-cal','page-all-cal','page-projects','page-project','page-overview','page-ritual'];
   if(previous!=='page-'+id&&(workPages.includes(previous)||workPages.includes('page-'+id))){
     window.scrollTo(0,0);
   }
@@ -5560,8 +5772,10 @@ async function boot(){
   }
 }
 function openLinkedPage(){
-  const id=location.hash.slice(1);
-  if(!document.getElementById('page-'+id)?.classList.contains('page'))return;
+  const project=linkedProjectId();
+  if(project){showLinkedProject(project);return;}
+  const id=location.hash.slice(1)||'home';
+  if(id==='project'||!document.getElementById('page-'+id)?.classList.contains('page'))return;
   showPage(id);
   document.querySelectorAll('.nb,.mob-nb').forEach(btn=>{
     btn.classList.toggle('active',btn.getAttribute('onclick')?.startsWith("showPage('"+id+"',")||false);
@@ -5582,12 +5796,13 @@ window.addEventListener('storage',event=>{
   try{session=JSON.parse(event.newValue||'null');}catch{session=null;}
   renderDaily();
   refreshDaily();
+  if(personalPreviewOwner!==session?.user?.id)void loadPersonalProjectPreviews();
   if(homeTodo?.owner!==session?.user?.id){
     homeTodo=null;
     renderHomeTodo();
     if(document.getElementById('home-todo').open)void loadHomeTodo();
   }
-  if(!document.getElementById('modal-proj-card').classList.contains('hidden')&&projectWorkspace?.owner!==session?.user?.id)void loadProjectWorkspace();
+  if(document.getElementById('page-project').classList.contains('active')&&Number(document.getElementById('pc-id').value)&&projectWorkspace?.owner!==session?.user?.id)void loadProjectWorkspace();
 });
 setInterval(refreshDaily,20000);
 void syncDaily();
