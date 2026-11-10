@@ -1439,21 +1439,29 @@ function cashActions(){
     button('Записать остаток',()=>cashEntry('balance')));
   return actions;
 }
-function cashEntry(kind,existing=null){
+function cashEntry(kind,existing=null,defaultDate=today()){
   const isBalance=kind==='balance';
-  const form=sheetForm('<h2></h2><p class="muted"></p><label>Сумма, грн<input name="amount" inputmode="decimal" required></label><label>Дата<input name="date" type="date" required></label><p role="status"></p><button class="lilac">Сохранить</button>');
+  const form=sheetForm('<h2></h2><p class="muted"></p><label><span id="cash-amount-label">Сумма, грн</span><input name="amount" inputmode="decimal" required></label><label id="cash-reserve-label" hidden>Отдельно в наличной подушке, грн<input name="reserve" inputmode="decimal" placeholder="Необязательно"></label><label>Дата<input name="date" type="date" required></label><p role="status"></p><button class="lilac">Сохранить</button>');
   form.querySelector('h2').textContent=isBalance?'Осталось наличными':'Получила наличными';
-  form.querySelector('.muted').textContent=isBalance?'Запиши остаток на конец дня вместе с наличными, которые отложены в личную подушку. Повторная запись за ту же дату обновит остаток.':
+  form.querySelector('.muted').textContent=isBalance?'Запиши остаток на конец дня. Приложение сложит деньги на руках и гривны, которые лежат отдельно в наличной подушке.':
     'Можно записать общую сумму, полученную с прошлой сверки. Снятие денег со своей карты учитывается как перемещение.';
-  field(form,'date').value=existing?.date||today();
+  if(isBalance){
+    $('cash-amount-label').textContent='На руках для трат, грн';
+    $('cash-reserve-label').hidden=false;
+  }
+  field(form,'date').value=existing?.date||defaultDate;
   field(form,'date').max=today();
-  if(existing)field(form,'amount').value=inputMoney(existing.amount);
+  if(existing){
+    field(form,'amount').value=inputMoney(existing.wallet??existing.amount);
+    field(form,'reserve').value=inputMoney(existing.reserve);
+  }
   form.addEventListener('submit',async event=>{
     event.preventDefault();
     const submit=form.querySelector('button');
     if(submit.disabled)return;
     const data=formData(form), amount=financeExcel.number(data.amount);
-    if(amount==null||amount<(isBalance?0:1)||!validDate(data.date)||data.date>today()){
+    const reserve=isBalance&&data.reserve.trim()?financeExcel.number(data.reserve):0;
+    if(amount==null||amount<(isBalance?0:1)||reserve==null||reserve<0||!validDate(data.date)||data.date>today()){
       formIssue(form,'Проверь сумму и дату.');return;
     }
     if(isBalance&&state.cashBalances.some(row=>row.date===data.date&&row.date!==existing?.date)&&
@@ -1462,7 +1470,7 @@ function cashEntry(kind,existing=null){
     if(await commit(next=>{
       if(isBalance){
         next.cashBalances=next.cashBalances.filter(row=>row.date!==data.date&&row.date!==existing?.date);
-        next.cashBalances.push({date:data.date,amount});
+        next.cashBalances.push({date:data.date,amount:amount+reserve,wallet:amount,reserve});
       }else next.operations.push({id:uuid(),date:data.date,amount,type:'income',method:'cash',category:'unknown',
         merchant:'Получила наличными',note:'',lila:false});
     }))closeSheet();
@@ -1501,17 +1509,27 @@ function cashContent(period,interactive=true){
     metric('Получила наличными за период',money(actual.income)),
     metric('Записанные расходы наличными',money(actual.expense))
   ];
-  if(latest)result.push(metric('Осталось на '+shortDate(latest.date),money(latest.amount)));
+  if(latest){
+    result.push(metric('Всего наличными на '+shortDate(latest.date),money(latest.amount)));
+    if(latest.reserve>0){
+      result.push(metric('На руках для трат',money(latest.wallet)),metric('В наличной подушке',money(latest.reserve)));
+    }
+  }
   if(measured){
     result.push(empty('Расход между остатками за '+shortDate(measured.earlier.date)+' и '+shortDate(measured.latest.date)+'.'));
     if(measured.unrecorded!=null){
       result.push(metric('Потрачено наличными по остаткам',money(measured.inferred),'total'),
         metric('Из них без разбивки по покупкам',money(measured.unrecorded)));
     }else result.push(empty('Остатки и записанные операции расходятся. Проверь суммы и пополнения за эти даты.'));
-  }else result.push(empty('Для расчёта расхода нужны остатки на две разные даты.'));
+  }else result.push(empty(latest?'Этот остаток станет начальным для следующей сверки. Чтобы посчитать расход до этой даты, нужен более ранний остаток.':
+    'Запиши первый остаток наличных, чтобы начать сверку.'));
   if(interactive){
     const actions=cashActions();
     if(latest)actions.append(button('Изменить последний остаток',()=>cashEntry('balance',latest)));
+    const previous=new Date(Date.parse(period.start)-86400000).toISOString().slice(0,10);
+    if(latest&&!measured&&latest.date>previous){
+      actions.append(button('Добавить начальный остаток',()=>cashEntry('balance',null,previous)));
+    }
     result.push(actions);
   }
   return result;
