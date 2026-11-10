@@ -430,7 +430,6 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 #page-shoots-cal .work-card-open{background:none;border:0;text-align:left;padding:0;cursor:pointer;font:700 15px var(--ff);overflow-wrap:anywhere}
 #page-shoots-cal .work-card-open:hover{text-decoration:underline}
 :is(#page-shoots-cal,#page-report) :is(.btn-primary,.btn-ghost){box-shadow:none;border:1.35px solid var(--work-ink);border-radius:10px;min-height:34px;font-weight:700;line-height:1.2;padding:7px 9px;white-space:normal;transform:none}
-#page-shoots-cal .work-report{background:var(--work-blue)}
 #page-shoots-cal .work-add,#page-report .btn-primary{background:#f8e0a5;color:var(--work-ink)}
 #page-shoots-cal .shoot-card{background:var(--work-cream);border:1.4px solid var(--work-ink);box-shadow:none;transform:none;padding:11px;overflow-wrap:anywhere;min-width:0}
 #page-shoots-cal .shoot-header{gap:5px}
@@ -561,11 +560,19 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 #achievement-project{width:auto;max-width:100%}
 .personal-achievement-row{display:block;width:100%;padding:8px 0;border:0;border-top:1px solid #c7cdbb;background:none;text-align:left;color:var(--ink);font:inherit;cursor:pointer;overflow-wrap:anywhere}
 .personal-achievement-row small{display:block;margin-top:3px;color:#5f5a4f}
-#page-shoots-cal .work-head{align-items:center;margin-bottom:12px}
-#page-shoots-cal .work-quick-add{gap:6px;align-items:center;padding:8px;background:#f2e6d3;border:1px solid #d8c8af;border-radius:12px}
-#page-shoots-cal .work-quick-add .work-project-jump{margin-left:auto;background:#fff9ee}
-#page-shoots-cal .work-quick-add .work-add-task{background:#fff9ee}
-#page-shoots-cal .work-report{background:#e3e9d8}
+body:has(#page-shoots-cal.active) .sidebar{display:none}
+body:has(#page-shoots-cal.active) .main{margin:0 auto;width:100%;min-width:0}
+#page-shoots-cal{max-width:900px}
+.work-page-nav{align-items:center;margin-bottom:10px}
+.work-page-links{display:flex;gap:14px;align-items:center}
+.work-page-links button{font-weight:600}
+#page-shoots-cal .work-page-head{align-items:center;padding:15px 16px;background:#e5ecdf;border:1px solid #a6b29a;border-radius:15px;margin-bottom:12px;gap:12px}
+#page-shoots-cal .work-page-head .work-project-jump{background:#fff9ee;border-color:#758069;min-height:38px;padding-inline:10px}
+.work-project-jump span{margin-left:4px}
+#page-shoots-cal .work-quick-add{gap:6px;align-items:center;padding:7px 0 3px}
+.work-add-label{font-size:12px;font-weight:700;color:#655749;margin-right:4px}
+#page-shoots-cal .work-quick-add .btn-ghost{border-color:#c8b99f;background:#fff9ee}
+#page-shoots-cal .work-quick-add .work-add{background:#f4e5b6}
 .work-overview{display:grid;gap:12px;align-items:start;margin-bottom:14px}
 .work-agenda{min-width:0;display:grid;gap:8px}
 #page-shoots-cal .work-overview .cal-wrap{margin:0;padding:13px}
@@ -579,7 +586,9 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
   .work-overview{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}
 }
 @media(max-width:520px){
-  #page-shoots-cal .work-quick-add .work-project-jump{margin-left:0}
+  #page-shoots-cal .work-page-head{padding:12px}
+  .work-page-links{gap:10px}
+  .work-add-label{flex-basis:100%}
   #page-shoots-cal .work-overview .cal-wrap{padding:10px}
 }
 .project-section .task-list{margin:8px 0 0}
@@ -957,19 +966,23 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
 
     <!-- SHOOTS CAL -->
     <div class="page" id="page-shoots-cal">
-      <nav class="work-nav" aria-label="Навигация работы">
+      <nav class="work-nav work-page-nav" aria-label="Навигация работы">
         <button type="button" onclick="goToPage('home')">← Главная</button>
+        <div class="work-page-links">
+          <button type="button" onclick="goToPage('report')">Отчёт и авансы</button>
+          <button type="button" onclick="goToPage('price')">Прайс</button>
+        </div>
       </nav>
-      <header class="work-head">
+      <header class="work-head work-page-head">
         <div><h1 class="page-title">Работа</h1><p class="page-sub">Съёмки, задачи и дизайн</p></div>
-        <button class="btn-ghost work-report" type="button" onclick="goToPage('report')">Отчёт и авансы</button>
+        <button class="btn-ghost work-project-jump" type="button" onclick="openWorkProjects()">Рабочие проекты <span aria-hidden="true">→</span></button>
       </header>
       <div class="work-quick-add" aria-label="Добавить в работу">
+        <span class="work-add-label">Добавить</span>
         <button class="btn-ghost work-add" type="button" onclick="openWorkShoot()">+ Съёмка</button>
         <button class="btn-ghost work-add-task" type="button" onclick="openWorkTask('задача')">+ Задача</button>
         <button class="btn-ghost" type="button" onclick="openWorkTask('дизайн')">+ Дизайн</button>
         <button class="btn-ghost" type="button" onclick="openProjectForm('work')">+ Проект</button>
-        <button class="btn-ghost work-project-jump" type="button" onclick="openWorkProjects()">Рабочие проекты</button>
       </div>
       <p class="work-sync" id="work-sync" role="status" hidden></p>
       <div class="work-overview">
