@@ -660,9 +660,9 @@ function budgetSummary(period,applyCardFilter){
   const savings=periodSavings(period);
   const actual=applyCardFilter&&cardSelection?null:budgetCheck(period);
   const recordedExpense=recorded.expense+extra;
-  const gap=actual?.countDifference&&actual.end===period.end?
+  const gap=actual?.end===period.end?
     recorded.income-savings.personal.uah-savings.shared.uah-actual.cards-actual.cash-recordedExpense:null;
-  const reconciled=gap!=null&&gap>=0;
+  const reconciled=Boolean(actual?.countDifference&&gap!=null&&gap>=0);
   const expense=recordedExpense+(reconciled?gap:0);
   const days=Math.max(1,Math.round((Date.parse(period.end)-Date.parse(period.start))/86400000)+1);
   return {...recorded,expense,difference:recorded.income-expense,average:Math.round(expense/days),
@@ -676,8 +676,9 @@ function budgetRows(summary,{interactive=false,filtered=false}={}){
   if(summary.actual)rows.push(metric('Доступно на '+shortDate(summary.actual.end),money(summary.actual.cards+summary.actual.cash),'total'));
   rows.push(flow('Поступило в бюджет',summary.income,'income'));
   if(summary.fop)rows.push(flow('В том числе с ФОП',summary.fop,'fop'));
-  rows.push(summary.extra||summary.gap>0?metric(spendingLabel,money(summary.expense)):flow(spendingLabel,summary.expense,'expense'));
-  if(summary.reconciled&&summary.gap>0)rows.push(metric('В том числе расход без разбивки',money(summary.gap)));
+  const unrecorded=summary.reconciled?summary.gap:0;
+  rows.push(summary.extra||unrecorded?metric(spendingLabel,money(summary.expense)):flow(spendingLabel,summary.expense,'expense'));
+  if(unrecorded>0)rows.push(metric('В том числе расход без разбивки',money(unrecorded)));
   if(summary.measured?.unrecorded!=null){
     const label='В том числе наличные по остаткам';
     const value=money(summary.measured.inferred);
@@ -685,18 +686,19 @@ function budgetRows(summary,{interactive=false,filtered=false}={}){
       $('cash-details').open=true;
       $('cash-details').scrollIntoView({block:'start'});
     }):metric(label,value));
-    
   }
-  if(interactive&&(summary.extra||summary.gap>0))rows.push(flow('Расходы с отдельными записями',
-    summary.expense-summary.extra-(summary.reconciled?summary.gap:0),'expense'));
-  rows.push(metric(summary.reconciled?'Разница по сверке':summary.cashComplete?'Разница за период':'Разница по учёту',signed(summary.difference),'total'));
+  if(interactive&&(summary.extra||unrecorded))rows.push(flow('Расходы с отдельными записями',
+    summary.expense-summary.extra-unrecorded,'expense'));
+  if(!summary.actual){
+    rows.push(metric(summary.cashComplete?'Разница за период':'Разница по учёту',signed(summary.difference),'total'));
+  }
   if(interactive)rows.push(metric(summary.reconciled?'Средний расход по сверке за день':'Средний расход по учёту за день',money(summary.average)));
   for(const [pool,amounts] of Object.entries(summary.savings)){
     const amount=savingsAmount(amounts);
     if(amount)rows.push(metric(pool==='personal'?'В личную подушку':'В общую подушку',amount));
   }
   const setAside=summary.savings.personal.uah+summary.savings.shared.uah;
-  if(setAside&&!filtered&&!summary.reconciled){
+  if(setAside&&!filtered&&!summary.actual){
     rows.push(metric('Разница после гривневых накоплений',signed(summary.difference-setAside)));
   }
   return rows;
@@ -719,10 +721,13 @@ function render(){
       'Наличные по остаткам учтены за '+shortDate(measured.from)+' — '+shortDate(measured.latest.date)+
         (summary.cashComplete?'.':'. За остальные дни учтены отдельные записи.'):
       'Расход наличных по остаткам появится после двух сверок за подходящие даты.';
+    const canAccount=summary.gap>0&&!summary.reconciled;
     const note=summary.reconciled?'Расход без разбивки получен сверкой поступлений, гривневых накоплений и фактического остатка.':
+      canAccount?money(summary.gap)+' из поступлений пока не отражены в расходах. Подтверди, если эти деньги потрачены.':
       summary.gap<0?'Фактический остаток и записи не сходятся. Расходы показаны по записям и сверке наличных.':cashNote;
     $('budget-summary-note').textContent=note+(cardSelection?' Накопления показаны по всем источникам.':'');
     $('reconcile-budget').hidden=Boolean(cardSelection);
+    $('reconcile-spent').hidden=!canAccount;
     $('reconcile-budget').textContent=summary.actual?.end===range.end?'Изменить фактический остаток':'Сверить фактический остаток';
     categoryOptions($('history-category'),true);
     renderHistory();
@@ -808,7 +813,7 @@ function chooser(initial,caption,onChange){
 }
 const chooseRange=()=>chooser(range,'Выбрать период',value=>{range=value;historyLimit=100;});
 $('period-button').addEventListener('click',chooseRange);
-$('reconcile-budget').addEventListener('click',()=>{
+function reconcileBudget(confirmSpend=false){
   const {start,end}=range;
   const existing=state.budgetChecks.find(row=>row.start===start&&row.end===end);
   const cash=state.cashBalances.find(row=>row.date===end);
@@ -816,7 +821,7 @@ $('reconcile-budget').addEventListener('click',()=>{
   $('reconcile-dates').textContent='Сверка на '+shortDate(end)+' по поступлениям с '+shortDate(start)+'.';
   field(form,'cards').value=inputMoney(existing?.cards);
   field(form,'cash').value=inputMoney(existing?.cash??cash?.wallet);
-  field(form,'countDifference').checked=Boolean(existing?.countDifference);
+  field(form,'countDifference').checked=confirmSpend||Boolean(existing?.countDifference);
   form.addEventListener('submit',async event=>{
     event.preventDefault();
     const data=formData(form), cards=financeExcel.number(data.cards), cash=financeExcel.number(data.cash);
@@ -831,7 +836,9 @@ $('reconcile-budget').addEventListener('click',()=>{
     }))closeSheet();
     submit.disabled=false;
   });
-});
+}
+$('reconcile-budget').addEventListener('click',()=>reconcileBudget());
+$('reconcile-spent').addEventListener('click',()=>reconcileBudget(true));
 $('cards-filter').addEventListener('click',()=>{
   const cards=[...new Set(state.operations.map(row=>row.cardTail).filter(Boolean))].sort();
   const form=sheetForm('<h2>Карты в сводке</h2><p class="muted">Ручные записи без привязки к карте остаются в сводке.</p><div id="card-options"></div><p role="status"></p><button class="lilac">Применить</button>');

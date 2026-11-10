@@ -30,7 +30,7 @@
 <link rel="stylesheet" href="finance.css?v=20261110-3">
 <script defer src="jszip.min.js"></script>
 <script defer src="finance-xlsx.js?v=20261110-3"></script>
-<script defer src="finance.js?v=20261110-14"></script>
+<script defer src="finance.js?v=20261110-15"></script>
 </head>
 <body>
 <main>
@@ -65,7 +65,7 @@
     <header class="budget-head"><h1>Личный бюджет</h1><button class="lilac" id="period-button"></button><p id="period-note" class="muted"></p><button id="cards-filter" hidden>Все карты</button></header>
     <dl class="card sage metrics" id="summary"></dl>
     <p class="muted" id="budget-summary-note"></p>
-    <div class="actions"><button id="reconcile-budget">Сверить фактический остаток</button></div>
+    <div class="actions"><button id="reconcile-budget">Сверить фактический остаток</button><button id="reconcile-spent" class="lilac" hidden>Учесть разницу как расход</button></div>
     <details class="card" id="obligations">
       <summary>Обязательные платежи<small id="obligation-summary"></small></summary>
       <div class="actions"><button id="add-obligation">+ Обязательство</button><label class="file-button">Загрузить шаблоны<input id="bill-presets" type="file" accept=".json,application/json" aria-label="Шаблоны обязательств"></label></div><div id="obligation-list"></div>
