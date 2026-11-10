@@ -64,8 +64,11 @@ const financeExcel = (() => {
     const card=find(/^(?:картка|карта|номер картки|номер карты|card number|рахунок|iban)$/);
     const direction=find(/^(?:тип|вид|напрямок|направление|direction|type)(?:\s+операц.*)?$/);
     const merchant=find(/(?:магазин|отримувач|получатель|merchant|контрагент)/);
+    const category=find(/^(?:категорія|категория|category)$/);
+    const transactionAmount=find(/(?:сума|сумма|amount).*(?:транзакц|transaction)/);
+    const transactionCurrency=find(/^(?:валют.*транзакц|transaction currency)/);
     return date>=0&&description>=0&&(amount>=0||generic>=0||(debit>=0&&credit>=0))
-      ? {date,time,description,amount:amount>=0?amount:generic,debit,credit,currency:currency>=0?currency:amount<0?anyCurrency:-1,bankId,card,direction,merchant}:null;
+      ? {date,time,description,amount:amount>=0?amount:generic,debit,credit,currency:currency>=0?currency:amount<0?anyCurrency:-1,bankId,card,direction,merchant,category,transactionAmount,transactionCurrency}:null;
   }
   async function read(file) {
     if(file.size>15000000)throw new Error('Файл больше 15 МБ. Раздели выписку на несколько периодов.');
@@ -113,7 +116,8 @@ const financeExcel = (() => {
         if(/^\d{1,2}:\d{2}(?::\d{2})?$/.test(time))stamp.time=time;
         const card=words(values[cols.card]).replace(/[\s-]/g,'').replace(/[xх•]/g,'*');
         parsed.push({...stamp,amount,original,card,bankId:String(values[cols.bankId]??'').trim(),
-          merchant:String(values[cols.merchant]??'').trim()});
+          merchant:String(values[cols.merchant]??'').trim(),bankCategory:String(values[cols.category]??'').trim(),
+          transactionAmount:['uah','грн','980','₴'].includes(words(values[cols.transactionCurrency]))?number(values[cols.transactionAmount]):null});
       }
     }
     if(!recognized||!parsed.length)throw new Error('В .xlsx не найдены операции с датой, описанием и суммой в гривнах.');

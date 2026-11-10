@@ -162,7 +162,7 @@ const baseCategories={
   transit:'Транспорт',clothes:'Одежда и обувь',home:'Товары для дома',education:'Образование и занятия',
   toys:'Игрушки и развлечения',health:'Здоровье',pets:'Животные',digital:'Цифровые сервисы',
   games:'Игры',shopping:'Интернет-покупки',bank:'Банковские услуги',rent:'Аренда',
-  utility:'Коммунальные услуги',other:'Прочее'
+  utility:'Коммунальные услуги',stationery:'Книги и канцтовары',beauty:'Красота',mobile:'Мобильная связь',tobacco:'Сигареты',transfers:'Переводы без назначения',other:'Прочее'
 };
 const knownMerchants=[
   [/сільпо|сильпо|silpo/,'Сільпо','groceries'],[/glovo|глово/,'Glovo','food'],
@@ -198,7 +198,7 @@ function rememberCloud(owner){
   try{localStorage.setItem(sharedOwnerKey,owner);}catch{}
 }
 let range=monthRange(isoMonth(today())), compare=null, historyMerchant='', categoryLila=false, analyticsLila=false;
-let historyLimit=100;
+let historyLimit=100, cardSelection=null;
 const sections=['gate','finance-home','budget','fop','analytics','review','subscriptions'];
 let wantedFop=location.hash==='#fop';
 
@@ -290,7 +290,7 @@ async function decrypt(vault,secret){
     !Array.isArray(value.obligations)||!Array.isArray(value.subscriptions)||!Array.isArray(value.dismissed)||!value.rules||!value.open){
     throw new Error('Неизвестный формат бюджета.');
   }
-  return value;
+  return updateImported(value);
 }
 async function encrypt(value,secret,salt){
   const iv=bytes(12);
@@ -306,6 +306,7 @@ function commit(change){
     try{
       const next=structuredClone(state);
       change(next);
+      updateImported(next);
       const encrypted=await encrypt(next,secret,decode64(record.salt));
       if(key!==secret)return false;
       await writeVault(encrypted,record.revision);
@@ -399,7 +400,7 @@ $('unlock').addEventListener('submit',async event=>{
     }
     key=secret;state=loaded;
     range=monthRange(isoMonth(today()));compare=null;historyMerchant='';categoryLila=false;analyticsLila=false;
-    $('search').value='';$('history-category').value='';$('history-lila').checked=false;
+    $('search').value='';$('history-category').value='';$('history-type').value='';$('history-lila').checked=false;cardSelection=null;
     for(const id of ['obligations','categories','history'])$(id).open=Boolean(state.open[id]);
     issue(connectedNow?'Синхронизация завершена. На втором устройстве войди в тот же аккаунт и введи общий PIN.':'');
     openView(wantedFop?'fop':'finance-home');
@@ -434,8 +435,35 @@ window.addEventListener('pagehide',()=>{
 document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click',()=>openView(el.dataset.view)));
 
 function inRange(row,period=range){return row.date>=period.start&&row.date<=period.end;}
-function operations(period=range,lila=false){
-  return state.operations.filter(row=>!row.pending&&inRange(row,period)&&(!lila||row.type==='expense'&&row.lila));
+function operations(period=range,lila=false,applyCardFilter=true){
+  return [...state.operations,...transferFees(state.operations)].filter(row=>!row.pending&&inRange(row,period)&&
+    (!lila||row.type==='expense'&&row.lila)&&(!applyCardFilter||!cardSelection||!row.cardTail||cardSelection.has(row.cardTail)));
+}
+function transferFees(rows){
+  const receipts=new Map();
+  const incoming=/^з[іi] сво[єе][їіi] картки \*?(\d{4})$/;
+  const outgoing=/^на свою картку \*?(\d{4})$/;
+  const timestamp=row=>Date.parse(row.date+'T'+row.time+'Z');
+  for(const row of rows){
+    const from=normalize(row.original).match(incoming)?.[1];
+    if(row.pending||row.type!=='internal'||!from||!row.cardTail||!row.time)continue;
+    const key=[row.date,from,row.cardTail].join(':');
+    const group=receipts.get(key)||[];
+    group.push(row);receipts.set(key,group);
+  }
+  const result=[];
+  for(const row of rows){
+    const to=normalize(row.original).match(outgoing)?.[1];
+    if(row.pending||row.type!=='internal'||!to||!row.cardTail||!row.time)continue;
+    const pair=(receipts.get([row.date,row.cardTail,to].join(':'))||[]).filter(other=>
+      Math.abs(timestamp(row)-timestamp(other))<=120000&&other.amount<=row.amount&&
+      (other.transactionAmount==null||Math.abs(other.transactionAmount)===row.amount));
+    if(pair.length===1&&row.amount>pair[0].amount){
+      result.push({...row,id:row.id+'-fee',feeSource:row.id,type:'expense',category:'bank',merchant:'Комиссия за перевод',
+        amount:row.amount-pair[0].amount,lila:false});
+    }
+  }
+  return result;
 }
 function totals(rows,period){
   let income=0,expense=0;
@@ -450,8 +478,9 @@ function metric(label,value,cls=''){
   const row=n('div','','metric '+cls);
   row.append(n('span',label),n('b',value));return row;
 }
-function stats(summary){
-  return [metric('Поступило',money(summary.income)),metric('Потрачено',money(summary.expense)),
+function stats(summary,interactive=false){
+  const flow=(label,value,type)=>interactive?rowButton(label,'',money(value),()=>drill('','',false,type)):metric(label,money(value));
+  return [flow('Поступило',summary.income,'income'),flow('Потрачено',summary.expense,'expense'),
     metric('Разница за период',signed(summary.difference),'total'),metric('Средний расход за день',money(summary.average))];
 }
 function categoryName(id){return state.categories[id]||state.categories.unknown;}
@@ -481,17 +510,24 @@ function group(rows,getKey){
   return [...groups].sort((a,b)=>b[1].amount-a[1].amount);
 }
 function matchesHistory(row){
-  const category=$('history-category').value, search=normalize($('search').value);
+  const category=$('history-category').value, type=$('history-type').value, search=normalize($('search').value);
   const strings=[row.merchant,row.original,row.note,categoryName(row.category),money(row.amount),inputMoney(row.amount)];
-  return (!category||row.category===category)&&(!$('history-lila').checked||row.lila)&&
+  return (!type||row.type===type)&&(!category||row.type==='expense'&&row.category===category)&&
+    (!$('history-lila').checked||row.type==='expense'&&row.lila)&&
     (!historyMerchant||normalize(row.merchant)===(historyMerchant===':empty:'?'':historyMerchant))&&
     (!search||strings.some(value=>normalize(value).includes(search))||
       (financeExcel.number(search)!==null&&Math.abs(financeExcel.number(search))===row.amount));
 }
 function operationRow(row){
   const amount=row.type==='internal'?money(row.amount):signed(row.type==='expense'?-row.amount:row.amount);
-  const sub=[row.type==='internal'?'Перемещение':categoryName(row.category),row.lila?'Лила':'',row.cardTail?'Карта •'+row.cardTail:methods[row.method]].filter(Boolean).join(' · ');
-  return rowButton(row.merchant||labels[row.type],sub,amount,()=>operationSheet(row));
+  const sub=[row.type==='expense'?categoryName(row.category):labels[row.type],row.type==='expense'&&row.lila?'Лила':'',
+    row.cardTail?'Карта •'+row.cardTail:methods[row.method]].filter(Boolean).join(' · ');
+  return rowButton(row.merchant||labels[row.type],sub,amount,()=>{
+    if(row.feeSource){
+      const transfer=state.operations.find(item=>item.id===row.feeSource);
+      if(transfer)operationSheet(transfer);
+    }else operationSheet(row);
+  });
 }
 function renderHistory(){
   const rows=operations().filter(matchesHistory).sort((a,b)=>b.date.localeCompare(a.date)||String(b.time||'').localeCompare(a.time||''));
@@ -508,9 +544,10 @@ function renderHistory(){
   $('history-list').replaceChildren(...(display.length?display:[empty('Операций по этим фильтрам нет.')]));
 
 }
-function drill(category,merchant='',lila=false){
+function drill(category,merchant='',lila=false,type=''){
   openView('budget');
   $('history-category').value=category;
+  $('history-type').value=type;
   $('history-lila').checked=lila;
   $('search').value='';
   historyMerchant=merchant;historyLimit=100;
@@ -520,14 +557,17 @@ function drill(category,merchant='',lila=false){
 }
 function render(){
   if(!state)return;
-  const current=monthRange(isoMonth(today())), now=totals(operations(current),current);
+  const current=monthRange(isoMonth(today())), now=totals(operations(current,false,false),current);
   $('home-month').textContent=current.label;
   $('home-summary').replaceChildren(metric('Поступило',money(now.income)),metric('Потрачено',money(now.expense)),
     metric('Разница за месяц',signed(now.difference),'total'));
   if(view==='budget'){
     $('period-button').textContent=range.label+' ⌄';
     $('period-note').textContent=shortDate(range.start)+' — '+shortDate(range.end);
-    $('summary').replaceChildren(...stats(totals(operations(),range)));
+    const cards=[...new Set(state.operations.map(row=>row.cardTail).filter(Boolean))];
+    $('cards-filter').hidden=cards.length<2;
+    $('cards-filter').textContent=cardSelection?'Карты '+[...cardSelection].map(card=>'•'+card).join(', ')+' ⌄':'Все карты ⌄';
+    $('summary').replaceChildren(...stats(totals(operations(),range),true));
     categoryOptions($('history-category'),true);
     renderHistory();
     const breakdown=group(operations(range,categoryLila),row=>row.category);
@@ -541,7 +581,7 @@ function render(){
   if(view==='review')renderReview();
   if(view==='subscriptions')renderSubscriptions();
 }
-for(const id of ['history-category','history-lila','search'])$(id).addEventListener('input',()=>{historyLimit=100;renderHistory();});
+for(const id of ['history-category','history-type','history-lila','search'])$(id).addEventListener('input',()=>{historyLimit=100;renderHistory();});
 $('category-filter').addEventListener('click',()=>{categoryLila=!categoryLila;render();});
 for(const id of ['obligations','categories','history']){
   $(id).addEventListener('toggle',()=>{
@@ -604,6 +644,24 @@ function chooser(initial,caption,onChange){
 }
 const chooseRange=()=>chooser(range,'Выбрать период',value=>{range=value;historyLimit=100;});
 $('period-button').addEventListener('click',chooseRange);
+$('cards-filter').addEventListener('click',()=>{
+  const cards=[...new Set(state.operations.map(row=>row.cardTail).filter(Boolean))].sort();
+  const form=sheetForm('<h2>Карты в сводке</h2><p class="muted">Ручные записи без привязки к карте остаются в сводке.</p><div id="card-options"></div><p role="status"></p><button class="lilac">Применить</button>');
+  for(const card of cards){
+    const label=n('label','','check'), input=n('input');
+    input.type='checkbox';input.name='card';input.value=card;
+    input.checked=!cardSelection||cardSelection.has(card);
+    label.append(input,n('span','Карта •'+card));$('card-options').append(label);
+  }
+  form.addEventListener('submit',event=>{
+    event.preventDefault();
+    const selected=new FormData(form).getAll('card');
+    if(!selected.length){formIssue(form,'Выбери хотя бы одну карту.');return;}
+    cardSelection=selected.length===cards.length?null:new Set(selected);
+    historyLimit=100;
+    closeSheet();render();
+  });
+});
 $('analytics-period').addEventListener('click',chooseRange);
 $('compare-button').addEventListener('click',()=>{
   const previous=new Date(range.start);previous.setUTCDate(0);
@@ -715,9 +773,51 @@ $('plus').addEventListener('click',()=>{
 function ruleKey(merchant){return normalize(merchant);}
 function merchantRule(rules,key){return Object.hasOwn(rules,key)?rules[key]:null;}
 const mixedMerchant=name=>/sinsay|temu|rozetka|розетк/.test(normalize(name));
-function merchantInfo(original,merchant){
-  const name=merchant||original, known=knownMerchants.find(([pattern])=>pattern.test(normalize(name)));
-  return {name:known?.[1]||name,category:known?.[2]||'unknown'};
+const descriptionCategories=[
+  [/аптек|apteka|citimed/,'health'],[/тавр[іи]я|frukty i ovo|магазин[- ]кафетер[іiи]й коло|^коло(?:\s|$)/,'groceries'],
+  [/^(?:кафе|kafe)|coffeeroom|dominos/,'food'],[/adobe|apple/,'digital'],[/blizzard/,'games'],
+  [/(?:к[іiи]оск|kiosk)\s+(?:105|124)(?:\b|$)/,'tobacco'],
+  [/zoomahazyn|torzoo/,'pets'],[/railway|міський транспорт/,'transit'],
+  [/vodafone/,'mobile'],[/^(?:за обслуговування картки|комісія|комиссия|bank fee)/,'bank']
+];
+const bankCategories={
+  'аптеки':'health','книги та канцтовари':'stationery','ресторани, кафе, бари':'food',
+  'таксі':'taxi','супермаркети та продукти':'groceries','цифрові товари':'digital',
+  'розваги':'toys','тварини':'pets','інтернет-магазини':'shopping','транспорт':'transit',
+  'дім та ремонт':'home','краса':'beauty','комуналка та інтернет':'utility','поповнення мобільного':'mobile'
+};
+function merchantInfo(original,merchant,bankCategory){
+  const name=merchant||original, text=normalize(name+' '+original);
+  const known=knownMerchants.find(([pattern])=>pattern.test(text));
+  const category=descriptionCategories.find(([pattern])=>pattern.test(text))?.[1];
+  return {name:known?.[1]||name,category:known?.[2]||category||bankCategories[normalize(bankCategory)]||'unknown'};
+}
+function ownTransfer(original){
+  return /скарбнич|копилк|між власними|між своїми|между своими|между собственными|обмін валют|обмен валют|з[іi] сво[єе][їіi] картки|на свою картку|переказ власних кошт[іi]в|\bfop\b.*perekaz chastyny vlasnoho prybutku|^(?:термінал самообслуговування|решта в терміналі):/.test(normalize(original));
+}
+function updateImported(data){
+  for(const row of data.operations){
+    if(!row.importKey||row.pending)continue;
+    if(!row.manualType&&!row.manualCategory&&!row.obligation&&ownTransfer(row.original)){
+      if(row.type!=='internal')row.bankDirection=row.type;
+      row.type='internal';
+    }
+    if(row.type!=='expense'||row.manualCategory)continue;
+    if(!row.category||row.category==='unknown'||row.autoCategory===row.category){
+      const related=data.obligations.filter(bill=>bill.merchant&&normalize(bill.merchant)===normalize(row.merchant));
+      const fixed=related.find(bill=>bill.category==='rent'&&bill.amount===row.amount);
+      const utility=related.find(bill=>bill.category==='utility');
+      const category=merchantInfo(row.original,row.merchant,row.bankCategory).category;
+      if(fixed)row.category='rent';
+      else if(utility&&related.some(bill=>bill.category==='rent'&&bill.amount>0))row.category='utility';
+      else if(category!=='unknown')row.category=category;
+      else row.category=normalize(row.original)==='на картку'?'transfers':'other';
+      row.autoCategory=row.category;
+    }
+    if(!data.categories[row.category]&&baseCategories[row.category])data.categories[row.category]=baseCategories[row.category];
+    applyRule(row,data.rules);
+  }
+  return data;
 }
 function applyRule(row,rules){
   const rule=merchantRule(rules,ruleKey(row.merchant));
@@ -776,6 +876,7 @@ function operationSheet(old=null){
     const row={...old,id:old?.id||uuid(),type:data.type,amount,date:data.date,
       merchant:data.merchant.trim(),category:data.category,note:data.note.trim(),method:data.method,
       lila:isExpense&&data.lila==='on',pending:false,reason:'',
+      manualType:Boolean(old?.manualType||old&&old.type!==data.type),
       manualCategory:Boolean(old?.manualCategory||categoryTouched||!old&&data.category!=='unknown'),
       manualLila:Boolean(old?.manualLila||lilaTouched)};
     if(old?.obligation&&data.type!=='expense')row.obligation=null;
@@ -839,7 +940,7 @@ function importSheet(){
 function classifyBank(row){
   const text=normalize(row.original);
   if(row.amount<0&&/^(?:комісія|комиссия|bank fee)(?:\s|$)/.test(text))return {type:'expense',category:'bank'};
-  if(/скарбнич|копилк|між власними|між своїми|между своими|между собственными|обмін валют|обмен валют/.test(text))return {type:'internal'};
+  if(ownTransfer(row.original))return {type:'internal',bankDirection:row.amount<0?'expense':'income'};
   const type=row.amount<0?'expense':'income';
   if(/крипт|crypto|зняття готівки|снятие налич|поповнення готівкою|внесення готівки|пополнение налич|переказ|перевод/.test(text)){
     return {type,pending:true,reason:'Уточни, это доход, расход или перемещение своих денег.'};
@@ -866,7 +967,14 @@ async function importRows({rows,skipped}){
   return commit(next=>{
     let added=0,pending=0;
     const seen=new Set([...next.deleted,...next.operations.map(row=>row.importKey).filter(Boolean)]);
+    const byImportKey=new Map(next.operations.filter(row=>row.importKey).map(row=>[row.importKey,row]));
     const legacy=new Map(next.operations.filter(row=>row.importKey&&!row.cardId).map(row=>[row.importKey,row]));
+    const addBankFields=(saved,row)=>{
+      if(saved){
+        if(row.bankCategory)saved.bankCategory=row.bankCategory;
+        if(row.transactionAmount!=null)saved.transactionAmount=row.transactionAmount;
+      }
+    };
     const aliases=new Set(next.operations.map(row=>row.legacyImportKey).filter(Boolean));
     const deleted=new Set(next.deleted);
     const byAmount=new Map();
@@ -876,13 +984,18 @@ async function importRows({rows,skipped}){
       list.push(item);byAmount.set(k,list);
     }
     for(const {row,importKey,legacyKey,cardId,cardTail} of incoming){
-      if(seen.has(importKey)||!cardId&&aliases.has(legacyKey)){skipped++;continue;}
+      if(seen.has(importKey)||!cardId&&aliases.has(legacyKey)){
+        addBankFields(byImportKey.get(importKey),row);
+        skipped++;
+        continue;
+      }
       // Keep previously edited operations and exclusions when a later export supplies the card.
       const old=cardId&&legacy.get(legacyKey);
       if(cardId&&(deleted.has(legacyKey)||old&&normalize(old.original)===normalize(row.original))){
         if(deleted.delete(legacyKey))deleted.add(importKey);
         if(old){
           Object.assign(old,{importKey,legacyImportKey:legacyKey,cardId,cardTail});
+          addBankFields(old,row);
           legacy.delete(legacyKey);
           aliases.add(legacyKey);
         }
@@ -896,9 +1009,9 @@ async function importRows({rows,skipped}){
       const possible=previous.some(item=>!(cardId&&item.cardId&&cardId!==item.cardId)&&
         !(row.bankId&&item.bankId&&row.bankId!==item.bankId)&&normalize(item.original||item.merchant)!==normalize(row.original)&&
         item.type===classification.type);
-      const info=merchantInfo(row.original,row.merchant);
+      const info=merchantInfo(row.original,row.merchant,row.bankCategory);
       const item={id:uuid(),batchId,importKey,date:row.date,time:row.time,amount:Math.abs(row.amount),original:row.original,
-        bankId:row.bankId,cardId,cardTail,legacyImportKey:cardId?legacyKey:'',
+        bankId:row.bankId,cardId,cardTail,legacyImportKey:cardId?legacyKey:'',bankCategory:row.bankCategory,transactionAmount:row.transactionAmount,autoCategory:classification.category||info.category,
         merchant:info.name,category:info.category,method:'card',note:'',lila:false,...classification};
       if(possible){item.pending=true;item.reason='Возможный дубликат: совпадают дата и сумма.';item.duplicate=true;}
       applyRule(item,next.rules);
@@ -919,7 +1032,7 @@ async function importRows({rows,skipped}){
 function renderReview(){
   const last=state.lastImport;
   const pending=state.operations.filter(row=>row.pending);
-  const unknown=state.operations.filter(row=>!row.pending&&row.batchId===last?.id&&row.category==='unknown'&&row.type==='expense');
+  const unknown=state.operations.filter(row=>!row.pending&&row.batchId===last?.id&&['unknown','other','transfers'].includes(row.category)&&row.type==='expense');
   $('import-summary').textContent=last?(last.latestSkipped!=null?'При повторной загрузке пропущено: '+last.latestSkipped+'. ':
     'Добавлено сразу: '+last.added+' · отправлено на проверку: '+last.pending+' · пропущено: '+last.skipped+'.'):'Выписки ещё не загружались.';
   $('undo-import').disabled=!last?.id;
@@ -936,8 +1049,8 @@ function renderReview(){
       })));
     card.append(actions);display.push(card);
   }
-  if(unknown.length)display.push(n('h2','Без категории'),...unknown.map(operationRow));
-  const latest=state.operations.filter(row=>!row.pending&&row.category!=='unknown'&&row.batchId===last?.id);
+  if(unknown.length)display.push(n('h2','Уточнить назначение'),...unknown.map(operationRow));
+  const latest=state.operations.filter(row=>!row.pending&&row.batchId===last?.id&&!unknown.includes(row));
   if(latest.length){
     const imported=n('details','','card');imported.append(n('summary','Операции последнего импорта'),...latest.map(operationRow));
     display.push(imported);
