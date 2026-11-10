@@ -1,5 +1,81 @@
 'use strict';
 
+const financeCloud=(()=>{
+  const url="https://btgtgcwbrrnfbctchata.supabase.co";
+  const publicKey="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Z3RnY3dicnJuZmJjdGNoYXRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTQ2OTgsImV4cCI6MjA5MjI5MDY5OH0.lyEWFcmsL3GIm0FrEZdGkK2uRSx26cNiBGFvCVsjdsY";
+  const sessionKey='life_os_session';
+  const table='/rest/v1/finance_vaults';
+  const session=()=>{
+    try{return JSON.parse(localStorage.getItem(sessionKey)||'null');}
+    catch{return null;}
+  };
+  function authError(){
+    const error=new Error('Войди в тот же аккаунт «ЖИЗНЬ.exe» на этом устройстве.');
+    error.code='login';
+    return error;
+  }
+  async function token(grant,body){
+    const response=await fetch(url+'/auth/v1/token?grant_type='+grant,{
+      method:'POST',headers:{apikey:publicKey,'Content-Type':'application/json'},
+      body:JSON.stringify(body),signal:AbortSignal.timeout(12000)
+    });
+    if(!response.ok)throw authError();
+    const value=await response.json();
+    if(!value.user?.id||!value.access_token)throw authError();
+    localStorage.setItem(sessionKey,JSON.stringify(value));
+    return value;
+  }
+  let refreshing;
+  async function request(owner,suffix,options={}){
+    let current=session();
+    if(!current?.access_token||current.user?.id!==owner)throw authError();
+    const call=access=>fetch(url+table+suffix,{...options,signal:AbortSignal.timeout(12000),headers:{
+      apikey:publicKey,Authorization:'Bearer '+access,'Content-Type':'application/json',Prefer:'return=representation'
+    }});
+    let result=await call(current.access_token);
+    if(result.status===401){
+      const newest=session();
+      if(newest?.user?.id!==owner||!newest.refresh_token)throw authError();
+      if(newest.access_token!==current.access_token)current=newest;
+      else {
+        if(!refreshing)refreshing=token('refresh_token',{refresh_token:newest.refresh_token}).finally(()=>{refreshing=null;});
+        current=await refreshing;
+      }
+      if(current.user.id!==owner)throw authError();
+      result=await call(current.access_token);
+    }
+    if(result.status===401)throw authError();
+    if(result.status===404||result.status===403){
+      const error=new Error('Синхронизация ещё не настроена в Supabase.');
+      error.code='setup';
+      throw error;
+    }
+    if(result.status===409){
+      const error=new Error('Общие данные изменились на другом устройстве. Обнови их и повтори действие.');
+      error.code='conflict';
+      throw error;
+    }
+    if(!result.ok)throw new Error('Не удалось связаться с общим бюджетом. Проверь соединение.');
+    return result.json();
+  }
+  async function read(owner){
+    const rows=await request(owner,'?select=vault&user_id=eq.'+encodeURIComponent(owner));
+    return rows[0]?.vault||null;
+  }
+  async function write(owner,vault,previous){
+    const filter='?user_id=eq.'+encodeURIComponent(owner)+'&revision=eq.'+encodeURIComponent(previous);
+    const row={revision:vault.revision,vault};
+    const result=previous?await request(owner,filter,{method:'PATCH',body:JSON.stringify(row)}):
+      await request(owner,'',{method:'POST',body:JSON.stringify({...row,user_id:owner})});
+    if(result.length!==1){
+      const error=new Error('Общие данные изменились на другом устройстве. Обнови их и повтори действие.');
+      error.code='conflict';
+      throw error;
+    }
+  }
+  return {session,sessionKey,read,write,login:(email,password)=>token('password',{email,password})};
+})();
+
 const $ = id => document.getElementById(id);
 const today = () => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Kyiv'}).format(new Date());
 const isoMonth = date => date.slice(0,7);
@@ -57,6 +133,15 @@ const issue = (message='') => {
   $('status').hidden=!message;
 };
 let db, record, key, state, busy=false, view='gate';
+let cloudOwner=null, cloudSeed=null;
+const fopLocalKey='life-os-fop-2026-v1', sharedOwnerKey='life-os-finance-shared-owner';
+function knownCloud(owner){
+  try{return Boolean(owner)&&localStorage.getItem(sharedOwnerKey)===owner;}
+  catch{return false;}
+}
+function rememberCloud(owner){
+  try{localStorage.setItem(sharedOwnerKey,owner);}catch{}
+}
 let range=monthRange(isoMonth(today())), compare=null, historyMerchant='', categoryLila=false, analyticsLila=false;
 let historyLimit=100;
 const sections=['gate','finance-home','budget','fop','analytics','review','subscriptions'];
@@ -71,14 +156,14 @@ function openDatabase(){
     req.onblocked=()=>reject(new Error('Закрой другую вкладку «Финансов» и обнови страницу.'));
   });
 }
-function readVault(){
+function readLocalVault(){
   return new Promise((resolve,reject)=>{
     const req=db.transaction('vault').objectStore('vault').get('budget');
     req.onsuccess=()=>resolve(req.result||null);
     req.onerror=()=>reject(req.error);
   });
 }
-function writeVault(next,expected){
+function writeLocalVault(next,expected){
   return new Promise((resolve,reject)=>{
     const tx=db.transaction('vault','readwrite'), store=tx.objectStore('vault');
     let conflict=false;
@@ -90,6 +175,53 @@ function writeVault(next,expected){
     tx.oncomplete=()=>resolve();
     tx.onabort=()=>reject(conflict?new Error('Данные изменились в другой вкладке. Войди заново, чтобы продолжить.'):tx.error);
   });
+}
+function readVault(){
+  return cloudOwner?financeCloud.read(cloudOwner):readLocalVault();
+}
+function writeVault(next,expected){
+  return cloudOwner?financeCloud.write(cloudOwner,next,expected):writeLocalVault(next,expected);
+}
+function legacyFop(){
+  const value=JSON.parse(localStorage.getItem(fopLocalKey)||'null');
+  if(value&&(!Array.isArray(value.receipts)||!value.paid))throw new Error('Локальные записи ФОП не удалось прочитать.');
+  return value;
+}
+async function selectCloud(owner,{automatic=false}={}){
+  const shared=await financeCloud.read(owner);
+  if(automatic&&!shared)return false;
+  if(financeCloud.session()?.user?.id!==owner)throw new Error('Аккаунт изменился. Войди заново.');
+  const local=shared?null:await readLocalVault();
+  cloudOwner=owner;cloudSeed=local;record=shared;
+  if(shared)rememberCloud(owner);
+  showGate();
+  issue(shared?'':'Первый вход перенесёт записи с этого устройства в общие «Финансы». Локальная копия сохранится.');
+  return true;
+}
+async function refreshCloud({manual=false}={}){
+  if(!cloudOwner||!key)return;
+  const secret=key, owner=cloudOwner;
+  await saveQueue;
+  if(key!==secret||cloudOwner!==owner)return;
+  const previous=record.revision;
+  try{
+    const shared=await financeCloud.read(owner);
+    if(key!==secret||record.revision!==previous)return;
+    if(shared&&shared.revision!==previous){
+      const latest=await decrypt(shared,secret);
+      if(key!==secret||record.revision!==previous)return;
+      record=shared;state=latest;
+      render();
+      if(view==='fop'&&manual)$('fop-frame').contentWindow.financeFopRefresh?.();
+    }
+    if(manual)issue('Общие данные актуальны.');
+  }catch(error){
+    if(key!==secret||record.revision!==previous)return;
+    if(error.name==='OperationError'||error.code==='login'){
+      record=null;cloudSeed=null;showGate();
+      issue('Войди заново, чтобы открыть общие записи.');
+    }else if(manual)issue(error.message||'Не удалось обновить общие записи.');
+  }
 }
 async function derive(pin,salt){
   const base=await crypto.subtle.importKey('raw',utf8.encode(pin),'PBKDF2',false,['deriveKey']);
@@ -144,9 +276,14 @@ function showGate(){
   document.querySelector('.print-report')?.remove();
   closeSheet();
   openView('gate');
-  $('gate-title').textContent=record?'Вход по PIN':'Создай PIN';
-  $('gate-note').textContent=record?'':'От 6 до 12 цифр. Этот PIN также понадобится для восстановления из копии.';
-  $('pin-again').hidden=Boolean(record);
+  $('cloud-mode').textContent=cloudOwner?'Общие «Финансы» · один PIN для телефона и ПК':'Локальные «Финансы» · только на этом устройстве';
+  $('cloud-connect').hidden=Boolean(cloudOwner);
+  $('cloud-local').hidden=!cloudOwner;
+  const hasPin=Boolean(record||cloudSeed||knownCloud(cloudOwner));
+  $('gate-title').textContent=hasPin?'Вход по PIN':'Создай PIN';
+  $('gate-note').textContent=cloudSeed?'Введи PIN с этого устройства. Он станет общим.':
+    hasPin?'':'От 6 до 12 цифр. Этот PIN также понадобится для восстановления из копии.';
+  $('pin-again').hidden=hasPin;
   $('unlock').reset();
 }
 function openView(next){
@@ -158,31 +295,42 @@ function openView(next){
   $('up').textContent=['budget','fop'].includes(next)?'← Финансы':'← Личный бюджет';
   $('exit').hidden=!['gate','finance-home'].includes(next);
   $('lock').hidden=next==='gate';
-  if(next==='fop')$('fop-frame').src='fop.html';
+  $('cloud-refresh').hidden=!cloudOwner||next==='gate';
+  if(next==='fop'){
+    const launch=()=>{if(view==='fop'&&key)$('fop-frame').src='fop.html?v=20261110-2';};
+    if(cloudOwner)refreshCloud().then(launch);
+    else launch();
+  }
   window.scrollTo(0,0);
   if(state)render();
 }
 window.financeFopAllowed=()=>Boolean(key)&&view==='fop';
 window.financeFopBack=()=>openView('finance-home');
+window.financeFopRead=()=>cloudOwner&&window.financeFopAllowed()?structuredClone(state.fop??null):undefined;
+window.financeFopWrite=next=>cloudOwner&&window.financeFopAllowed()?commit(value=>{value.fop=next;}):Promise.resolve(false);
 
 $('unlock').addEventListener('submit',async event=>{
   event.preventDefault();
   if(busy)return;
   const form=event.currentTarget, values=new FormData(form), pin=String(values.get('pin'));
   if(!/^[0-9]{6,12}$/.test(pin))return;
-  if(!record&&values.get('again')!==pin){issue('PIN-коды должны совпадать.');return;}
+  if(!record&&!cloudSeed&&!knownCloud(cloudOwner)&&values.get('again')!==pin){issue('PIN-коды должны совпадать.');return;}
   busy=true;
   form.querySelector('button').disabled=true;
   try{
     record=await readVault();
-    const salt=record?decode64(record.salt):bytes(16);
+    const initial=record||cloudSeed;
+    if(!initial&&knownCloud(cloudOwner))throw new Error('Общие записи пока недоступны. Попробуй обновить страницу.');
+    const salt=initial?decode64(initial.salt):bytes(16);
     const secret=await derive(pin,salt);
-    const loaded=record?await decrypt(record,secret):blank();
+    const loaded=initial?await decrypt(initial,secret):blank();
     if(!record){
+      if(cloudOwner)loaded.fop=legacyFop();
       const encrypted=await encrypt(loaded,secret,salt);
       await writeVault(encrypted,null);
-      record=encrypted;
-      navigator.storage?.persist?.().catch(()=>{});
+      record=encrypted;cloudSeed=null;
+      if(cloudOwner)rememberCloud(cloudOwner);
+      else navigator.storage?.persist?.().catch(()=>{});
     }
     key=secret;state=loaded;
     range=monthRange(isoMonth(today()));compare=null;historyMerchant='';categoryLila=false;analyticsLila=false;
@@ -193,6 +341,7 @@ $('unlock').addEventListener('submit',async event=>{
     if(wantedFop)history.replaceState(null,'',location.pathname+location.search);
     wantedFop=false;
   }catch(error){
+    if(error.code==='login'){cloudOwner=null;cloudSeed=null;record=await readLocalVault();showGate();}
     issue(error.name==='OperationError'?'PIN не подошёл.':error.message||'Не удалось открыть бюджет.');
   }finally{
     form.reset();busy=false;form.querySelector('button').disabled=false;
@@ -200,6 +349,19 @@ $('unlock').addEventListener('submit',async event=>{
 });
 $('exit').addEventListener('click',showGate);
 $('lock').addEventListener('click',()=>{issue();showGate();});
+$('cloud-refresh').addEventListener('click',()=>refreshCloud({manual:true}));
+window.addEventListener('focus',()=>{if(view!=='fop')refreshCloud();});
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&view!=='fop')refreshCloud();
+});
+window.addEventListener('storage',event=>{
+  if(event.key===financeCloud.sessionKey&&cloudOwner&&financeCloud.session()?.user?.id!==cloudOwner){
+    key=null;
+    cloudOwner=null;cloudSeed=null;record=null;showGate();
+    readLocalVault().then(local=>{if(!cloudOwner&&!key){record=local;showGate();}}).catch(()=>{});
+    issue('Вход в общий аккаунт завершён.');
+  }
+});
 $('up').addEventListener('click',()=>openView(['budget','fop'].includes(view)?'finance-home':'budget'));
 window.addEventListener('pagehide',()=>{
   if(key)showGate();
@@ -382,6 +544,46 @@ $('compare-button').addEventListener('click',()=>{
   const previous=new Date(range.start);previous.setUTCDate(0);
   chooser(compare||monthRange(isoMonth(previous.toISOString())),'Период для сравнения',value=>{compare=value;});
 });
+$('cloud-connect').addEventListener('click',async()=>{
+  if(busy||key)return;
+  const owner=financeCloud.session()?.user?.id;
+  if(owner){
+    busy=true;
+    try{await selectCloud(owner);}
+    catch(error){
+      if(error.code==='login')cloudLogin();
+      else issue(error.message||'Синхронизация недоступна.');
+    }finally{busy=false;}
+  }else cloudLogin();
+});
+$('cloud-local').addEventListener('click',async()=>{
+  if(busy||key)return;
+  busy=true;
+  const unlock=$('unlock').querySelector('button');
+  unlock.disabled=true;
+  try{
+    const local=await readLocalVault();
+    cloudOwner=null;cloudSeed=null;record=local;showGate();
+    issue('Открыта локальная копия на этом устройстве.');
+  }catch(error){issue(error.message||'Локальная копия недоступна.');}
+  finally{unlock.disabled=false;busy=false;}
+});
+function cloudLogin(){
+  const form=sheetForm('<h2>Общие финансы</h2><p class="muted">Войди в свой аккаунт «ЖИЗНЬ.exe» на обоих устройствах.</p><label>Почта<input name="email" type="email" autocomplete="username" required></label><label>Пароль<input name="password" type="password" autocomplete="current-password" required></label><p role="status"></p><button class="lilac">Войти</button>');
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();
+    if(busy)return;
+    busy=true;form.querySelector('button').disabled=true;
+    try{
+      const result=await financeCloud.login(field(form,'email').value.trim(),field(form,'password').value);
+      await selectCloud(result.user.id);
+    }catch(error){
+      formIssue(form,error.code==='login'?'Проверь почту и пароль.':error.message||'Не удалось войти.');
+    }finally{
+      busy=false;field(form,'password').value='';form.querySelector('button').disabled=false;
+    }
+  });
+}
 $('plus').addEventListener('click',()=>{
   const actions=n('div','','sheet-menu');
   actions.append(button('Добавить операцию',()=>operationSheet(),'yellow'),button('Импортировать выписку',importSheet));
@@ -1018,7 +1220,18 @@ function restoreSheet(file){
   try{
     if(!crypto.subtle)throw new Error('Открой «Финансы» по HTTPS или через локальный предпросмотр.');
     db=await openDatabase();
-    record=await readVault();
+    record=await readLocalVault();
+    const owner=financeCloud.session()?.user?.id;
+    if(owner){
+      try{if(await selectCloud(owner,{automatic:true}))return;}
+      catch(error){
+        if(knownCloud(owner)){
+          cloudOwner=owner;record=null;showGate();
+          issue(error.message||'Общие записи недоступны. Проверь соединение.');
+          return;
+        }
+      }
+    }
     showGate();
   }catch(error){
     issue(error.message||'Не удалось открыть хранилище браузера.');

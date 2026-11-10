@@ -4,17 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Финансы · ЖИЗНЬ.exe</title>
-<link rel="stylesheet" href="finance.css">
+<link rel="stylesheet" href="finance.css?v=20261110-2">
 <script defer src="jszip.min.js"></script>
-<script defer src="finance-xlsx.js"></script>
-<script defer src="finance.js"></script>
+<script defer src="finance-xlsx.js?v=20261110-2"></script>
+<script defer src="finance.js?v=20261110-2"></script>
 </head>
 <body>
 <main>
-  <nav class="navigation"><a href="life-os.html#home" id="exit">← Главная</a><button id="up" class="plain" hidden>← Финансы</button><button id="lock" class="plain" hidden>Заблокировать</button></nav>
+  <nav class="navigation"><a href="life-os.html#home" id="exit">← Главная</a><button id="up" class="plain" hidden>← Финансы</button><button id="cloud-refresh" class="plain" hidden>Обновить данные</button><button id="lock" class="plain" hidden>Заблокировать</button></nav>
   <p id="status" role="status" hidden></p>
   <section id="gate" hidden>
     <h1>Финансы</h1>
+    <p class="muted" id="cloud-mode"></p>
     <form id="unlock" class="card">
       <h2 id="gate-title">Вход по PIN</h2>
       <p class="muted" id="gate-note"></p>
@@ -22,7 +23,11 @@
       <label id="pin-again" hidden>Повтори PIN-код<input name="again" type="password" inputmode="numeric" maxlength="12"></label>
       <button class="wide lilac">Открыть</button>
     </form>
-    <label class="file-button">Восстановить из копии<input id="locked-backup" type="file" accept=".json,application/json"></label>
+    <div class="actions">
+      <button id="cloud-connect" class="lilac">Синхронизировать устройства</button>
+      <button id="cloud-local" hidden>Открыть локальную копию</button>
+      <label class="file-button">Восстановить из копии<input id="locked-backup" type="file" accept=".json,application/json"></label>
+    </div>
   </section>
   <section id="finance-home" hidden>
     <h1>Финансы</h1>

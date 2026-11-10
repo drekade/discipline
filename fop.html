@@ -252,6 +252,9 @@ else location.replace('finance.html#fop');
   });
   const $ = id => document.getElementById(id);
   const key = 'life-os-fop-2026-v1';
+  const sharedSnapshot=parent.financeFopRead?.();
+  const shared=sharedSnapshot!==undefined;
+  if(shared)document.querySelector('.hero .sub').textContent='Записи ФОП синхронизируются в общем зашифрованном разделе.';
   const format = new Intl.NumberFormat('uk-UA',{minimumFractionDigits:2,maximumFractionDigits:2});
   const amount = cents => format.format(cents/100);
   const uah = cents => amount(cents)+' грн';
@@ -289,8 +292,12 @@ else location.replace('finance.html#fop');
   let available = true, editId = null, rateSource = 'manual', request = 0;
 
   try {
-    const stored = localStorage.getItem(key);
-    if(stored)state = JSON.parse(stored);
+    if(shared){
+      if(sharedSnapshot)state=sharedSnapshot;
+    }else{
+      const stored=localStorage.getItem(key);
+      if(stored)state=JSON.parse(stored);
+    }
     if(!Array.isArray(state.receipts)||!state.paid)throw new Error('invalid state');
     if(!Array.isArray(state.money))state.money=[];
   } catch {
@@ -300,13 +307,27 @@ else location.replace('finance.html#fop');
     $('storage-status').textContent='Хранилище браузера недоступно. Для сохранения записей открой файл в обычном браузере.';
   }
 
-  function persist(next){
-    if(!available)return false;
-    try { localStorage.setItem(key,JSON.stringify(next)); }
-    catch { return false; }
-    state=next;
-    return true;
+  let saving=false;
+  async function persist(next){
+    if(!available||saving)return false;
+    saving=true;
+    try{
+      if(shared){
+        if(!await parent.financeFopWrite(next))return false;
+      }else localStorage.setItem(key,JSON.stringify(next));
+      state=next;
+      return true;
+    }catch{return false;}
+    finally{saving=false;}
   }
+  window.financeFopRefresh=()=>{
+    if(!shared||saving)return;
+    state=parent.financeFopRead()??{receipts:[],paid:{}};
+    for(const field of ['money','payments','declarations','balances']){
+      if(!Array.isArray(state[field]))state[field]=[];
+    }
+    render();
+  };
 
   state.payments=Array.isArray(state.payments)?state.payments:[];
   state.declarations=Array.isArray(state.declarations)?state.declarations:[];
@@ -388,9 +409,9 @@ else location.replace('finance.html#fop');
         $('date').focus();
       };
       const del=document.createElement('button');del.type='button';del.textContent='Удалить';
-      del.onclick=()=>{
+      del.onclick=async()=>{
         if(!confirm('Удалить это поступление из журнала?'))return;
-        if(persist({...state,receipts:state.receipts.filter(row=>row.id!==entry.id)})){
+        if(await persist({...state,receipts:state.receipts.filter(row=>row.id!==entry.id)})){
           if(editId===entry.id)clearEdit();
           render();
         }else $('form-status').textContent='Не удалось сохранить изменение в браузере.';
@@ -466,7 +487,7 @@ else location.replace('finance.html#fop');
   });
   $('cancel').addEventListener('click',()=>{clearEdit();$('form-status').textContent='';});
   $('quarter').addEventListener('change',()=>{resetPayment();render();});
-  $('receipt-form').addEventListener('submit',event=>{
+  $('receipt-form').addEventListener('submit',async event=>{
     event.preventDefault();
     const date=$('date').value,sum=decimal($('usd').value,2),currency=$('receipt-currency').value;
     const rateInput=$('rate').value.trim();
@@ -478,7 +499,7 @@ else location.replace('finance.html#fop');
     const source=currency==='UAH'?'uah':!rate?'pending':rateSource==='nbu'?'nbu':$('rate-checked').checked?'checked':'manual';
     const entry={id:editId||uid(),date,amount:sum,currency,rate,source,uah:rate?toUah(sum,rate):null,ref:$('ref').value.trim()};
     const receipts=editId?state.receipts.map(row=>row.id===editId?entry:row):[...state.receipts,entry];
-    if(!persist({...state,receipts})){
+    if(!await persist({...state,receipts})){
       $('form-status').textContent='Запись не сохранена. Проверь доступ к хранилищу браузера.';
       return;
     }
@@ -601,9 +622,9 @@ else location.replace('finance.html#fop');
       const edit=document.createElement('button');edit.type='button';edit.textContent='Изменить';
       edit.onclick=()=>editMoney(entry);
       const remove=document.createElement('button');remove.type='button';remove.textContent='Удалить';
-      remove.onclick=()=>{
+      remove.onclick=async()=>{
         if(!confirm('Удалить эту запись?'))return;
-        if(!persist({...state,money:state.money.filter(row=>row.id!==entry.id)})){
+        if(!await persist({...state,money:state.money.filter(row=>row.id!==entry.id)})){
           $('money-status').textContent='Не удалось сохранить изменение в браузере.';
           return;
         }
@@ -683,7 +704,7 @@ else location.replace('finance.html#fop');
       resetMoneyForm();
     });
   });
-  $('money-form').addEventListener('submit',event=>{
+  $('money-form').addEventListener('submit',async event=>{
     event.preventDefault();
     const date=$('money-date').value;
     if(!date||date>today){$('money-status').textContent='Проверь дату записи.';return;}
@@ -702,7 +723,7 @@ else location.replace('finance.html#fop');
       if(!entry.amount){$('money-status').textContent='Введи сумму больше нуля.';return;}
     }
     const money=old?state.money.map(row=>row.id===old.id?entry:row):[...state.money,entry];
-    if(!persist({...state,money})){
+    if(!await persist({...state,money})){
       $('money-status').textContent='Запись не сохранена. Проверь доступ к хранилищу браузера.';return;
     }
     $('money-month').value=date.slice(0,7);
@@ -845,7 +866,7 @@ else location.replace('finance.html#fop');
       payment.querySelector('[type="reset"]').hidden=true;
       setStatus(payment,'');
     });
-    payment.addEventListener('submit',event=>{
+    payment.addEventListener('submit',async event=>{
       event.preventDefault();
       const data=fields(payment);
       const quarter=Number($('quarter').value);
@@ -865,7 +886,7 @@ else location.replace('finance.html#fop');
       }
       const row={...data,id:paymentEdit||uid(),quarter,planned,actual,proof};
       const payments=paymentEdit?state.payments.map(item=>item.id===paymentEdit?row:item):[...state.payments,row];
-      if(!persist({...state,payments})){setStatus(payment,'Не удалось сохранить платёж.');return;}
+      if(!await persist({...state,payments})){setStatus(payment,'Не удалось сохранить платёж.');return;}
       resetPayment();render();setStatus(payment,'Платёж сохранён.');
     });
 
@@ -873,7 +894,7 @@ else location.replace('finance.html#fop');
       const period=event.target.value;
       fillDeclaration(declarationFor(period)||{period,status:'draft'});
     });
-    declaration.addEventListener('submit',event=>{
+    declaration.addEventListener('submit',async event=>{
       event.preventDefault();
       const row=fields(declaration);
       for(const key of ['form','number','proof'])row[key]=row[key].trim();
@@ -883,7 +904,7 @@ else location.replace('finance.html#fop');
       }
       const prior=declarationFor(row.period);
       const declarations=[...state.declarations.filter(item=>item.period!==row.period),{...prior,...row}];
-      if(!persist({...state,declarations})){setStatus(declaration,'Не удалось сохранить декларацию.');return;}
+      if(!await persist({...state,declarations})){setStatus(declaration,'Не удалось сохранить декларацию.');return;}
       render();setStatus(declaration,'Декларация сохранена.');
     });
     fillDeclaration(declarationFor('q4')||draftDeclaration);
@@ -892,7 +913,7 @@ else location.replace('finance.html#fop');
       $('esv-check').hidden=event.target.value!=='esv';
       balance.elements.namedItem('reconciled').checked=false;
     });
-    balance.addEventListener('submit',event=>{
+    balance.addEventListener('submit',async event=>{
       event.preventDefault();
       const data=fields(balance);
       const credit=decimal(data.credit,2), debt=decimal(data.debt,2);
@@ -901,7 +922,7 @@ else location.replace('finance.html#fop');
       }
       const row={...data,credit,debt,note:data.note.trim(),reconciled:data.tax==='esv'&&data.reconciled==='on'};
       const balances=[...state.balances.filter(item=>item.date!==row.date||item.tax!==row.tax),row];
-      if(!persist({...state,balances})){setStatus(balance,'Не удалось сохранить сверку.');return;}
+      if(!await persist({...state,balances})){setStatus(balance,'Не удалось сохранить сверку.');return;}
       render();setStatus(balance,'Сверка сохранена.');
     });
     fillBalance({date:today,tax:'unified'});
@@ -939,7 +960,7 @@ else location.replace('finance.html#fop');
       const balances=[...state.balances];
       for(const row of data.balances)if(!balances.some(item=>item.date===row.date&&item.tax===row.tax))balances.push(row);
       const added=receipts.length+declarations.length+balances.length-state.receipts.length-state.declarations.length-state.balances.length;
-      if(added&&!persist({...state,receipts,declarations,balances})){
+      if(added&&!await persist({...state,receipts,declarations,balances})){
         status.textContent='Не удалось записать импорт в браузере.';return;
       }
       if(added)render();
