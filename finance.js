@@ -1139,7 +1139,7 @@ function billStatus(bill,period,through){
   return {expected,paid,payments,left:historical?0:expected==null?null:Math.max(0,expected-paid),historical};
 }
 function renderObligations(){
-  const month=obligationMonth(), through=range.end;
+  const month=obligationMonth(), through=today();
   let paid=0,left=0,unknown=0;
   const rows=[];
   for(const bill of state.obligations){
@@ -1150,8 +1150,10 @@ function renderObligations(){
       paid+=status.paid;
       left+=status.left||0;
       unknown+=status.left===null?1:0;
-      const label=status.historical?'Оплачено ранее':status.left===0?'Оплачено':status.paid?'Частично оплачено':'Не оплачено';
-      rows.push(rowButton(bill.name,monthName(period)+' · '+label+(period!==month?' · перенесено':''),
+      const label=status.historical?'Оплачено ранее':status.left===0?'Оплачено':
+        status.left===null&&status.paid?'Платёж учтён':status.paid?'Частично оплачено':'Не оплачено';
+      const carried=period!==month&&status.left>0;
+      rows.push(rowButton(bill.name,monthName(period)+' · '+label+(carried?' · перенесено':''),
         status.historical?'✓':status.left===null?'Уточнить сумму':status.left===0?'✓':money(status.left),()=>billSheet(bill,period)));
     }
   }
@@ -1226,6 +1228,12 @@ function billSheet(bill,period){
       row.expected={...row.expected,[period]:value};
     }))closeSheet();
   });
+  if(status.expected==null&&status.paid>0&&!status.historical){
+    form.append(button('Считать полностью оплаченным',()=>{
+      field(form,'expected').value=inputMoney(status.paid);
+      form.requestSubmit();
+    },'lilac'));
+  }
   const actions=n('div','','actions');
   actions.append(button('Связать с операцией',()=>linkBill(bill,period),'lilac'),button('Записать оплату',()=>billPaymentForm(bill,period)),
     button('Настройки',()=>obligationForm(bill)));
