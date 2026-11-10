@@ -1,9 +1,17 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" hidden>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Финансы / ФОП · ЖИЗНЬ.exe</title>
+<script>
+function financeAccessAllowed(){
+  try{return parent!==window&&parent.financeFopAllowed?.()===true;}
+  catch{return false;}
+}
+if(financeAccessAllowed())document.documentElement.hidden=false;
+else location.replace('finance.html#fop');
+</script>
 <style>
   :root{--paper:#fbf1e3;--ink:#211b16;--card:#fff9ef;--sage:#dce6c7;--yellow:#f7df9c;--lilac:#e4d4ec}
   *{box-sizing:border-box}
@@ -69,7 +77,7 @@
 </head>
 <body>
 <main>
-<a class="back" href="life-os.html#home">← Главная</a>
+<a class="back" href="finance.html" id="fop-back">← Финансы</a>
 <header class="card hero">
   <h1>Финансы / ФОП</h1>
   <p class="sub">Записи хранятся в этом браузере.</p>
@@ -238,6 +246,10 @@
 <script>
 (() => {
   'use strict';
+  if(!financeAccessAllowed())return;
+  document.getElementById('fop-back').addEventListener('click',event=>{
+    event.preventDefault();parent.financeFopBack();
+  });
   const $ = id => document.getElementById(id);
   const key = 'life-os-fop-2026-v1';
   const format = new Intl.NumberFormat('uk-UA',{minimumFractionDigits:2,maximumFractionDigits:2});

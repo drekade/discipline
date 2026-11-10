@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Финансы · ЖИЗНЬ.exe</title>
+<link rel="stylesheet" href="finance.css">
+<script defer src="jszip.min.js"></script>
+<script defer src="finance-xlsx.js"></script>
+<script defer src="finance.js"></script>
+</head>
+<body>
+<main>
+  <nav class="navigation"><a href="life-os.html#home" id="exit">← Главная</a><button id="up" class="plain" hidden>← Финансы</button><button id="lock" class="plain" hidden>Заблокировать</button></nav>
+  <p id="status" role="status" hidden></p>
+  <section id="gate" hidden>
+    <h1>Финансы</h1>
+    <form id="unlock" class="card">
+      <h2 id="gate-title">Вход по PIN</h2>
+      <p class="muted" id="gate-note"></p>
+      <label>PIN-код<input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6,12}" maxlength="12" required></label>
+      <label id="pin-again" hidden>Повтори PIN-код<input name="again" type="password" inputmode="numeric" maxlength="12"></label>
+      <button class="wide lilac">Открыть</button>
+    </form>
+    <label class="file-button">Восстановить из копии<input id="locked-backup" type="file" accept=".json,application/json"></label>
+  </section>
+  <section id="finance-home" hidden>
+    <h1>Финансы</h1>
+    <button class="card tile sage" data-view="budget"><strong>Личный бюджет <span aria-hidden="true">→</span></strong><small id="home-month"></small><span id="home-summary"></span></button>
+    <button class="card tile yellow" data-view="fop"><strong>ФОП / Налоги <span aria-hidden="true">→</span></strong></button>
+  </section>
+  <section id="budget" hidden>
+    <header class="budget-head"><h1>Личный бюджет</h1><button class="lilac" id="period-button"></button><p id="period-note" class="muted"></p></header>
+    <dl class="card sage metrics" id="summary"></dl>
+    <details class="card" id="obligations">
+      <summary>Обязательные платежи<small id="obligation-summary"></small></summary>
+      <div class="actions"><button id="add-obligation">+ Обязательство</button><label class="file-button">Загрузить шаблоны<input id="bill-presets" type="file" accept=".json,application/json" aria-label="Шаблоны обязательств"></label></div><div id="obligation-list"></div>
+    </details>
+    <details class="card" id="categories">
+      <summary>Расходы по категориям<small id="category-summary"></small></summary>
+      <div class="actions"><button id="category-filter">Лила</button><button data-view="analytics">Аналитика →</button><button id="manage-categories">Категории</button></div>
+      <div id="category-list"></div>
+    </details>
+    <details class="card" id="history">
+      <summary>История операций<small id="history-summary"></small></summary>
+      <label class="search">Поиск<input type="search" id="search" placeholder="Получатель, сумма, комментарий"></label>
+      <div class="grid"><label>Категория<select id="history-category"></select></label><label class="check"><input type="checkbox" id="history-lila">Лила</label></div>
+      <p class="muted" id="history-merchant" hidden></p>
+      <div id="history-list"></div>
+    </details>
+    <div class="actions utility"><button data-view="subscriptions">Подписки</button><button data-view="review">Проверка импорта</button><button id="export-menu">Экспорт и копии</button></div>
+    <button id="plus" class="lilac" aria-label="Добавить">+</button>
+  </section>
+  <section id="fop" hidden><iframe id="fop-frame" title="ФОП / Налоги"></iframe></section>
+  <section id="analytics" hidden>
+    <h1>Аналитика</h1>
+    <div class="actions"><button id="analytics-period"></button><button id="analytics-lila" aria-pressed="false">Лила</button><button id="compare-button">Сравнить периоды</button></div>
+    <div id="comparison"></div><div id="analytics-content"></div>
+  </section>
+  <section id="review" hidden>
+    <h1>Проверка импорта</h1>
+    <p id="import-summary"></p>
+    <div class="actions"><button id="undo-import">Отменить последний импорт</button></div>
+    <div id="review-list"></div>
+  </section>
+  <section id="subscriptions" hidden>
+    <h1>Подписки</h1>
+    <div class="actions"><button id="add-subscription">+ Подписка</button></div>
+    <div id="subscription-list"></div>
+  </section>
+</main>
+<dialog id="sheet"><div id="sheet-body"></div></dialog>
+<template id="operation-template">
+  <form id="operation-form">
+    <h2>Новая операция</h2>
+    <fieldset class="segments"><legend>Тип операции</legend><label><input type="radio" name="type" value="expense" checked>Расход</label><label><input type="radio" name="type" value="income">Доход</label><label><input type="radio" name="type" value="internal">Перемещение</label></fieldset>
+    <div class="grid"><label>Сумма, грн<input name="amount" inputmode="decimal" required placeholder="0,00"></label><label>Дата<input name="date" type="date" required></label></div>
+    <label>Категория<select name="category"></select></label>
+    <label>Магазин, получатель или источник<input name="merchant" maxlength="160"></label>
+    <label>Способ оплаты<select name="method" required><option value="">Выбрать</option><option value="card">Карта</option><option value="cash">Наличные</option></select></label>
+    <label>Комментарий<textarea name="note" rows="2" maxlength="500"></textarea></label>
+    <label class="check" data-lila><input name="lila" type="checkbox">Лила</label>
+    <p id="original-description" class="muted" hidden></p>
+    <fieldset id="rule-fields" hidden><legend>Запомнить для этого получателя</legend>
+      <label class="check"><input name="categoryRule" type="checkbox">Категорию</label>
+      <label class="check"><input name="lilaRule" type="checkbox">Метку «Лила»</label>
+      <label>Применить<select name="ruleScope"><option value="future">Только к будущим</option><option value="past">Также к предыдущим, кроме исправленных вручную</option></select></label>
+    </fieldset>
+    <p id="operation-error" role="status"></p>
+    <div class="actions"><button class="lilac" type="submit">Сохранить</button><button id="delete-operation" type="button" hidden>Удалить</button></div>
+  </form>
+</template>
+</body>
+</html>
