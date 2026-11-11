@@ -332,12 +332,15 @@ async def apply_action(action, data):
             "people": data.get("people",""), "script": data.get("script",""),
             "notes": data.get("notes",""), "status": "не снято"
         }
-        row.update(shoot_price_fields(topic, data.get("project"), loc, data.get("notes"), data.get("qty", 1)))
+        projects = await supa_get("projects", 500) if row["project"] else []
+        if not project_uses_separate_payment(find_shoot_project(projects, row["project"])):
+            row.update(shoot_price_fields(topic, row["project"], loc, data.get("notes"), data.get("qty", 1)))
         return await supa_insert("shoots", row)
 
     elif action == "add_multiple_shoots":
         await load_price()
         shoots = data.get("shoots", [])
+        projects = await supa_get("projects", 500) if any(s.get("project") for s in shoots) else []
         saved = 0
         for s in shoots:
             loc = (s.get("location") or "").strip()
@@ -351,7 +354,8 @@ async def apply_action(action, data):
                 "people": s.get("people",""), "script": s.get("script",""),
                 "notes": s.get("notes",""), "status": "не снято"
             }
-            row.update(shoot_price_fields(topic, s.get("project"), loc, s.get("notes"), s.get("qty", 1)))
+            if not project_uses_separate_payment(find_shoot_project(projects, row["project"])):
+                row.update(shoot_price_fields(topic, row["project"], loc, s.get("notes"), s.get("qty", 1)))
             ok = await supa_insert("shoots", row)
             if ok: saved += 1
         return saved
@@ -476,7 +480,8 @@ async def apply_action(action, data):
     elif action == "add_tasks":
         project = data.get("project") or {}
         personal = is_personal(project)
-        if not personal:
+        price_task = not personal and not project_uses_separate_payment(project)
+        if price_task:
             await load_price()
         kind = (data.get("kind") or "задача").strip().lower()
         if kind not in ("задача", "дизайн"):
@@ -496,7 +501,7 @@ async def apply_action(action, data):
             due = (it.get("due") or it.get("date") or "").strip()
             if due.lower() in ("не указано", "none", "null", "—", "-", ""):
                 due = ""
-            code = None if personal else guess_price(title)
+            code = guess_price(title) if price_task else None
             if project and kind != "дизайн" and PRICE_BY_CODE.get(code, {}).get("sec") == 3:
                 code = None
             auto_amount = price_amount(code, 1) if code else None
@@ -910,6 +915,20 @@ ENTRY_LABEL = {"задача":"Задача", "дизайн":"Дизайн", "id
 
 def is_personal(project):
     return project.get("scope") == "personal"
+
+def project_uses_separate_payment(project):
+    if not project or is_personal(project):
+        return False
+    if project.get("separate_payment") is not None:
+        return project["separate_payment"]
+    return (project.get("work_kind") == "course"
+            and (project.get("billing") or "category") == "category"
+            and project.get("amount") is None)
+
+def find_shoot_project(projects, name):
+    if not name:
+        return None
+    return next((p for p in projects if not is_personal(p) and p.get("name") == name), None)
 
 def project_title(project):
     return (project.get("name") or "").strip() or "Без названия"
@@ -1329,9 +1348,13 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         shoots = await supa_get("shoots", 300)
         projects = await supa_get("projects", 500)
         personal_ids = {p["id"] for p in projects if is_personal(p)}
+        separate_ids = {p["id"] for p in projects if project_uses_separate_payment(p)}
+        separate_names = {p["name"] for p in projects if p.get("name") and p["id"] in separate_ids}
         rows = []
         for t in tasks or []:
             if t.get("project_id") in personal_ids or (t.get("status") or "") != "готово":
+                continue
+            if t.get("project_id") in separate_ids and not t.get("bill_separately"):
                 continue
             d = (t.get("done_date") or t.get("date") or "")[:10]
             if not d or d < f_s or d > t_s:
@@ -1340,6 +1363,8 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                          t.get("title") or "", t.get("assigned_by") or "",
                          t.get("price_code") or "", t.get("amount")))
         for s in shoots or []:
+            if s.get("project") in separate_names and not s.get("bill_separately"):
+                continue
             d = (s.get("date") or "")[:10]
             if not d or d < f_s or d > t_s:
                 continue

@@ -531,6 +531,10 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 #page-project #pc-settings{margin-top:14px}
 #page-project .form-row :is(input,textarea,select){min-width:0;max-width:100%}
 @media(max-width:700px){#page-project{padding:8px 12px 24px}}
+#task-stage-row[hidden],#tc-stage-row[hidden],#pc-shoot-list[hidden]{display:none}
+.stage-task-box{margin:8px 0 2px 10px;border-left:2px solid #d0dac5;padding-left:8px}
+.stage-task-box .task-list{margin:5px 0}
+.stage-task-box .btn-ghost{margin-top:4px}
 .task-note-field textarea{width:100%;resize:vertical;min-height:58px}
 .task-notes-mark{font-size:10px;color:#645546;background:#efe3ce;border-radius:20px;padding:2px 6px}
 .project-description{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--t2);margin:0 0 12px}
@@ -768,6 +772,9 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
 .tarot-positions{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 8px}
 .tarot-positions button{padding:4px 7px;min-height:31px;border:1px solid #a29082;border-radius:7px;background:#fff9ee;color:#231d17;font:700 11px var(--ff);cursor:pointer}
 .tarot-positions button[aria-pressed="true"]{background:#e8d9ed;border-color:#231d17}
+[id$="-extra-row"][hidden],.modal label[hidden]{display:none!important}
+#page-project[data-staged="true"] #pc-content:not([hidden]){display:flex;flex-direction:column}
+#page-project[data-staged="true"] :is(#pc-board,#pc-board-status,#pc-board-retry){order:-1}
 </style>
 </head>
 <body>
@@ -1166,6 +1173,11 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
           <summary>Выполненные задачи</summary>
           <div class="task-list"></div>
         </details>
+        <details class="project-section" id="pc-shoot-list" hidden>
+          <summary id="pc-shoot-title">Съёмки</summary>
+          <button type="button" class="btn-ghost" onclick="openProjectShoot()">+ Съёмка</button>
+          <div id="pc-shoots"></div>
+        </details>
         <p id="pc-board-status" role="status"></p>
         <button id="pc-board-retry" type="button" class="btn-ghost" onclick="retryProjectWorkspace()" hidden>Повторить загрузку</button>
         <div id="pc-board"></div>
@@ -1185,6 +1197,8 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
           </select>
         </div>
         <div class="form-row"><label class="field-label">От кого</label><input type="text" id="pc-assigned" placeholder="Денис, Марго, Таня…"></div>
+        <label class="project-workflow"><input type="checkbox" id="pc-separate-payment" onchange="pcRecalc()"> Оплата за проект целиком</label>
+        <div id="pc-rate-fields">
         <div class="form-row"><label class="field-label">Тип</label>
           <select id="pc-billing" onchange="pcRecalc()">
             <option value="project">Проект под ключ — цена целиком, делится по съёмкам</option>
@@ -1203,6 +1217,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
           <div class="form-row" style="flex:1"><label class="field-label">Сумма ₴</label><input type="number" id="pc-amount" step="100"></div>
         </div>
         <div style="font-size:12px;color:var(--t3);margin:-4px 0 10px" id="pc-split"></div>
+        </div>
         </div>
         <div class="form-row"><label class="field-label">Статус</label>
           <select id="pc-status"><option value="в работе">В работе</option><option value="готово">Готово</option></select>
@@ -1386,7 +1401,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
     <div class="form-row"><label class="field-label">Дата</label><input type="date" id="es-date"></div>
     <div class="form-row"><label class="field-label">Время</label><input type="time" id="es-time"></div>
     <div class="form-row"><label class="field-label">Тема съёмки</label><input type="text" id="es-topic" placeholder="Реклама французьких бульдогів"></div>
-    <div class="form-row"><label class="field-label">Проект</label><select id="es-proj"><option value="">— нет —</option></select></div>
+    <div class="form-row"><label class="field-label">Проект</label><select id="es-proj" onchange="esRecalc()"><option value="">— нет —</option></select></div>
     <div class="form-row"><label class="field-label" for="es-kind">Тип съёмки</label>
       <select id="es-kind"><option value="">По проекту и теме</option><option value="ad">Реклама</option><option value="other">Не реклама</option></select>
     </div>
@@ -1404,6 +1419,8 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       <input type="text" id="es-cancel-reason" placeholder="Почему отменили?">
     </div>
     <div class="form-row"><label class="field-label">От кого</label><input type="text" id="es-assigned" placeholder="Денис, Марго, Таня…"></div>
+    <label class="project-workflow" id="es-extra-row" hidden><input type="checkbox" id="es-extra-bill" onchange="esRecalc()"> Оплачивается отдельно</label>
+    <div id="es-rate-fields">
     <div class="form-row"><label class="field-label">Позиция прайса</label>
       <select id="es-price" onchange="esRecalc()"></select>
     </div>
@@ -1419,6 +1436,9 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       <div class="form-row" style="flex:1"><label class="field-label">Сумма ₴ <span id="es-hint" style="font-weight:400;color:var(--t3)"></span>
         <span onclick="esUsePrice()" style="float:right;font-weight:600;color:var(--purple);cursor:pointer">= по прайсу</span></label>
         <input type="number" id="es-amount" step="50"></div>
+    </div>
+    </div>
+    <div>
       <div class="form-row" style="flex:1"><label class="field-label">Сдано</label><input type="date" id="es-delivered"></div>
     </div>
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t2);margin-bottom:12px;cursor:pointer">
@@ -1523,6 +1543,9 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
     <div class="form-row"><label class="field-label">Время</label><input type="time" id="sh-time"></div>
     <div class="form-row"><label class="field-label">Локация</label><input type="text" id="sh-loc" oninput="shRecalc()" placeholder="Где?"></div>
     <div class="form-row"><label class="field-label">Тема съёмки</label><input type="text" id="sh-topic" placeholder="Реклама французьких бульдогів" oninput="shRecalc()"></div>
+    <div class="form-row"><label class="field-label">Проект</label><select id="sh-proj" onchange="shRecalc()"><option value="">— выбери —</option></select></div>
+    <label class="project-workflow" id="sh-extra-row" hidden><input type="checkbox" id="sh-extra-bill" onchange="shRecalc()"> Оплачивается отдельно</label>
+    <div id="sh-rate-fields">
     <div style="display:flex;gap:8px">
       <div class="form-row" style="flex:1"><label class="field-label" id="sh-qty-label">Сколько роликов / сценариев</label>
         <input type="number" id="sh-qty" min="1" step="1" value="1" oninput="shRecalc()"></div>
@@ -1530,7 +1553,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
         <input type="number" id="sh-amount" step="50" placeholder="посчитаю сама"></div>
     </div>
     <div style="font-size:12px;color:var(--t3);margin:-6px 0 10px" id="sh-price-hint"></div>
-    <div class="form-row"><label class="field-label">Проект</label><select id="sh-proj"><option value="">— выбери —</option></select></div>
+    </div>
     <div class="form-row"><label class="field-label" for="sh-kind">Тип съёмки</label>
       <select id="sh-kind"><option value="">По проекту и теме</option><option value="ad">Реклама</option><option value="other">Не реклама</option></select>
     </div>
@@ -1549,6 +1572,10 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
     </div>
     <input type="hidden" id="tc-id">
     <div class="form-row"><label class="field-label">Что сделать</label><input type="text" id="tc-title"></div>
+    <div class="form-row" id="tc-stage-row" hidden>
+      <label class="field-label" for="tc-stage">Этап проекта</label>
+      <select id="tc-stage"><option value="">Без этапа</option></select>
+    </div>
     <div class="form-row task-note-field">
       <label class="field-label" for="tc-details">Подробности</label>
       <textarea id="tc-details" class="f" rows="3" placeholder="Что проверить, какие шаги и договорённости важны"></textarea>
@@ -1562,6 +1589,8 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       <label class="field-label" for="tc-coordination">С кем связаться или кого позвать</label>
       <textarea id="tc-coordination" class="f" rows="2" placeholder="С кем согласовать, у кого попросить помощь, кого взять с собой"></textarea>
     </div>
+    <label class="project-workflow" id="tc-extra-row" hidden><input type="checkbox" id="tc-extra-bill" onchange="refreshTaskPayment(this);tcRecalc()"> Оплачивается отдельно</label>
+    <div id="tc-rate-fields">
     <div class="form-row"><label class="field-label">Позиция прайса</label>
       <select id="tc-price" onchange="tcRecalc()"></select>
     </div>
@@ -1576,6 +1605,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
     <div class="form-row"><label class="field-label">Сумма ₴ <span id="tc-hint" style="font-weight:400;color:var(--t3)"></span>
       <span onclick="tcUsePrice()" style="float:right;font-weight:600;color:var(--purple);cursor:pointer">= по прайсу</span></label>
       <input type="number" id="tc-amount" step="50" placeholder="можно вписать свою">
+    </div>
     </div>
     </div>
     <div style="display:flex;gap:8px">
@@ -1699,6 +1729,10 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       <select id="task-kind" onchange="qaAutoHint()"><option value="задача">Задача</option><option value="дизайн">Дизайн</option></select>
     </div>
     <div class="form-row"><label class="field-label">Задача</label><input type="text" id="task-title" placeholder="Что нужно сделать?" oninput="qaAutoHint()"></div>
+    <div class="form-row" id="task-stage-row" hidden>
+      <label class="field-label" for="task-stage">Этап проекта</label>
+      <select id="task-stage"><option value="">Без этапа</option></select>
+    </div>
     <div class="form-row task-note-field">
       <label class="field-label" for="task-details">Подробности</label>
       <textarea id="task-details" class="f" rows="3" placeholder="Что проверить, какие шаги и договорённости важны"></textarea>
@@ -1709,6 +1743,8 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       <label class="field-label" for="task-coordination">С кем связаться или кого позвать</label>
       <textarea id="task-coordination" class="f" rows="2" placeholder="С кем согласовать, у кого попросить помощь, кого взять с собой"></textarea>
     </div>
+    <label class="project-workflow" id="task-extra-row" hidden><input type="checkbox" id="task-extra-bill" onchange="refreshTaskPayment(this);qaAutoHint()"> Оплачивается отдельно</label>
+    <div id="task-rate-fields">
     <div class="form-row"><label class="field-label">Позиция прайса <span id="task-auto-hint" style="font-weight:400;color:var(--t3)"></span></label>
       <select id="task-price" onchange="qaRecalc()"></select>
     </div>
@@ -1718,6 +1754,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
         <select id="task-surch" onchange="qaRecalc()"><option value="0">нет</option><option value="30">+30%</option></select>
       </div>
       <div class="form-row" style="flex:1"><label class="field-label">Сумма ₴</label><input type="number" id="task-amount" step="50"></div>
+    </div>
     </div>
     </div>
     <div style="display:flex;gap:8px">
@@ -2227,7 +2264,7 @@ function renderShootDayDetail(){
       <div class="shoot-header">
         <button type="button" class="shoot-title work-card-open">${lifeText(s.topic||s.project||s.location||'Съёмка')}${isCancelled?' <span style=\"font-size:10px;color:#C4552A;font-weight:600\">✕ отменена</span>':''}</button>
       </div>
-      <div class="shoot-meta">${s.time?s.time+' · ':''}${s.project&&s.location?s.location:''}${s.people?(s.project&&s.location?' · ':'')+s.people:''}${(s.amount!==null&&s.amount!==undefined)?' · <b>'+fmtMoney(s.amount)+'</b>':''}</div>
+      <div class="shoot-meta">${s.time?s.time+' · ':''}${s.project&&s.location?s.location:''}${s.people?(s.project&&s.location?' · ':'')+s.people:''}${s.amount!=null&&!includedInProject(shootParent(s.project),s)?' · <b>'+fmtMoney(s.amount)+'</b>':''}</div>
       ${s.notes?`<div class="shoot-note">${s.notes.length>80?s.notes.substring(0,80)+'...':s.notes}</div>`:''}
       ${s.script?`<a class="shoot-link" href="${s.script}" target="_blank" onclick="event.stopPropagation()">📄 Сценарий</a>`:''}
       ${!isCancelled?`<div class="shoot-statuses" onclick="event.stopPropagation()">
@@ -2433,7 +2470,7 @@ function renderShoots(){
         <button type="button" class="shoot-title work-card-open">${lifeText(s.topic||s.project||s.location||'Съёмка')}${isCancelled?' <span style=\"font-size:10px;color:#C4552A;font-weight:600\">✕ отменена</span>':''}</button>
         <span class="shoot-badge" style="background:${isCancelled?'#C4552A':c}">${s.date?fmtShort(s.date):'⏳'}</span>
       </div>
-      <div class="shoot-meta">${s.time?s.time+' · ':''}${s.project&&s.location?s.location:''}${s.people?(s.project&&s.location?' · ':'')+s.people:''}${(s.amount!==null&&s.amount!==undefined)?' · <b>'+fmtMoney(s.amount)+'</b>':''}</div>
+      <div class="shoot-meta">${s.time?s.time+' · ':''}${s.project&&s.location?s.location:''}${s.people?(s.project&&s.location?' · ':'')+s.people:''}${s.amount!=null&&!includedInProject(shootParent(s.project),s)?' · <b>'+fmtMoney(s.amount)+'</b>':''}</div>
       ${s.notes?`<div class="shoot-note">${s.notes.length>80?s.notes.substring(0,80)+'...':s.notes}</div>`:''}
       ${s.script?`<a class="shoot-link" href="${s.script}" target="_blank" onclick="event.stopPropagation()">📄 Сценарий</a>`:''}
       ${!isCancelled?`<div class="shoot-statuses" onclick="event.stopPropagation()">
@@ -2613,6 +2650,9 @@ function projectTaskRows(tasks,showMissingPrice=false){
     const icon=t.status==='готово'?'✓':'';
     const cls=t.status==='готово'?'done':'';
     const badge=!personal&&t.kind==='дизайн'?'<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fff;background:#FE702D;padding:1px 6px;border-radius:10px;margin-right:6px">дизайн</span>':'';
+    const separate=usesSeparatePayment(taskParent(t));
+    const extraBill=separate&&t.bill_separately;
+    const showPrice=!personal&&(!separate||extraBill);
     const who=!personal&&t.assigned_by?`<span class="task-date">от ${avEscape(t.assigned_by)}</span>`:'';
     const dd=t.status==='готово'?(t.done_date||t.date):t.date;
     return`<div class="task-item">
@@ -2620,9 +2660,10 @@ function projectTaskRows(tasks,showMissingPrice=false){
       <span class="task-text ${t.status==='готово'?'done':''}" onclick="openTaskCard(${t.id})">${badge}${avEscape(t.title||'')}</span>
       ${!personal&&t.status!=='готово'&&t.waiting_for!=null?'<span class="work-wait-tag">Жду ответа</span>':''}
       ${t.task_details||(!personal&&t.coordination)?'<span class="task-notes-mark">Есть детали</span>':''}
+      ${extraBill?'<span class="task-notes-mark">Допработа</span>':''}
       ${who}${dd?`<span class="task-date">${fmtShort(dd)}</span>`:''}
-      ${!personal&&t.amount!=null?`<span class="task-date" style="font-weight:600">${fmtMoney(t.amount)}</span>`:
-        showMissingPrice?'<span class="task-date" style="color:#C4552A" title="цена не проставлена">— ₴</span>':''}
+      ${showPrice&&t.amount!=null?`<span class="task-date" style="font-weight:600">${fmtMoney(t.amount)}</span>`:
+        showPrice&&showMissingPrice?'<span class="task-date" style="color:#C4552A" title="цена не проставлена">— ₴</span>':''}
     </div>`;
   }).join('');
 }
@@ -2717,9 +2758,43 @@ async function cycleTask(id,cur){
   if(cur!=='готово'&&DB.tasks.find(task=>task.id===id)?.waiting_for!=null)patch.waiting_for=null;
   await dbPatch('tasks',id,patch);await load();
 }
+function usesSeparatePayment(project){
+  if(!project||isPersonalProject(project))return false;
+  return project.separate_payment??(project.work_kind==='course'&&(!project.billing||project.billing==='category')&&project.amount==null);
+}
+function taskParent(task){
+  return (DB.projects||[]).find(project=>project.id===task?.project_id);
+}
+function shootParent(name){
+  return name ? workProjects().find(project=>project.name===name) : undefined;
+}
+function includedInProject(project,entry){
+  return usesSeparatePayment(project)&&!entry.bill_separately;
+}
+function updatePaymentFields(prefix,project){
+  const separate=usesSeparatePayment(project);
+  const checkbox=document.getElementById(prefix+'-extra-bill');
+  document.getElementById(prefix+'-extra-row').hidden=!separate;
+  if(!separate)checkbox.checked=false;
+  const included=separate&&!checkbox.checked;
+  document.getElementById(prefix+'-rate-fields').hidden=included;
+  return included;
+}
+function refreshTaskPayment(checkbox){
+  const prefix=checkbox.id.startsWith('tc-')?'tc':'task';
+  const project=prefix==='tc'
+    ? taskParent(DB.tasks.find(task=>task.id===Number(document.getElementById('tc-id').value)))
+    : taskParent({project_id:Number(document.getElementById('task-proj-id').value)});
+  updatePaymentFields(prefix,project);
+}
+function omitIncludedPrice(payload){
+  for(const field of ['price_code','qty','surcharge','extra','amount'])delete payload[field];
+}
 function projectTaskPrice(title){
   const projectId=Number(document.getElementById('task-proj-id').value);
-  if(isPersonalTask({project_id:projectId}))return null;
+  if(isPersonalTask({project_id:projectId})||includedInProject(taskParent({project_id:projectId}),{
+    bill_separately:document.getElementById('task-extra-bill').checked
+  }))return null;
   const auto=autoPriceFor(title);
   if(projectId&&document.getElementById('task-kind').value!=='дизайн'&&priceItem(auto?.code)?.sec===3)return null;
   return auto;
@@ -2768,11 +2843,44 @@ function applyTaskNotes(payload,prefix,task,personal){
     if(value!==(task?.[column]??null))payload[column]=value;
   }
 }
-function openAddTask(projId){
+async function fillTaskStages(prefix,projectId,selected=''){
+  const select=document.getElementById(prefix+'-stage');
+  const row=document.getElementById(prefix+'-stage-row');
+  const token=crypto.randomUUID();
+  select.dataset.request=token;
+  select.replaceChildren(new Option('Без этапа',''));
+  row.hidden=true;
+  if(selected)select.add(new Option('Этап недоступен',selected,true,true));
+  const project=DB.projects.find(item=>item.id===projectId);
+  if(!project||!hasProjectStages(project)||!session?.user?.id)return;
+  let items=projectWorkspace?.projectId===projectId&&projectWorkspace.owner===session.user.id?projectWorkspace.items:null;
+  if(!items){
+    try{
+      const response=await apiFetch(SB+'/rest/v1/project_workspaces?project_id=eq.'+projectId);
+      if(!response.ok)return;
+      items=(await response.json())[0]?.items||[];
+    }catch{return;}
+  }
+  if(select.dataset.request!==token)return;
+  const stages=items.filter(item=>item.kind==='stage');
+  select.replaceChildren(new Option('Без этапа',''),...stages.map(stage=>new Option(stage.title,stage.id)));
+  if(selected&&!stages.some(stage=>stage.id===selected))select.add(new Option('Этап недоступен',selected));
+  select.value=selected;
+  row.hidden=!stages.length&&!selected;
+}
+function applyTaskStage(payload,prefix,task){
+  const next=document.getElementById(prefix+'-stage').value||null;
+  if(next!==(task?.stage_id??null))payload.stage_id=next;
+}
+function openAddTask(projId,stageId=''){
   document.getElementById('task-proj-id').value=projId;
   const personal=isPersonalTask({project_id:projId});
+  void fillTaskStages('task',projId,stageId);
   document.getElementById('task-kind-row').hidden=personal;
   setTaskFields('task',personal);
+  const extra=document.getElementById('task-extra-bill');
+  extra.checked=false;
+  refreshTaskPayment(extra);
   document.getElementById('task-kind').value='задача';
   document.getElementById('task-title').value='';
   fillTaskNotes('task');
@@ -2784,8 +2892,12 @@ function openAddTask(projId){
 }
 function openAddStandaloneTask(kind){
   document.getElementById('task-proj-id').value='';
+  void fillTaskStages('task',null);
   document.getElementById('task-kind-row').hidden=false;
   setTaskFields('task',false);
+  const extra=document.getElementById('task-extra-bill');
+  extra.checked=false;
+  refreshTaskPayment(extra);
   document.getElementById('task-kind').value=kind||'задача';
   document.getElementById('task-title').value='';
   fillTaskNotes('task');
@@ -2801,10 +2913,12 @@ async function saveTask(){
   const title=document.getElementById('task-title').value.trim();
   if(!title){alert('Введи название задачи');return;}
   const personal=isPersonalTask({project_id:projId});
+  const project=taskParent({project_id:projId});
+  const included=updatePaymentFields('task',project);
   const assigned=personal?'':document.getElementById('task-assigned').value.trim();
   // если позиция не выбрана руками — определяем по прайсу автоматически
-  let pickedCode=personal?null:document.getElementById('task-price').value||null;
-  const amtField=personal?'':document.getElementById('task-amount').value;
+  let pickedCode=personal||included?null:document.getElementById('task-price').value||null;
+  const amtField=personal||included?'':document.getElementById('task-amount').value;
   let pickedAmount=amtField===''?null:parseFloat(amtField);
   if(!pickedCode){
     const auto=projectTaskPrice(title);
@@ -2825,17 +2939,21 @@ async function saveTask(){
     status:'в работе',
     done_date:null
   };
+  if(document.getElementById('task-extra-bill').checked)row.bill_separately=true;
   applyTaskNotes(row,'task',null,personal);
+  applyTaskStage(row,'task',null);
   if(!await dbPost('tasks',row)){alert('Задача не сохранена'+dbErrHint());return;}
   hideModal('modal-task');await load();
 }
 // съёмки проекта, между которыми делится его цена (отменённые не в счёт)
 function projectShoots(projName){
   if(!projName)return [];
-  if(!projName)return [];
   return (DB.shoots||[]).filter(s=>s.project===projName&&s.status!=='отменена'&&s.date);
 }
 function pcRecalc(){
+  const separate=document.getElementById('pc-separate-payment').checked;
+  document.getElementById('pc-rate-fields').hidden=separate;
+  if(separate)return;
   const billing=document.getElementById('pc-billing').value;
   const code=document.getElementById('pc-price').value;
   const auto=calcAmount(code,1,document.getElementById('pc-surch').value,
@@ -2892,14 +3010,56 @@ function renderProjectTasks(){
   const id=Number(document.getElementById('pc-id').value);
   if(!id)return;
   const tasks=DB.tasks.filter(task=>task.project_id===id);
-  const active=tasks.filter(task=>task.status!=='готово');
-  const done=tasks.filter(task=>task.status==='готово');
-  document.getElementById('pc-tasks-title').textContent='Задачи · '+active.length;
+  const project=DB.projects.find(item=>item.id===id);
+  const board=document.getElementById('pc-board');
+  const stageBoxes=[...board.querySelectorAll('[data-stage-tasks]')];
+  const staged=new Set(projectWorkspace?.projectId===id?stageBoxes.map(box=>box.dataset.stageTasks):[]);
+  const unassigned=tasks.filter(task=>!staged.has(task.stage_id));
+  const active=unassigned.filter(task=>task.status!=='готово');
+  const done=unassigned.filter(task=>task.status==='готово');
+  const workStaged=!!project&&!isPersonalProject(project)&&hasProjectStages(project);
+  document.getElementById('pc-tasks-title').textContent=(workStaged?'Задачи без этапа':'Задачи')+' · '+active.length;
   document.getElementById('pc-tasks').innerHTML=projectTaskRows(active)||'<p class="project-empty">Открытых задач пока нет</p>';
   const archive=document.getElementById('pc-task-archive');
   archive.hidden=!done.length;
   archive.querySelector('summary').textContent='Выполненные задачи · '+done.length;
   archive.querySelector('.task-list').innerHTML=projectTaskRows(done);
+  for(const box of stageBoxes){
+    const stageTasks=tasks.filter(task=>task.stage_id===box.dataset.stageTasks);
+    const complete=stageTasks.filter(task=>task.status==='готово');
+    const pending=stageTasks.filter(task=>task.status!=='готово');
+    box.querySelector('summary').textContent='Задачи этапа · '+complete.length+' из '+stageTasks.length;
+    box.querySelector('.task-list').innerHTML=projectTaskRows(pending)||'<p class="project-empty">Открытых задач нет</p>';
+    const archive=box.querySelector('.stage-task-archive');
+    archive.hidden=!complete.length;
+    archive.querySelector('summary').textContent='Выполненные · '+complete.length;
+    archive.querySelector('.task-list').innerHTML=projectTaskRows(complete);
+  }
+  renderProjectShoots(project);
+}
+function renderProjectShoots(project){
+  const section=document.getElementById('pc-shoot-list');
+  section.hidden=!project||isPersonalProject(project);
+  if(section.hidden)return;
+  const shoots=DB.shoots.filter(shoot=>project.name&&shoot.project===project.name)
+    .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const done=shoots.filter(shoot=>shoot.status==='снято').length;
+  const planned=shoots.filter(shoot=>shoot.status!=='снято'&&shoot.status!=='отменена').length;
+  document.getElementById('pc-shoot-title').textContent='Съёмки · '+done+' проведено · '+planned+' в плане';
+  document.getElementById('pc-shoots').innerHTML=shoots.map(shoot=>`
+    <button class="personal-achievement-row" type="button" onclick="openEditShoot(${shoot.id})">
+      <strong>${avEscape(shoot.topic||shoot.location||'Съёмка')}</strong>
+      <small>${[shoot.date?fmtShort(shoot.date):'',shoot.time?.slice(0,5),shoot.status,usesSeparatePayment(project)&&shoot.bill_separately?'Допработа':''].filter(Boolean).map(avEscape).join(' · ')}</small>
+    </button>`).join('')||'<p class="project-empty">Съёмок пока нет</p>';
+}
+function openProjectShoot(){
+  const project=DB.projects.find(item=>item.id===Number(document.getElementById('pc-id').value));
+  if(!project||isPersonalProject(project)||!project.name)return;
+  document.getElementById('sh-kind').value='';
+  document.getElementById('sh-proj').value=project.name;
+  document.getElementById('sh-extra-bill').checked=false;
+  shRecalc();
+  showModal('modal-shoot');
 }
 
 function projectWorkspaceStatus(message='',retry=false){
@@ -2916,6 +3076,7 @@ async function loadProjectWorkspace(){
   const request=++workspaceRequest;
   projectWorkspace=null;
   document.getElementById('pc-board').replaceChildren();
+  renderProjectTasks();
   if(!owner){
     projectWorkspaceStatus('Войди, чтобы сохранять идеи, план и этапы на всех устройствах.',true);
     document.getElementById('pc-board-retry').textContent='Войти';
@@ -2949,6 +3110,7 @@ function renderProjectWorkspace(openSection){
   const board=document.getElementById('pc-board');
   const opened=new Set([...board.querySelectorAll('details[open][data-kind]')].map(details=>details.dataset.kind));
   const openGoals=new Set([...board.querySelectorAll('details[open][data-goal]')].map(details=>details.dataset.goal));
+  const openStages=new Set([...board.querySelectorAll('details[open][data-stage-tasks]')].map(details=>details.dataset.stageTasks));
   if(openSection)opened.add(openSection);
   const project=DB.projects.find(p=>p.id===projectWorkspace.projectId);
   const items=projectWorkspace.items;
@@ -2956,6 +3118,14 @@ function renderProjectWorkspace(openSection){
   const sections=workspaceSections.filter(([kind])=>
     (kind!=='stage'||hasProjectStages(project))&&(kind!=='payment'||!isPersonalProject(project))&&
     (kind!=='publication'||publications)&&(kind!=='achievement'||isPersonalProject(project)));
+  if(!isPersonalProject(project)&&hasProjectStages(project)){
+    sections.sort(([a],[b])=>(a==='stage'?-2:a==='payment'?-1:0)-(b==='stage'?-2:b==='payment'?-1:0));
+    const planIndex=sections.findIndex(([kind])=>kind==='plan');
+    if(planIndex>=0){
+      if(items.some(item=>item.kind==='plan'))sections[planIndex]=['plan','Общий план проекта','Пункт плана'];
+      else sections.splice(planIndex,1);
+    }
+  }
   const customSections=items.filter(item=>item.kind==='custom_section');
   sections.push(...customSections.map(section=>['custom-'+section.id,section.title,'Запись',section]));
   const sectionSettings=`<details class="project-section" data-kind="settings" ${opened.has('settings')?'open':''}>
@@ -2988,6 +3158,7 @@ function renderProjectWorkspace(openSection){
     return `<details class="project-section" data-kind="${avEscape(kind)}" ${custom?`data-custom="${avEscape(custom.id)}"`:''} ${opened.has(kind)?'open':''}>
       <summary>${avEscape(label)}${count}</summary>
       ${paymentSummary}
+      ${kind==='payment'&&usesSeparatePayment(project)?'<p class="project-empty">Здесь оплата по договору. Допработы со своей суммой видны в разделе «Отчёт и авансы».</p>':''}
       <div class="project-entry-controls">
         <button type="button" class="btn-ghost" data-action="add">+ ${singular}</button>${extra}
       </div>
@@ -2996,6 +3167,8 @@ function renderProjectWorkspace(openSection){
     </details>`;
   }).join('')+sectionSettings;
   board.querySelectorAll('[data-goal]').forEach(goal=>{goal.open=openGoals.has(goal.dataset.goal);});
+  board.querySelectorAll('[data-stage-tasks]').forEach(stage=>{stage.open=openStages.has(stage.dataset.stageTasks);});
+  renderProjectTasks();
 }
 function renderProjectGoal(goal,items){
   const steps=items.filter(item=>item.kind==='goal_step'&&item.goalId===goal.id);
@@ -3036,6 +3209,13 @@ function renderProjectEntry(item,index,count,customChecklist=false){
       <button type="button" class="btn-ghost" data-action="edit">Изменить</button>
       <button type="button" class="btn-ghost" data-action="delete">Удалить</button>
     </div>
+    ${item.kind==='stage'?`<details class="project-fold stage-task-box" data-stage-tasks="${avEscape(item.id)}">
+      <summary>Задачи этапа</summary><button class="btn-ghost" type="button" data-action="stage-task">+ Задача</button>
+      <div class="task-list"></div>
+      <details class="project-fold stage-task-archive" hidden>
+        <summary>Выполненные</summary><div class="task-list"></div>
+      </details>
+    </details>`:''}
   </article>`;
 }
 function editProjectEntry(section,kind,item={},goal){
@@ -3129,6 +3309,7 @@ document.getElementById('pc-board').addEventListener('click',event=>{
   const goal=button.closest('[data-goal]');
   if(action==='cancel'){button.closest('.project-entry-editor').replaceChildren();return;}
   if(action==='goal-step'){editProjectEntry(section,'goal_step',{},goal);return;}
+  if(action==='stage-task'&&entry?.kind==='stage'){openAddTask(projectWorkspace.projectId,entry.id);return;}
   if(action==='custom-section'){editProjectEntry(section,'custom_section');return;}
   if(action==='edit-section'){
     editProjectEntry(section,'custom_section',items.find(item=>item.id===section.dataset.custom));
@@ -3233,6 +3414,7 @@ function showLinkedProject(id){
   }
   document.getElementById('pc-id').value=p.id;
   const personal=isPersonalProject(p);
+  document.getElementById('page-project').dataset.staged=String(!personal&&hasProjectStages(p));
   document.getElementById('page-project').dataset.scope=personal?'personal':'work';
   document.getElementById('pc-section-label').textContent=personal?'Мои проекты':'Работа · '+projectKinds[workProjectKind(p)];
   const source=history.state?.projectReturn;
@@ -3240,7 +3422,7 @@ function showLinkedProject(id){
     source==='home'?'← Главная':source==='shoots-cal'?'← Работа':personal?'← Мои проекты':'← Рабочие проекты';
   document.getElementById('pc-heading').textContent=p.name||'Без названия';
   document.getElementById('pc-description').textContent=p.description||'';
-  for(const id of ['pc-settings','pc-task-list','pc-task-archive'])document.getElementById(id).open=false;
+  for(const id of ['pc-settings','pc-task-list','pc-task-archive','pc-shoot-list'])document.getElementById(id).open=false;
   document.getElementById('pc-work-settings').hidden=isPersonalProject(p);
   document.getElementById('pc-kind').value=workProjectKind(p);
   document.getElementById('pc-scope').value=isPersonalProject(p)?'personal':'work';
@@ -3250,6 +3432,7 @@ function showLinkedProject(id){
   document.getElementById('pc-desc').value=p.description||'';
   document.getElementById('pc-link').value=p.link||'';
   document.getElementById('pc-assigned').value=p.assigned_by||'';
+  document.getElementById('pc-separate-payment').checked=usesSeparatePayment(p);
   document.getElementById('pc-billing').value=p.billing||'category';
   document.getElementById('pc-price').innerHTML=priceOptionsHtml(p.price_code||'');
   document.getElementById('pc-surch').value=p.surcharge||0;
@@ -3289,6 +3472,13 @@ async function saveProjCard(){
   if(multistage!==hasProjectStages(project)||('work_kind' in update&&multistage!==(kind==='course')))update.multistage=multistage;
   const scope=document.getElementById('pc-scope').value;
   const moving=scope!==(isPersonalProject(project)?'personal':'work');
+  const separate=scope==='work'&&document.getElementById('pc-separate-payment').checked;
+  if(scope==='work'&&(separate!==usesSeparatePayment(project)||
+    (kind!==workProjectKind(project)&&!separate&&kind==='course')))update.separate_payment=separate;
+  if(separate){
+    omitIncludedPrice(update);
+    delete update.billing;
+  }
   setWaitingUpdate(update,'pc',project,scope==='personal');
   const save=document.querySelector('#page-project button[onclick="saveProjCard()"]');
   if(save.disabled)return;
@@ -3442,9 +3632,12 @@ function openTaskCard(id){
   if(!t)return;
   document.getElementById('tc-id').value=t.id;
   setTaskFields('tc',isPersonalTask(t));
+  document.getElementById('tc-extra-bill').checked=!!t.bill_separately;
+  updatePaymentFields('tc',taskParent(t));
   document.getElementById('tc-head').textContent=t.kind==='дизайн'?'🎨 Дизайн':'📋 Задача';
   document.getElementById('tc-title').value=t.title||'';
   fillTaskNotes('tc',t);
+  void fillTaskStages('tc',t.project_id,t.stage_id||'');
   document.getElementById('tc-kind').value=t.kind||'задача';
   document.getElementById('tc-assigned').value=t.assigned_by||'';
   document.getElementById('tc-price').innerHTML=priceOptionsHtml(t.price_code||'');
@@ -3489,7 +3682,11 @@ async function saveTaskCard(){
   const task=DB.tasks.find(task=>task.id===id);
   const personal=task&&isPersonalTask(task);
   applyTaskNotes(update,'tc',task,personal);
+  applyTaskStage(update,'tc',task);
   setWaitingUpdate(update,'tc',task,personal);
+  if(updatePaymentFields('tc',taskParent(task)))omitIncludedPrice(update);
+  const extraBill=document.getElementById('tc-extra-bill').checked;
+  if(extraBill!==!!task?.bill_separately)update.bill_separately=extraBill;
   if(personal){
     for(const field of ['kind','assigned_by','price_code','qty','surcharge','extra','amount','assigned_date'])delete update[field];
   }
@@ -3626,6 +3823,7 @@ function shRecalc(){
   const topic=document.getElementById('sh-topic').value;
   const loc=document.getElementById('sh-loc').value;
   const proj=document.getElementById('sh-proj').value;
+  if(updatePaymentFields('sh',shootParent(proj)))return;
   const auto=autoPriceFor([topic,proj,loc].filter(Boolean).join(' '));
   const qty=parseFloat(document.getElementById('sh-qty').value)||1;
   const lbl=document.getElementById('sh-qty-label');
@@ -3649,8 +3847,10 @@ async function saveShoot(){
   const topic=document.getElementById('sh-topic').value.trim();
   const d={date:document.getElementById('sh-date').value||null,time:document.getElementById('sh-time').value||null,location:document.getElementById('sh-loc').value,project:document.getElementById('sh-proj').value,topic:topic||null,people:document.getElementById('sh-people').value,script:document.getElementById('sh-script').value,notes:document.getElementById('sh-notes').value,status:'не снято'};
   const qty=parseFloat(document.getElementById('sh-qty').value)||1;
-  const manual=document.getElementById('sh-amount').value;
-  const autoP=autoPriceFor([topic,d.project,d.location].filter(Boolean).join(' '));
+  const included=updatePaymentFields('sh',shootParent(d.project));
+  const manual=included?'':document.getElementById('sh-amount').value;
+  if(document.getElementById('sh-extra-bill').checked)d.bill_separately=true;
+  const autoP=included?null:autoPriceFor([topic,d.project,d.location].filter(Boolean).join(' '));
   const shootKind=document.getElementById('sh-kind').value;
   if(shootKind)d.shoot_kind=shootKind;
   d.qty=qty;d.surcharge=0;d.extra=0;
@@ -3663,7 +3863,11 @@ async function saveShoot(){
   if(btn)btn.disabled=true;
   try{
     if(!await dbPost('shoots',d)){alert('Съёмка не сохранена.'+dbErrHint());return;}
-    document.getElementById('sh-kind').value='';
+    for(const field of ['date','time','loc','topic','amount','proj','kind','people','script','notes']){
+      document.getElementById('sh-'+field).value='';
+    }
+    document.getElementById('sh-qty').value='1';
+    delete document.getElementById('sh-amount').dataset.touched;
     hideModal('modal-shoot');
     if(!await load())alert('Съёмка сохранена, но обновить данные не удалось. Не добавляй её повторно. Подробности — в статусе синхронизации.');
   }catch(e){setSyncOk(false,e.message);alert('Не удалось подтвердить сохранение: '+e.message+'\nДанные формы оставлены. При обрыве связи проверь список перед повторной отправкой.');}
@@ -5347,7 +5551,7 @@ function projectsByName(){
 function pricedProjects(){
   const map={};
   workProjects().forEach(p=>{
-    if((p.billing||'category')!=='project')return;
+    if(usesSeparatePayment(p)||(p.billing||'category')!=='project')return;
     if(p.amount===null||p.amount===undefined||!p.name)return;
     const shoots=projectShoots(p.name);
     if(!shoots.length)return;
@@ -5372,11 +5576,12 @@ function collectWork(from,to){
   });
   workTasks().forEach(t=>{
     if((t.status||'')!=='готово')return;
-    if(t.project_id&&skipIds[t.project_id])return;
+    const parent=taskParent(t);
+    if(usesSeparatePayment(parent)?!t.bill_separately:skipIds[t.project_id])return;
     const d=(t.done_date||t.date||'').slice(0,10);
     if(!d||d<from||d>to)return;
     out.push({id:t.id,src:'tasks',date:d,kind:t.kind==='дизайн'?'дизайн':'задача',
-      title:t.title||'без названия',who:t.assigned_by||'',
+      title:(t.title||'без названия')+(usesSeparatePayment(parent)?' · допработа':''),who:t.assigned_by||'',
       code:t.price_code||'',amount:(t.amount===null||t.amount===undefined)?null:Number(t.amount),
       qty:t.qty||1,surch:t.surcharge||0,extra:t.extra||0,
       given:(t.assigned_date||'').slice(0,10),done:d,cancelled:false});
@@ -5386,10 +5591,10 @@ function collectWork(from,to){
     if(!d||d<from||d>to)return;
     const cancelled=s.status==='отменена';
     const parent=byName[s.project];
-    if(parent&&(parent.billing||'category')==='personal')return;
+    if(usesSeparatePayment(parent)?!s.bill_separately:parent?.billing==='personal')return;
     const pp=priced[s.project];
     const inProject=!!(pp&&pp.shares[s.id]!==undefined);
-    const catRate=(parent&&(parent.billing||'category')==='category'
+    const catRate=(parent&&!usesSeparatePayment(parent)&&(parent.billing||'category')==='category'
                    &&parent.amount!==null&&parent.amount!==undefined)?Number(parent.amount):null;
     let amt;
     if(cancelled)amt=s.paid_cancelled?((s.amount===null||s.amount===undefined)?null:Number(s.amount)):0;
@@ -5397,7 +5602,7 @@ function collectWork(from,to){
     else if(s.amount!==null&&s.amount!==undefined)amt=Number(s.amount);
     else amt=catRate;   // ставка категории, если у съёмки своей цены нет
     out.push({id:s.id,src:'shoots',date:d,kind:'съёмка',
-      title:s.topic||s.project||s.location||'съёмка',
+      title:(s.topic||s.project||s.location||'съёмка')+(usesSeparatePayment(parent)?' · допработа':''),
       who:s.assigned_by||(parent?(parent.assigned_by||''):''),
       time:s.time||'',place:s.location||'',people:s.people||'',proj:s.project||'',
       code:inProject?(pp.proj.price_code||''):(s.price_code||(catRate!==null?(parent.price_code||''):'')),
@@ -5415,8 +5620,8 @@ function workColor(w){
 }
 // разом проставляет цены всем записям без цены (по названию / проекту)
 async function autoFillPrices(){
-  const tasks=workTasks().filter(t=>t.amount===null||t.amount===undefined);
-  const shoots=(DB.shoots||[]).filter(s=>(s.amount===null||s.amount===undefined)&&s.status!=='отменена');
+  const tasks=workTasks().filter(t=>t.amount==null&&!includedInProject(taskParent(t),t));
+  const shoots=(DB.shoots||[]).filter(s=>(s.amount===null||s.amount===undefined)&&s.status!=='отменена'&&!includedInProject(shootParent(s.project),s));
   const plan=[];
   tasks.forEach(t=>{
     const a=autoPriceFor(t.title||'');
@@ -5473,7 +5678,7 @@ function collectIssues(from,to){
 
   const usedProj={};
   inPeriod.forEach(s=>{if(s.project)usedProj[s.project]=1;});
-  const noBilling=workProjects().filter(p=>p.name&&usedProj[p.name]&&!p.billing);
+  const noBilling=workProjects().filter(p=>p.name&&usedProj[p.name]&&!p.billing&&!usesSeparatePayment(p));
   if(noBilling.length)out.push({
     icon:'🎬', level:'bad',
     text:`${noBilling.length} ${noBilling.length===1?'проект':'проектов'} без типа — считается как категория`,
@@ -6026,6 +6231,10 @@ function showModal(id){
   const overlay=document.getElementById(id);
   const opening=overlay.classList.contains('hidden');
   overlay.classList.remove('hidden');
+  if(opening&&id==='modal-shoot'){
+    document.getElementById('sh-extra-bill').checked=false;
+    shRecalc();
+  }
   if(opening&&document.querySelector('#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-projects.active')){
     const content=overlay.querySelector('.modal');
     if(content)content.scrollTop=0;
@@ -6059,6 +6268,9 @@ function calcExplain(code,qty,surch,extra){
   return parts.join(' ')+` <b>= ${fmtMoney(Math.round(total))}</b>`;
 }
 function esRecalc(){
+  const included=updatePaymentFields('es',shootParent(document.getElementById('es-proj').value));
+  document.getElementById('es-paid-cancelled').closest('label').hidden=included;
+  if(included)return;
   const code=document.getElementById('es-price').value;
   const u=priceUnit(code);
   const ql=document.getElementById('es-qty-label');
@@ -6104,7 +6316,6 @@ function openEditShoot(id){
   esAmt.oninput=()=>{esAmt.dataset.touched='1';};
   document.getElementById('es-delivered').value=(s.delivered_date||'').slice(0,10);
   document.getElementById('es-paid-cancelled').checked=!!s.paid_cancelled;
-  esRecalc();
   // показываем поле причины если отменена
   const cancelWrap=document.getElementById('es-cancel-wrap');
   const cancelReason=document.getElementById('es-cancel-reason');
@@ -6126,6 +6337,8 @@ function openEditShoot(id){
     if(p.name===s.project)opt.selected=true;
     sel.appendChild(opt);
   });
+  document.getElementById('es-extra-bill').checked=!!s.bill_separately;
+  esRecalc();
   showModal('modal-edit-shoot');
 }
 
@@ -6162,6 +6375,12 @@ async function saveEditShoot(){
   // если в базе ещё нет свежей колонки — сохраняем без неё, а не теряем всю правку
   const shootKind=document.getElementById('es-kind').value||null;
   const original=DB.shoots.find(shoot=>shoot.id===id);
+  if(updatePaymentFields('es',shootParent(data.project))){
+    omitIncludedPrice(data);
+    delete data.paid_cancelled;
+  }
+  const extraBill=document.getElementById('es-extra-bill').checked;
+  if(extraBill!==!!original?.bill_separately)data.bill_separately=extraBill;
   if(shootKind!==(original?.shoot_kind||null))data.shoot_kind=shootKind;
   const optional=['paid_cancelled','topic','delivered_date','assigned_by','price_code','qty','surcharge','extra','amount'];
   const dropped=[];
