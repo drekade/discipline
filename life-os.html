@@ -775,6 +775,10 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
 [id$="-extra-row"][hidden],.modal label[hidden]{display:none!important}
 #page-project[data-staged="true"] #pc-content:not([hidden]){display:flex;flex-direction:column}
 #page-project[data-staged="true"] :is(#pc-board,#pc-board-status,#pc-board-retry){order:-1}
+.work-meeting-card{border-top:3px solid #557663;margin-bottom:10px}
+[data-record-kind="meeting"] :is(#sh-extra-row,#sh-rate-fields,#es-extra-row,#es-rate-fields),
+[data-record-kind="meeting"] .form-row:has(:is(#sh-script,#es-script,#es-delivered)),
+[data-record-kind="meeting"] label:has(#es-paid-cancelled){display:none!important}
 </style>
 </head>
 <body>
@@ -1020,6 +1024,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       <div class="work-quick-add" aria-label="Добавить в работу">
         <span class="work-add-label">Добавить</span>
         <button class="btn-ghost work-add" type="button" onclick="openWorkShoot()">+ Съёмка</button>
+        <button type="button" class="btn-ghost" onclick="openWorkShoot('meeting')">+ Встреча / выезд</button>
         <button class="btn-ghost work-add-task" type="button" onclick="openWorkTask('задача')">+ Задача</button>
         <button class="btn-ghost" type="button" onclick="openWorkTask('дизайн')">+ Дизайн</button>
         <button class="btn-ghost" type="button" onclick="openProjectForm('work')">+ Проект</button>
@@ -1176,6 +1181,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
         <details class="project-section" id="pc-shoot-list" hidden>
           <summary id="pc-shoot-title">Съёмки</summary>
           <button type="button" class="btn-ghost" onclick="openProjectShoot()">+ Съёмка</button>
+        <button type="button" class="btn-ghost" onclick="openProjectShoot('meeting')">+ Встреча / выезд</button>
           <div id="pc-shoots"></div>
         </details>
         <p id="pc-board-status" role="status"></p>
@@ -1400,10 +1406,10 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
     <input type="hidden" id="es-id">
     <div class="form-row"><label class="field-label">Дата</label><input type="date" id="es-date"></div>
     <div class="form-row"><label class="field-label">Время</label><input type="time" id="es-time"></div>
-    <div class="form-row"><label class="field-label">Тема съёмки</label><input type="text" id="es-topic" placeholder="Реклама французьких бульдогів"></div>
+    <div class="form-row"><label class="field-label" id="es-topic-label" for="es-topic">Тема съёмки</label><input type="text" id="es-topic" placeholder="Реклама французьких бульдогів"></div>
     <div class="form-row"><label class="field-label">Проект</label><select id="es-proj" onchange="esRecalc()"><option value="">— нет —</option></select></div>
-    <div class="form-row"><label class="field-label" for="es-kind">Тип съёмки</label>
-      <select id="es-kind"><option value="">По проекту и теме</option><option value="ad">Реклама</option><option value="other">Не реклама</option></select>
+    <div class="form-row"><label class="field-label" for="es-kind">Тип записи</label>
+      <select id="es-kind" onchange="esRecalc()"><option value="">Съёмка</option><option value="ad">Рекламная съёмка</option><option value="other">Съёмка без рекламы</option><option value="meeting">Рабочая встреча / выезд</option></select>
     </div>
     <div class="form-row"><label class="field-label">Локация</label><input type="text" id="es-loc"></div>
     <div class="form-row"><label class="field-label">Участники</label><input type="text" id="es-people"></div>
@@ -1524,7 +1530,8 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
   <div class="modal">
     <div class="modal-head"><h2 class="modal-title" id="quick-add-title">Добавить</h2><button class="modal-close" type="button" aria-label="Закрыть" onclick="hideModal('modal-add')">✕</button></div>
     <div class="quick-add-grid">
-      <button type="button" class="qa-shoot" onclick="hideModal('modal-add');showModal('modal-shoot')">Съёмка</button>
+      <button type="button" class="qa-shoot" onclick="hideModal('modal-add');openWorkShoot()">Съёмка</button>
+      <button type="button" class="qa-shoot" onclick="hideModal('modal-add');openWorkShoot('meeting')">Рабочая встреча / выезд</button>
       <button type="button" class="qa-task" onclick="hideModal('modal-add');openAddStandaloneTask('задача')">Задача</button>
       <button type="button" class="qa-design" onclick="hideModal('modal-add');openAddStandaloneTask('дизайн')">Дизайн</button>
       <button type="button" class="qa-event" onclick="hideModal('modal-add');openCalendarEvent('personal',localDateStr(new Date()))">Личное событие</button>
@@ -1542,7 +1549,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
     <div class="form-row"><label class="field-label">Дата</label><input type="date" id="sh-date"></div>
     <div class="form-row"><label class="field-label">Время</label><input type="time" id="sh-time"></div>
     <div class="form-row"><label class="field-label">Локация</label><input type="text" id="sh-loc" oninput="shRecalc()" placeholder="Где?"></div>
-    <div class="form-row"><label class="field-label">Тема съёмки</label><input type="text" id="sh-topic" placeholder="Реклама французьких бульдогів" oninput="shRecalc()"></div>
+    <div class="form-row"><label class="field-label" id="sh-topic-label" for="sh-topic">Тема съёмки</label><input type="text" id="sh-topic" placeholder="Реклама французьких бульдогів" oninput="shRecalc()"></div>
     <div class="form-row"><label class="field-label">Проект</label><select id="sh-proj" onchange="shRecalc()"><option value="">— выбери —</option></select></div>
     <label class="project-workflow" id="sh-extra-row" hidden><input type="checkbox" id="sh-extra-bill" onchange="shRecalc()"> Оплачивается отдельно</label>
     <div id="sh-rate-fields">
@@ -1554,8 +1561,8 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
     </div>
     <div style="font-size:12px;color:var(--t3);margin:-6px 0 10px" id="sh-price-hint"></div>
     </div>
-    <div class="form-row"><label class="field-label" for="sh-kind">Тип съёмки</label>
-      <select id="sh-kind"><option value="">По проекту и теме</option><option value="ad">Реклама</option><option value="other">Не реклама</option></select>
+    <div class="form-row"><label class="field-label" for="sh-kind">Тип записи</label>
+      <select id="sh-kind" onchange="shRecalc()"><option value="">Съёмка</option><option value="ad">Рекламная съёмка</option><option value="other">Съёмка без рекламы</option><option value="meeting">Рабочая встреча / выезд</option></select>
     </div>
     <div class="form-row"><label class="field-label">Участники</label><input type="text" id="sh-people" placeholder="Имена"></div>
     <div class="form-row"><label class="field-label">Ссылка на сценарий</label><input type="text" id="sh-script" placeholder="https://..."></div>
@@ -2235,8 +2242,8 @@ function goShootToday(){
   scY=now.getFullYear();scM=now.getMonth();scSelDay=now.getDate();
   renderShootsCal();
 }
-function openWorkShoot(){
-  document.getElementById('sh-kind').value='';
+function openWorkShoot(kind=''){
+  document.getElementById('sh-kind').value=kind;
   const date=document.getElementById('sh-date');
   if(!date.value&&scSelDay)date.value=localDateStr(new Date(scY,scM,scSelDay));
   showModal('modal-shoot');
@@ -2248,6 +2255,17 @@ function openWorkTask(kind){
   if(scSelDay)document.getElementById('task-date').value=localDateStr(new Date(scY,scM,scSelDay));
 }
 
+function isWorkMeeting(entry){return entry.shoot_kind==='meeting';}
+function workMeetingCard(entry){
+  const cancelled=entry.status==='отменена';
+  const complete=entry.status==='снято';
+  const details=[entry.time?.slice(0,5),entry.location,entry.people,entry.project].filter(Boolean).map(lifeText).join(' · ');
+  return '<article class="shoot-card work-meeting-card" onclick="openEditShoot('+entry.id+')">'+
+    '<div class="shoot-meta">Рабочая встреча / выезд</div>'+
+    '<button type="button" class="shoot-title work-card-open">'+lifeText(entry.topic||'Встреча / выезд')+'</button>'+
+    '<div class="shoot-meta">'+details+'</div>'+
+    (cancelled||complete?'<div class="shoot-meta">'+(cancelled?'Отменена':'Состоялась')+'</div>':'')+'</article>';
+}
 function renderShootDayDetail(){
   const el=document.getElementById('sc-day-detail');
   if(!scSelDay){el.innerHTML='';return;}
@@ -2257,6 +2275,7 @@ function renderShootDayDetail(){
   const dayTasks=workTasks().filter(t=>{const d=(t.status==='готово')?(t.done_date||t.date):t.date;return d===ds;});
   if(!items.length&&!dayTasks.length){el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${dayLabel}</div><div class="work-empty-day">На этот день записей нет</div></div>`;return;}
   const html=items.map(s=>{
+    if(isWorkMeeting(s))return workMeetingCard(s);
     const pi=s.project?workProjects().findIndex(p=>p.name===s.project):-1;
     const clr=PC[pi>=0?pi%5:0];
     const isCancelled=s.status==='отменена';
@@ -2443,7 +2462,9 @@ function renderAllDayDetail(){
   const rows=allDayEntries.map(({row,time,source,kind},index)=>{
     const meta=calendarSources[source];
     const title=kind==='shoot'?(row.topic||row.project||row.location||'Съёмка'):(row.title||'Без названия');
-    const detail=kind==='shoot'?(row.status==='отменена'?'Съёмка отменена':row.location||'Съёмка'):
+    const detail=kind==='shoot'?(isWorkMeeting(row)
+      ? [row.status==='отменена'?'Встреча / выезд отменены':'Рабочая встреча / выезд',row.location,row.people].filter(Boolean).join(' · ')
+      : row.status==='отменена'?'Съёмка отменена':row.location||'Съёмка'):
       kind==='task'?(row.kind==='дизайн'?'Дизайн':'Задача'):calendarCategory(row);
     return `<article class="calendar-entry" style="--source:${meta.color}">
       <time>${lifeText(time?.slice(0,5)||'—')}</time>
@@ -2459,8 +2480,9 @@ function renderAllDayDetail(){
 
 function renderShoots(){
   const el=document.getElementById('shoots-list');
-  if(!DB.shoots.length){el.innerHTML='<div class="empty"><div class="empty-icon">📅</div>Съёмок пока нет<br>Добавь через бота или кнопку +</div>';return;}
-  const sorted=[...DB.shoots].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const shoots=DB.shoots.filter(shoot=>!isWorkMeeting(shoot));
+  if(!shoots.length){el.innerHTML='<div class="empty"><div class="empty-icon">📅</div>Съёмок пока нет<br>Добавь через бота или кнопку +</div>';return;}
+  const sorted=shoots.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   el.innerHTML=sorted.map(s=>{
     const pi=s.project?workProjects().findIndex(p=>p.name===s.project):-1;
     const c=PC[pi>=0?pi%5:0];
@@ -2682,7 +2704,7 @@ function renderProjectList(id,projects,empty){
     }
     // съёмки этого проекта
     const projShoots=(DB.shoots||[])
-      .filter(s=>!isPersonalProject(p) && !!p.name && s.project===p.name && s.status!=='отменена')
+      .filter(s=>!isWorkMeeting(s) && !isPersonalProject(p) && !!p.name && s.project===p.name && s.status!=='отменена')
       .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     const shootsHtml=projShoots.map(s=>{
       const statusChip=s.status==='снято'
@@ -2948,7 +2970,7 @@ async function saveTask(){
 // съёмки проекта, между которыми делится его цена (отменённые не в счёт)
 function projectShoots(projName){
   if(!projName)return [];
-  return (DB.shoots||[]).filter(s=>s.project===projName&&s.status!=='отменена'&&s.date);
+  return (DB.shoots||[]).filter(s=>!isWorkMeeting(s)&&s.project===projName&&s.status!=='отменена'&&s.date);
 }
 function pcRecalc(){
   const separate=document.getElementById('pc-separate-payment').checked;
@@ -3043,19 +3065,21 @@ function renderProjectShoots(project){
   if(section.hidden)return;
   const shoots=DB.shoots.filter(shoot=>project.name&&shoot.project===project.name)
     .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const done=shoots.filter(shoot=>shoot.status==='снято').length;
-  const planned=shoots.filter(shoot=>shoot.status!=='снято'&&shoot.status!=='отменена').length;
-  document.getElementById('pc-shoot-title').textContent='Съёмки · '+done+' проведено · '+planned+' в плане';
+  const meetings=shoots.filter(isWorkMeeting);
+  const filming=shoots.filter(shoot=>!isWorkMeeting(shoot));
+  const done=filming.filter(shoot=>shoot.status==='снято').length;
+  const planned=filming.filter(shoot=>shoot.status!=='снято'&&shoot.status!=='отменена').length;
+  document.getElementById('pc-shoot-title').textContent='Съёмки · '+done+' проведено · '+planned+' в плане'+(meetings.length?' · Встречи / выезды '+meetings.length:'');
   document.getElementById('pc-shoots').innerHTML=shoots.map(shoot=>`
     <button class="personal-achievement-row" type="button" onclick="openEditShoot(${shoot.id})">
-      <strong>${avEscape(shoot.topic||shoot.location||'Съёмка')}</strong>
-      <small>${[shoot.date?fmtShort(shoot.date):'',shoot.time?.slice(0,5),shoot.status,usesSeparatePayment(project)&&shoot.bill_separately?'Допработа':''].filter(Boolean).map(avEscape).join(' · ')}</small>
+      <strong>${avEscape(shoot.topic||shoot.location||(isWorkMeeting(shoot)?'Встреча / выезд':'Съёмка'))}</strong>
+      <small>${[shoot.date?fmtShort(shoot.date):'',shoot.time?.slice(0,5),isWorkMeeting(shoot)?'Встреча / выезд':shoot.status,!isWorkMeeting(shoot)&&usesSeparatePayment(project)&&shoot.bill_separately?'Допработа':''].filter(Boolean).map(avEscape).join(' · ')}</small>
     </button>`).join('')||'<p class="project-empty">Съёмок пока нет</p>';
 }
-function openProjectShoot(){
+function openProjectShoot(kind=''){
   const project=DB.projects.find(item=>item.id===Number(document.getElementById('pc-id').value));
   if(!project||isPersonalProject(project)||!project.name)return;
-  document.getElementById('sh-kind').value='';
+  document.getElementById('sh-kind').value=kind;
   document.getElementById('sh-proj').value=project.name;
   document.getElementById('sh-extra-bill').checked=false;
   shRecalc();
@@ -3526,7 +3550,7 @@ function openTopics(){
 }
 function renderTopicsList(){
   const mode=document.getElementById('tp-filter').value;
-  let list=(DB.shoots||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  let list=(DB.shoots||[]).filter(shoot=>!isWorkMeeting(shoot)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   if(mode==='none')list=list.filter(s=>!s.topic);
   const el=document.getElementById('tp-list');
   document.getElementById('tp-count').textContent=list.length+' съёмок';
@@ -3575,7 +3599,7 @@ function openAssign(){
 }
 function renderAssignList(){
   const mode=document.getElementById('as-filter').value;
-  let list=(DB.shoots||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  let list=(DB.shoots||[]).filter(shoot=>!isWorkMeeting(shoot)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   if(mode==='none')list=list.filter(s=>!s.project);
   const el=document.getElementById('as-list');
   if(!list.length){el.innerHTML='<div style="padding:10px;color:var(--t3);font-style:italic">Пусто — все съёмки разобраны.</div>';
@@ -3798,8 +3822,8 @@ function renderFamily(){
 
 function renderWeek(){
   const week=7*24*60*60*1000,now=Date.now();
-  document.getElementById('st-shoots').textContent=DB.shoots.filter(s=>now-new Date(s.created_at)<week).length;
-  document.getElementById('st-done').textContent=DB.shoots.filter(s=>s.status==='снято'&&now-new Date(s.created_at)<week).length;
+  document.getElementById('st-shoots').textContent=DB.shoots.filter(s=>!isWorkMeeting(s)&&now-new Date(s.created_at)<week).length;
+  document.getElementById('st-done').textContent=DB.shoots.filter(s=>!isWorkMeeting(s)&&s.status==='снято'&&now-new Date(s.created_at)<week).length;
   document.getElementById('st-ideas').textContent=DB.ideas.filter(i=>now-new Date(i.created_at)<week).length;
   document.getElementById('st-diary').textContent=DB.diary.filter(d=>now-new Date(d.created_at)<week).length;
   document.getElementById('week-proj').innerHTML=DB.projects.filter(p=>p.status!=='готово').map((p,i)=>{
@@ -3819,11 +3843,28 @@ function updateSelects(){
   sel.innerHTML='<option value="">— выбери —</option>'+workProjects().map(p=>`<option>${p.name}</option>`).join('');
 }
 
+function refreshWorkRecordFields(prefix){
+  const meeting=document.getElementById(prefix+'-kind').value==='meeting';
+  const overlay=document.getElementById(prefix==='sh'?'modal-shoot':'modal-edit-shoot');
+  overlay.dataset.recordKind=meeting?'meeting':'shoot';
+  overlay.querySelector('.modal-title').textContent=meeting
+    ? (prefix==='sh'?'Новая рабочая встреча / выезд':'Рабочая встреча / выезд')
+    : (prefix==='sh'?'Новая съёмка':'Карточка съёмки');
+  document.getElementById(prefix+'-topic-label').textContent=meeting?'Название':'Тема съёмки';
+  document.getElementById(prefix+'-topic').placeholder=meeting?'Например, проверить квартиру':'Реклама французьких бульдогів';
+  if(prefix==='es'){
+    const status=document.getElementById('es-status');
+    status.options[0].textContent=meeting?'Запланировано':'не снято';
+    status.options[1].textContent=meeting?'Состоялась':'снято';
+  }
+  return meeting;
+}
 function shRecalc(){
+  const meeting=refreshWorkRecordFields('sh');
   const topic=document.getElementById('sh-topic').value;
   const loc=document.getElementById('sh-loc').value;
   const proj=document.getElementById('sh-proj').value;
-  if(updatePaymentFields('sh',shootParent(proj)))return;
+  if(updatePaymentFields('sh',shootParent(proj))||meeting)return;
   const auto=autoPriceFor([topic,proj,loc].filter(Boolean).join(' '));
   const qty=parseFloat(document.getElementById('sh-qty').value)||1;
   const lbl=document.getElementById('sh-qty-label');
@@ -3847,11 +3888,13 @@ async function saveShoot(){
   const topic=document.getElementById('sh-topic').value.trim();
   const d={date:document.getElementById('sh-date').value||null,time:document.getElementById('sh-time').value||null,location:document.getElementById('sh-loc').value,project:document.getElementById('sh-proj').value,topic:topic||null,people:document.getElementById('sh-people').value,script:document.getElementById('sh-script').value,notes:document.getElementById('sh-notes').value,status:'не снято'};
   const qty=parseFloat(document.getElementById('sh-qty').value)||1;
-  const included=updatePaymentFields('sh',shootParent(d.project));
-  const manual=included?'':document.getElementById('sh-amount').value;
-  if(document.getElementById('sh-extra-bill').checked)d.bill_separately=true;
-  const autoP=included?null:autoPriceFor([topic,d.project,d.location].filter(Boolean).join(' '));
   const shootKind=document.getElementById('sh-kind').value;
+  const meeting=isWorkMeeting({shoot_kind:shootKind});
+  const included=updatePaymentFields('sh',shootParent(d.project))||meeting;
+  const manual=included?'':document.getElementById('sh-amount').value;
+  if(!meeting&&document.getElementById('sh-extra-bill').checked)d.bill_separately=true;
+  const autoP=included?null:autoPriceFor([topic,d.project,d.location].filter(Boolean).join(' '));
+  if(meeting&&(!topic||!d.date)){alert('Укажи название и дату встречи');return;}
   if(shootKind)d.shoot_kind=shootKind;
   d.qty=qty;d.surcharge=0;d.extra=0;
   if(autoP){d.price_code=autoP.code;d.amount=calcAmount(autoP.code,qty,0,0);}
@@ -3939,7 +3982,7 @@ async function loadWorkMonth(){
       const page=await response.json();
       if(request!==workMonthRequest)return;
       if(!page.length)break;
-      rows.push(...page);
+      rows.push(...page.filter(shoot=>!isWorkMeeting(shoot)));
       if(page.length<limit)break;
       lastId=page.at(-1).id;
     }
@@ -5490,7 +5533,7 @@ function renderHome(){
   // счётчики
   const week=7*24*60*60*1000;
   const now=Date.now();
-  document.getElementById('home-stat-shoots').textContent=(DB.shoots||[]).filter(s=>now-new Date(s.created_at)<week).length;
+  document.getElementById('home-stat-shoots').textContent=(DB.shoots||[]).filter(s=>!isWorkMeeting(s)&&now-new Date(s.created_at)<week).length;
   document.getElementById('home-stat-projects').textContent=workProjects().filter(p=>(p.status||'в работе')!=='готово').length;
   document.getElementById('home-stat-ideas').textContent=(DB.ideas||[]).length;
   document.getElementById('home-stat-diary').textContent=(DB.diary||[]).length;
@@ -5587,6 +5630,7 @@ function collectWork(from,to){
       given:(t.assigned_date||'').slice(0,10),done:d,cancelled:false});
   });
   (DB.shoots||[]).forEach(s=>{
+    if(isWorkMeeting(s))return;
     const d=(s.date||'').slice(0,10);
     if(!d||d<from||d>to)return;
     const cancelled=s.status==='отменена';
@@ -5621,7 +5665,7 @@ function workColor(w){
 // разом проставляет цены всем записям без цены (по названию / проекту)
 async function autoFillPrices(){
   const tasks=workTasks().filter(t=>t.amount==null&&!includedInProject(taskParent(t),t));
-  const shoots=(DB.shoots||[]).filter(s=>(s.amount===null||s.amount===undefined)&&s.status!=='отменена'&&!includedInProject(shootParent(s.project),s));
+  const shoots=(DB.shoots||[]).filter(s=>!isWorkMeeting(s)&&(s.amount===null||s.amount===undefined)&&s.status!=='отменена'&&!includedInProject(shootParent(s.project),s));
   const plan=[];
   tasks.forEach(t=>{
     const a=autoPriceFor(t.title||'');
@@ -5663,7 +5707,7 @@ function collectIssues(from,to){
     text:`${manual.length} ${manual.length===1?'сумма вписана':'сумм вписаны'} вручную и расходятся с прайсом`,
     list:manual.map(w=>({label:w.title+' — '+fmtMoney(w.amount)+', по прайсу '+fmtMoney(calcAmount(w.code,w.qty||1,w.surch||0,w.extra||0)),date:w.date,src:w.src,id:w.id}))});
 
-  const inPeriod=(DB.shoots||[]).filter(s=>s.date&&s.date>=from&&s.date<=to);
+  const inPeriod=(DB.shoots||[]).filter(s=>!isWorkMeeting(s)&&s.date&&s.date>=from&&s.date<=to);
   const noProj=inPeriod.filter(s=>!s.project);
   if(noProj.length)out.push({
     icon:'🗂', level:'warn',
@@ -6268,9 +6312,10 @@ function calcExplain(code,qty,surch,extra){
   return parts.join(' ')+` <b>= ${fmtMoney(Math.round(total))}</b>`;
 }
 function esRecalc(){
+  const meeting=refreshWorkRecordFields('es');
   const included=updatePaymentFields('es',shootParent(document.getElementById('es-proj').value));
   document.getElementById('es-paid-cancelled').closest('label').hidden=included;
-  if(included)return;
+  if(included||meeting)return;
   const code=document.getElementById('es-price').value;
   const u=priceUnit(code);
   const ql=document.getElementById('es-qty-label');
@@ -6375,11 +6420,13 @@ async function saveEditShoot(){
   // если в базе ещё нет свежей колонки — сохраняем без неё, а не теряем всю правку
   const shootKind=document.getElementById('es-kind').value||null;
   const original=DB.shoots.find(shoot=>shoot.id===id);
-  if(updatePaymentFields('es',shootParent(data.project))){
+  const meeting=isWorkMeeting({shoot_kind:shootKind});
+  if(meeting&&(!data.topic||!data.date)){alert('Укажи название и дату встречи');return;}
+  if(updatePaymentFields('es',shootParent(data.project))||meeting){
     omitIncludedPrice(data);
     delete data.paid_cancelled;
   }
-  const extraBill=document.getElementById('es-extra-bill').checked;
+  const extraBill=!meeting&&document.getElementById('es-extra-bill').checked;
   if(extraBill!==!!original?.bill_separately)data.bill_separately=extraBill;
   if(shootKind!==(original?.shoot_kind||null))data.shoot_kind=shootKind;
   const optional=['paid_cancelled','topic','delivered_date','assigned_by','price_code','qty','surcharge','extra','amount'];

@@ -1363,6 +1363,8 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                          t.get("title") or "", t.get("assigned_by") or "",
                          t.get("price_code") or "", t.get("amount")))
         for s in shoots or []:
+            if s.get("shoot_kind") == "meeting":
+                continue
             if s.get("project") in separate_names and not s.get("bill_separately"):
                 continue
             d = (s.get("date") or "")[:10]
