@@ -1067,9 +1067,9 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
         <details class="work-tasks-panel project-fold" id="work-month" ontoggle="if(this.open)loadWorkMonth()">
           <summary>Съёмки за месяц</summary>
           <div class="project-month-controls">
-            <button type="button" class="cal-nav-btn" onclick="changeWorkMonth(-1)" aria-label="Предыдущий месяц">‹</button>
+            <button type="button" class="cal-nav-btn" onclick="changeShootMonth(-1)" aria-label="Предыдущий месяц">‹</button>
             <strong id="work-month-label"></strong>
-            <button type="button" class="cal-nav-btn" onclick="changeWorkMonth(1)" aria-label="Следующий месяц">›</button>
+            <button type="button" class="cal-nav-btn" onclick="changeShootMonth(1)" aria-label="Следующий месяц">›</button>
           </div>
           <div id="work-month-results" role="status"></div>
         </details>
@@ -1082,7 +1082,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
         <div id="standalone-tasks"></div>
       </section>
       <details class="work-tasks-panel project-fold" id="work-shoot-archive">
-        <summary>Архив съёмок</summary>
+        <summary>Карточки съёмок за месяц</summary>
         <div class="work-actions">
           <button class="btn-ghost" type="button" onclick="openTopics()">Темы</button>
           <button class="btn-ghost" type="button" onclick="openAssign()">Разобрать</button>
@@ -1153,6 +1153,11 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       </header>
       <p class="work-sync" id="work-projects-sync" role="status" hidden></p>
       <section class="work-tasks-panel" aria-label="Список рабочих проектов">
+        <div class="project-month-controls" aria-label="Месяц рабочих проектов">
+          <button type="button" class="cal-nav-btn" onclick="changeShootMonth(-1)" aria-label="Предыдущий месяц">‹</button>
+          <strong id="work-project-month-label"></strong>
+          <button type="button" class="cal-nav-btn" onclick="changeShootMonth(1)" aria-label="Следующий месяц">›</button>
+        </div>
         <div class="work-projects-filter">
           <label for="work-project-filter">Тип проекта</label>
           <select id="work-project-filter" aria-label="Тип рабочих проектов" onchange="renderProjects()">
@@ -1186,7 +1191,12 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
           <div class="task-list"></div>
         </details>
         <details class="project-section" id="pc-shoot-list" hidden>
-          <summary id="pc-shoot-title">Съёмки</summary>
+          <summary id="pc-shoot-title">Съёмки и выезды</summary>
+          <div class="project-month-controls" aria-label="Месяц съёмок проекта">
+            <button type="button" class="cal-nav-btn" onclick="changeShootMonth(-1)" aria-label="Предыдущий месяц">‹</button>
+            <strong id="pc-shoot-month-label"></strong>
+            <button type="button" class="cal-nav-btn" onclick="changeShootMonth(1)" aria-label="Следующий месяц">›</button>
+          </div>
           <button type="button" class="btn-ghost" onclick="openProjectShoot()">+ Съёмка</button>
         <button type="button" class="btn-ghost" onclick="openProjectShoot('meeting')">+ Встреча / выезд</button>
           <div id="pc-shoots"></div>
@@ -2166,8 +2176,8 @@ function setSyncOk(ok,message=''){
 }
 
 function renderAll(){
-  renderHome();renderAllCal();renderShootsCal();renderLifeCal();renderShoots();renderEvents();
-  renderProjects();renderProjectTasks();renderStandaloneTasks();renderWorkWaiting();renderIdeas();renderDiary();renderFamily();renderWeek();renderScripts();renderPriceList();renderReportSafe();updateSelects();
+  renderHome();renderAllCal();renderShootsCal();renderLifeCal();renderEvents();
+  renderProjects();renderProjectTasks();renderWorkWaiting();renderIdeas();renderDiary();renderFamily();renderWeek();renderScripts();renderPriceList();renderReportSafe();updateSelects();
 }
 
 function fmtShort(d){
@@ -2237,6 +2247,8 @@ function renderShootsCal(){
   });
   renderCalGrid('sc-grid','sc-title',scY,scM,evMap,null,scSelDay,'selectShootDay');
   renderShootDayDetail();
+  renderWorkTaskMonth();
+  renderShoots();
 }
 
 function selectShootDay(d){
@@ -2248,7 +2260,7 @@ function selectShootDay(d){
 function goShootToday(){
   const now=new Date();
   scY=now.getFullYear();scM=now.getMonth();scSelDay=now.getDate();
-  renderShootsCal();
+  refreshWorkMonth();
 }
 function openWorkShoot(kind=''){
   document.getElementById('sh-kind').value=kind;
@@ -2256,7 +2268,21 @@ function openWorkShoot(kind=''){
   if(!date.value&&scSelDay)date.value=localDateStr(new Date(scY,scM,scSelDay));
   showModal('modal-shoot');
 }
-function changeShootMonth(d){scM+=d;if(scM>11){scM=0;scY++;}if(scM<0){scM=11;scY--;}scSelDay=null;renderShootsCal();}
+function workMonthDate(offset=0){return new Date(scY,scM+offset,1,12);}
+function isInWorkMonth(date){
+  return !!date&&date>=localDateStr(workMonthDate())&&date<localDateStr(workMonthDate(1));
+}
+function refreshWorkMonth(){
+  renderShootsCal();
+  renderProjects();
+  if(document.getElementById('page-project').classList.contains('active'))renderProjectTasks();
+  if(document.getElementById('work-month').open)void loadWorkMonth();
+}
+function changeShootMonth(offset){
+  const month=workMonthDate(offset);
+  scY=month.getFullYear();scM=month.getMonth();scSelDay=null;
+  refreshWorkMonth();
+}
 
 function openWorkTask(kind){
   openAddStandaloneTask(kind);
@@ -2279,7 +2305,7 @@ function renderShootDayDetail(){
   if(!scSelDay){el.innerHTML='';return;}
   const ds=`${scY}-${String(scM+1).padStart(2,'0')}-${String(scSelDay).padStart(2,'0')}`;
   const dayLabel=new Date(scY,scM,scSelDay).toLocaleDateString('ru-RU',{day:'numeric',month:'long',weekday:'short'});
-  const items=DB.shoots.filter(s=>s.date===ds);
+  const items=DB.shoots.filter(s=>s.date===ds).sort((a,b)=>(a.time||'99').localeCompare(b.time||'99'));
   const dayTasks=workTasks().filter(t=>{const d=(t.status==='готово')?(t.done_date||t.date):t.date;return d===ds;});
   if(!items.length&&!dayTasks.length){el.innerHTML=`<div class="day-panel"><div class="day-panel-title">${dayLabel}</div><div class="work-empty-day">На этот день записей нет</div></div>`;return;}
   const html=items.map(s=>{
@@ -2488,8 +2514,8 @@ function renderAllDayDetail(){
 
 function renderShoots(){
   const el=document.getElementById('shoots-list');
-  const shoots=DB.shoots.filter(shoot=>!isWorkMeeting(shoot));
-  if(!shoots.length){el.innerHTML='<div class="empty"><div class="empty-icon">📅</div>Съёмок пока нет<br>Добавь через бота или кнопку +</div>';return;}
+  const shoots=DB.shoots.filter(shoot=>!isWorkMeeting(shoot)&&isInWorkMonth(shoot.date));
+  if(!shoots.length){el.innerHTML='<div class="empty"><div class="empty-icon">📅</div>В этом месяце съёмок нет</div>';return;}
   const sorted=shoots.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   el.innerHTML=sorted.map(s=>{
     const pi=s.project?workProjects().findIndex(p=>p.name===s.project):-1;
@@ -2644,6 +2670,7 @@ function renderProjects(){
   const personal=DB.projects.filter(isPersonalProject);
   renderProjectList('projects-list',personal,'Личных проектов пока нет');
   renderPersonalAchievements(personal);
+  document.getElementById('work-project-month-label').textContent=workMonthDate().toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
   const kind=document.getElementById('work-project-filter').value;
   renderProjectList('work-projects-list',workProjects().filter(project=>!kind||workProjectKind(project)===kind),'Рабочих проектов в этом списке пока нет');
 }
@@ -2674,13 +2701,14 @@ function renderWorkWaiting(){
       <small>${kind}${row.waiting_for?' · '+avEscape(row.waiting_for):''}</small></button>`
   ).join('')||'<p class="project-empty">Пока ничего не ждёшь</p>';
 }
-function projectTaskRows(tasks,showMissingPrice=false){
+function projectTaskRows(tasks,showMissingPrice=false,showProject=false){
   return tasks.map(t=>{
     const personal=isPersonalTask(t);
     const icon=t.status==='готово'?'✓':'';
     const cls=t.status==='готово'?'done':'';
     const badge=!personal&&t.kind==='дизайн'?'<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fff;background:#FE702D;padding:1px 6px;border-radius:10px;margin-right:6px">дизайн</span>':'';
-    const separate=usesSeparatePayment(taskParent(t));
+    const parent=taskParent(t);
+    const separate=usesSeparatePayment(parent);
     const extraBill=separate&&t.bill_separately;
     const showPrice=!personal&&(!separate||extraBill);
     const who=!personal&&t.assigned_by?`<span class="task-date">от ${avEscape(t.assigned_by)}</span>`:'';
@@ -2691,6 +2719,7 @@ function projectTaskRows(tasks,showMissingPrice=false){
       ${!personal&&t.status!=='готово'&&t.waiting_for!=null?'<span class="work-wait-tag">Жду ответа</span>':''}
       ${t.task_details||(!personal&&t.coordination)?'<span class="task-notes-mark">Есть детали</span>':''}
       ${extraBill?'<span class="task-notes-mark">Допработа</span>':''}
+      ${showProject&&parent?.name?'<span class="task-date">'+avEscape(parent.name)+'</span>':''}
       ${who}${dd?`<span class="task-date">${fmtShort(dd)}</span>`:''}
       ${showPrice&&t.amount!=null?`<span class="task-date" style="font-weight:600">${fmtMoney(t.amount)}</span>`:
         showPrice&&showMissingPrice?'<span class="task-date" style="color:#C4552A" title="цена не проставлена">— ₴</span>':''}
@@ -2705,14 +2734,14 @@ function renderProjectList(id,projects,empty){
   const rows=projects.map((p,i)=>{
     const tasks=DB.tasks.filter(t=>t.project_id===p.id);
     const active=tasks.filter(task=>task.status!=='готово');
-    const archive=tasks.filter(task=>task.status==='готово');
+    const archive=tasks.filter(task=>task.status==='готово'&&(!compact||isInWorkMonth(task.done_date||task.date)));
     function folded(key,label,content){
       const list=p.id+'-'+key;
       return `<details class="project-fold" data-list="${list}" ${opened.has(list)?'open':''}><summary>${label}</summary>${content}</details>`;
     }
     // съёмки этого проекта
     const projShoots=(DB.shoots||[])
-      .filter(s=>!isWorkMeeting(s) && !isPersonalProject(p) && !!p.name && s.project===p.name && s.status!=='отменена')
+      .filter(s=>!isWorkMeeting(s)&&matchesShootProject(s,p)&&s.status!=='отменена'&&(!compact||isInWorkMonth(s.date)))
       .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     const shootsHtml=projShoots.map(s=>{
       const statusChip=s.status==='снято'
@@ -2724,7 +2753,7 @@ function renderProjectList(id,projects,empty){
       return`<div onclick="openEditShoot(${s.id})" style="padding:8px 10px;background:var(--s2);border-radius:9px;margin-bottom:5px;cursor:pointer;border:1px solid var(--b);transition:all .12s" onmouseover="this.style.borderColor='var(--a)'" onmouseout="this.style.borderColor='var(--b)'">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
           <div style="flex:1;min-width:0">
-            <span style="font-size:12px;font-weight:600;color:var(--t)">${s.location||'съёмка'}</span>
+            <span style="font-size:12px;font-weight:600;color:var(--t)">${avEscape(s.topic||s.location||'Съёмка')}</span>
             <span style="font-size:11px;color:var(--t3);margin-left:6px">${s.date?fmtShort(s.date):''} ${s.time||''}</span>
             ${s.people?`<div style="font-size:11px;color:var(--t3);margin-top:1px">${s.people}</div>`:''}
           </div>
@@ -3071,7 +3100,8 @@ function renderProjectShoots(project){
   const section=document.getElementById('pc-shoot-list');
   section.hidden=!project||isPersonalProject(project);
   if(section.hidden)return;
-  const shoots=DB.shoots.filter(shoot=>project.name&&shoot.project===project.name)
+  document.getElementById('pc-shoot-month-label').textContent=workMonthDate().toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
+  const shoots=DB.shoots.filter(shoot=>matchesShootProject(shoot,project)&&isInWorkMonth(shoot.date))
     .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const meetings=shoots.filter(isWorkMeeting);
   const filming=shoots.filter(shoot=>!isWorkMeeting(shoot));
@@ -3735,22 +3765,23 @@ async function deleteTask(id){
   if(!confirm('Удалить задачу?'))return;
   await dbDelete('tasks',id);await load();
 }
-function renderStandaloneTasks(){
+function renderWorkTaskMonth(){
   const el=document.getElementById('standalone-tasks');
   if(!el)return;
-  const tasks=(DB.tasks||[]).filter(t=>t.project_id==null);
-  if(!tasks.length){el.innerHTML='<div class="projects-empty">Пока нет отдельных задач</div>';return;}
-  const sorted=tasks.slice().sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
-  const active=sorted.filter(task=>task.status!=='готово');
-  const archive=sorted.filter(task=>task.status==='готово');
-  const activeOpen=el.querySelector('#standalone-active')?.open;
+  const tasks=workTasks();
+  const end=localDateStr(workMonthDate(1));
+  const active=tasks.filter(task=>task.status!=='готово'&&(!task.date||task.date<end))
+    .sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
+  const archive=tasks.filter(task=>task.status==='готово'&&isInWorkMonth(task.done_date||task.date))
+    .sort((a,b)=>(b.done_date||b.date).localeCompare(a.done_date||a.date));
+  const activeOpen=el.querySelector('#standalone-active')?.open??active.length>0;
   const archiveOpen=el.querySelector('#standalone-archive')?.open;
   el.innerHTML=`<details class="project-fold" id="standalone-active" ${activeOpen?'open':''}>
     <summary>Текущие задачи · ${active.length}</summary>
-    <div class="task-list">${projectTaskRows(active,true)||'<p class="project-empty">Открытых задач пока нет</p>'}</div>
+    <div class="task-list">${projectTaskRows(active,true,true)||'<p class="project-empty">Открытых задач пока нет</p>'}</div>
   </details>`+(archive.length?`<details class="project-fold" id="standalone-archive" ${archiveOpen?'open':''}>
-    <summary>Выполненные задачи · ${archive.length}</summary>
-    <div class="task-list">${projectTaskRows(archive,true)}</div>
+    <summary>Выполнено за месяц · ${archive.length}</summary>
+    <div class="task-list">${projectTaskRows(archive,true,true)}</div>
   </details>`:'');
 }
 async function toggleProject(id,cur){await dbPatch('projects',id,{status:cur==='готово'?'в работе':'готово'});await load();}
@@ -3959,25 +3990,24 @@ async function saveEvent(){
   }
 }
 
-let workMonth=new Date(dailyDate()+'T12:00:00');
 let workMonthRequest=0;
-function changeWorkMonth(offset){
-  workMonth=new Date(workMonth.getFullYear(),workMonth.getMonth()+offset,1,12);
-  void loadWorkMonth();
-}
 function isAdShoot(shoot,project){
   if(shoot.shoot_kind)return shoot.shoot_kind==='ad';
   return workProjectKind(project)==='ad'||/(?:реклам|таргет)/i.test(shoot.topic||'');
+}
+function matchesShootProject(shoot,project){
+  if(!project?.name||isPersonalProject(project))return false;
+  if(shoot.project===project.name)return true;
+  return !isWorkMeeting(shoot)&&project.name.trim().toLowerCase()==='реклама'
+    &&isAdShoot(shoot,shootParent(shoot.project));
 }
 async function loadWorkMonth(){
   const results=document.getElementById('work-month-results');
   const label=document.getElementById('work-month-label');
   const request=++workMonthRequest;
-  const year=workMonth.getFullYear();
-  const month=workMonth.getMonth();
-  const from=localDateStr(new Date(year,month,1,12));
-  const to=localDateStr(new Date(year,month+1,1,12));
-  label.textContent=workMonth.toLocaleDateString('ru-RU',{year:'numeric',month:'long'});
+  const from=localDateStr(workMonthDate());
+  const to=localDateStr(workMonthDate(1));
+  label.textContent=workMonthDate().toLocaleDateString('ru-RU',{year:'numeric',month:'long'});
   results.textContent='Загружаю съёмки…';
   try{
     const rows=[];
