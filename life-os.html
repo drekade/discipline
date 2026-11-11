@@ -780,6 +780,12 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
 [data-record-kind="meeting"] .form-row:has(:is(#sh-script,#es-script,#es-delivered)),
 [data-record-kind="meeting"] label:has(#es-paid-cancelled){display:none!important}
 #work-shoot-archive > .work-actions{margin:10px 0}
+.report-activity{margin-bottom:16px}
+.report-activity h2{font-family:var(--fi);font-size:21px;margin:0 0 8px}
+.report-activity p{font-size:13px;margin:0 0 8px}
+.report-activity ul{padding-inline-start:20px}
+.report-activity li+li{margin-top:8px}
+.report-activity-detail{font-size:12px;color:var(--t2,#5c5143);margin-top:2px}
 </style>
 </head>
 <body>
@@ -1326,7 +1332,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
         <button type="button" onclick="goToPage('home')">Главная</button>
       </nav>
       <header class="work-head"><div><h1 class="page-title">Отчёт и авансы</h1>
-      <p class="page-sub">Выполненные работы по прайсу за выбранный период</p></div></header>
+      <p class="page-sub">Что сделано и сколько к оплате за выбранный период</p></div></header>
       <p class="work-sync" id="report-sync" role="status" hidden></p>
 
       <div class="cal-wrap" style="margin-bottom:16px">
@@ -1360,6 +1366,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
   <div id="advance-list" style="margin-top:12px"></div>
 </div>
 <div id="rp-check"></div>
+      <div id="rp-activity"></div>
       <div id="rp-summary"></div><div id="rp-advances"></div>
       <div class="cal-wrap" id="rp-cal-wrap" style="margin-bottom:16px">
         <div class="cal-row"><div class="cal-month" id="rp-cal-title"></div></div>
@@ -5782,11 +5789,82 @@ function toggleIssue(i){
   const el=document.getElementById('issue-'+i);
   if(el)el.classList.toggle('hidden');
 }
+function collectReportActivity(from,to){
+  const activity=[];
+  const projects=projectsByName();
+  const inPeriod=date=>date&&date>=from&&date<=to;
+  for(const row of DB.shoots){
+    const date=(row.date||'').slice(0,10);
+    const project=projects[row.project];
+    if(row.status!=='снято'||!inPeriod(date)||project?.billing==='personal')continue;
+    const meeting=isWorkMeeting(row);
+    activity.push({
+      id:row.id,source:'shoots',date,project:row.project||'',
+      kind:meeting?'Выезд / встреча':'Съёмка',
+      title:row.topic||row.location||(meeting?'Встреча / выезд':'Съёмка'),
+      detail:[row.time?.slice(0,5),row.location!==row.topic?row.location:'',row.people].filter(Boolean).join(' · '),
+      payment:meeting?'':usesSeparatePayment(project)?(row.bill_separately?'Допработа':'В оплате проекта'):''
+    });
+  }
+  for(const row of workTasks()){
+    const date=(row.done_date||row.date||'').slice(0,10);
+    const project=taskParent(row);
+    if(row.status!=='готово'||!inPeriod(date)||project?.billing==='personal')continue;
+    activity.push({
+      id:row.id,source:'tasks',date,project:project?.name||'',
+      kind:row.kind==='дизайн'?'Дизайн':'Задача',title:row.title||'Без названия',detail:'',
+      payment:usesSeparatePayment(project)?(row.bill_separately?'Допработа':'В оплате проекта'):''
+    });
+  }
+  return activity.sort((a,b)=>a.date.localeCompare(b.date)||a.detail.localeCompare(b.detail));
+}
+function reportActivityCounts(items){
+  return [['Выезды и встречи','Выезд / встреча'],['Съёмки','Съёмка'],['Задачи','Задача'],['Дизайн','Дизайн']]
+    .map(([label,kind])=>[label,items.filter(item=>item.kind===kind).length]);
+}
+function groupReportActivity(items){
+  const groups=new Map();
+  for(const item of items){
+    const key=item.project||'Без проекта';
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(item);
+  }
+  return groups;
+}
+function reportActivityHtml(items,interactive=false){
+  const counts=reportActivityCounts(items).map(([label,count])=>label+' — '+count).join(' · ');
+  const groups=[...groupReportActivity(items)].map(([project,rows])=>{
+    const content=rows.map(item=>{
+      const title=avEscape(item.title);
+      const opener=item.source==='tasks'?'openTaskCard':'openEditShoot';
+      const label=interactive
+        ? '<button type="button" class="calendar-entry-open" onclick="'+opener+'('+Number(item.id)+')">'+title+'</button>'
+        : '<strong>'+title+'</strong>';
+      const info=[fmtShort(item.date),item.kind,item.detail,item.payment].filter(Boolean).map(avEscape).join(' · ');
+      return '<li>'+label+'<div class="report-activity-detail">'+info+'</div></li>';
+    }).join('');
+    const header=avEscape(project)+' · '+rows.length;
+    return interactive
+      ? '<details class="project-fold"><summary>'+header+'</summary><ul>'+content+'</ul></details>'
+      : '<h3>'+header+'</h3><ul>'+content+'</ul>';
+  }).join('');
+  return '<section class="cal-wrap report-activity"><h2>Что сделано за период</h2><p>'+counts+'</p>'+
+    (groups||'<p>За этот период нет отмеченных выполненных работ.</p>')+'</section>';
+}
+function reportActivityText(items){
+  const lines=['','Что сделано за период',reportActivityCounts(items).map(([label,count])=>label+' — '+count).join(' · ')];
+  for(const [project,rows] of groupReportActivity(items)){
+    lines.push('',project+' · '+rows.length);
+    for(const item of rows)lines.push('• '+[fmtShort(item.date),item.kind,item.title,item.detail,item.payment].filter(Boolean).join(' · '));
+  }
+  return lines;
+}
 function renderReport(){
   const from=document.getElementById('rp-from').value;
   const to=document.getElementById('rp-to').value;
   if(!from||!to){setReportPreset('month');return;}
   renderAdvances(from,to);
+  document.getElementById('rp-activity').innerHTML=reportActivityHtml(collectReportActivity(from,to),true);
   const items=collectWork(from,to);
   const total=items.reduce((s,w)=>s+(w.amount||0),0);
   const noPrice=items.filter(w=>w.amount===null).length;
@@ -5933,7 +6011,7 @@ function reportAsText(){
                  (extra.length?`\n   ${extra.join(' · ')}`:''));
     });
   });
-  lines.push(...advanceReportLines(from,to));
+  lines.push(...reportActivityText(collectReportActivity(from,to)),...advanceReportLines(from,to));
   return lines.join('\n');
 }
 async function copyReportText(){
@@ -6002,6 +6080,7 @@ td{padding:7px 6px;border-bottom:1px solid #eee;font-size:14px;vertical-align:to
 <div class="period">Выполненные работы: ${fmtMoney(total)} · Авансы к оплате: ${fmtMoney(reportPaymentTotals(total,from,to).advanceDue)}</div>
 <div class="period">${items.length} работ</div>
 ${blocks}
+${reportActivityHtml(collectReportActivity(from,to))}
 ${advanceReportHtml(from,to)}
 <h2>По заказчикам</h2><table>${whoRows}</table>
 <div class="foot">Сформировано ${fmtShort(localDateStr(new Date()))}. Расчёт по прайсу.</div>
