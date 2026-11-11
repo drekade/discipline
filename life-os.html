@@ -786,6 +786,25 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
 .report-activity ul{padding-inline-start:20px}
 .report-activity li+li{margin-top:8px}
 .report-activity-detail{font-size:12px;color:var(--t2,#5c5143);margin-top:2px}
+#task-work-project-row[hidden]{display:none}
+#page-shoots-cal .work-task-board{padding:14px 16px;background:#fcf7ed}
+.work-task-board-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.work-task-board-head .sec-title{font:700 22px/1.15 Georgia,serif;margin:0}
+.work-task-add{flex:none;min-height:40px;background:#e3ead9;border-color:#9dab91}
+.work-task-group>summary{min-height:42px;align-content:center;font-weight:600}
+.work-task-count{display:inline-block;margin-inline-start:5px;padding:1px 7px;border-radius:20px;background:#eee4d4;font-size:11px;color:#594b3d}
+.work-task-list{margin-bottom:8px}
+.work-task-row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;border-top:1px solid #e3d8c7}
+.work-task-toggle,.work-task-open{font:inherit;color:inherit;background:none;border:0;cursor:pointer;min-height:44px}
+.work-task-toggle{display:grid;place-items:center;padding:0}
+.work-task-toggle:hover .task-check{border-color:var(--green)}
+.work-task-open{text-align:left;padding:8px 6px 8px 0;overflow-wrap:anywhere}
+.work-task-open:hover .work-task-name{text-decoration:underline}
+.work-task-name,.work-task-meta{display:block}
+.work-task-name{font-size:14px;font-weight:600}
+.work-task-meta{font-size:12px;color:#625446;margin-top:3px}
+.work-task-amount{padding-right:5px;font-size:12px;font-weight:600;white-space:nowrap}
+.work-task-toggle[aria-pressed="true"]+.work-task-open .work-task-name{color:#625446}
 </style>
 </head>
 <body>
@@ -1075,9 +1094,10 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
         </details>
       </aside>
       </div>
-      <section class="work-tasks-panel" aria-labelledby="standalone-title">
-        <div class="sec-row work-list-head">
+      <section class="work-tasks-panel work-task-board" aria-labelledby="standalone-title">
+        <div class="work-task-board-head">
           <h2 class="sec-title" id="standalone-title">Задачи и дизайн</h2>
+          <button type="button" class="btn-ghost work-task-add" onclick="openWorkBoardTask()">+ Добавить</button>
         </div>
         <div id="standalone-tasks"></div>
       </section>
@@ -1750,6 +1770,10 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
   <div class="modal">
     <div class="modal-head"><span class="modal-title" id="task-modal-title">Новая задача</span><button class="modal-close" onclick="hideModal('modal-task')">✕</button></div>
     <input type="hidden" id="task-proj-id">
+    <div class="form-row" id="task-work-project-row" hidden>
+      <label class="field-label" for="task-work-project">Проект</label>
+      <select id="task-work-project" onchange="setWorkBoardTaskProject()"></select>
+    </div>
     <div class="form-row" id="task-kind-row"><label class="field-label" for="task-kind">Тип записи</label>
       <select id="task-kind" onchange="qaAutoHint()"><option value="задача">Задача</option><option value="дизайн">Дизайн</option></select>
     </div>
@@ -2701,7 +2725,7 @@ function renderWorkWaiting(){
       <small>${kind}${row.waiting_for?' · '+avEscape(row.waiting_for):''}</small></button>`
   ).join('')||'<p class="project-empty">Пока ничего не ждёшь</p>';
 }
-function projectTaskRows(tasks,showMissingPrice=false,showProject=false){
+function projectTaskRows(tasks,showMissingPrice=false,workBoard=false){
   return tasks.map(t=>{
     const personal=isPersonalTask(t);
     const icon=t.status==='готово'?'✓':'';
@@ -2713,13 +2737,29 @@ function projectTaskRows(tasks,showMissingPrice=false,showProject=false){
     const showPrice=!personal&&(!separate||extraBill);
     const who=!personal&&t.assigned_by?`<span class="task-date">от ${avEscape(t.assigned_by)}</span>`:'';
     const dd=t.status==='готово'?(t.done_date||t.date):t.date;
+    if(workBoard){
+      const done=t.status==='готово';
+      const title=avEscape(t.title||'Без названия');
+      const dateLabel=dd?(done?'Готово ':'Срок ')+fmtShort(dd):'';
+      const meta=[parent?.name,dateLabel,!personal&&t.assigned_by?'От '+t.assigned_by:'',
+        !done&&t.waiting_for!=null?'Жду ответа':'',extraBill?'Допработа':''].filter(Boolean).map(avEscape);
+      return`<div class="work-task-row">
+        <button class="work-task-toggle" type="button" aria-pressed="${done}" aria-label="${done?'Вернуть в работу':'Отметить выполненной'} — ${title}" onclick="cycleTask(${t.id},'${done?'готово':'в работе'}')">
+          <span class="task-check ${cls}" aria-hidden="true">${icon}</span>
+        </button>
+        <button class="work-task-open" type="button" onclick="openTaskCard(${t.id})">
+          <span class="work-task-name">${badge}${title}</span>
+          ${meta.length?'<span class="work-task-meta">'+meta.join(' · ')+'</span>':''}
+        </button>
+        ${showPrice&&t.amount!=null?'<span class="work-task-amount">'+fmtMoney(t.amount)+'</span>':''}
+      </div>`;
+    }
     return`<div class="task-item">
       <div class="task-check ${cls}" onclick="cycleTask(${t.id},'${t.status}')">${icon}</div>
       <span class="task-text ${t.status==='готово'?'done':''}" onclick="openTaskCard(${t.id})">${badge}${avEscape(t.title||'')}</span>
       ${!personal&&t.status!=='готово'&&t.waiting_for!=null?'<span class="work-wait-tag">Жду ответа</span>':''}
       ${t.task_details||(!personal&&t.coordination)?'<span class="task-notes-mark">Есть детали</span>':''}
       ${extraBill?'<span class="task-notes-mark">Допработа</span>':''}
-      ${showProject&&parent?.name?'<span class="task-date">'+avEscape(parent.name)+'</span>':''}
       ${who}${dd?`<span class="task-date">${fmtShort(dd)}</span>`:''}
       ${showPrice&&t.amount!=null?`<span class="task-date" style="font-weight:600">${fmtMoney(t.amount)}</span>`:
         showPrice&&showMissingPrice?'<span class="task-date" style="color:#C4552A" title="цена не проставлена">— ₴</span>':''}
@@ -2931,7 +2971,28 @@ function applyTaskStage(payload,prefix,task){
   const next=document.getElementById(prefix+'-stage').value||null;
   if(next!==(task?.stage_id??null))payload.stage_id=next;
 }
+function openWorkBoardTask(){
+  openAddStandaloneTask('задача');
+  const picker=document.getElementById('task-work-project');
+  picker.replaceChildren(new Option('Без проекта',''),...workProjects()
+    .filter(project=>project.name?.trim())
+    .sort((a,b)=>a.name.localeCompare(b.name,'ru'))
+    .map(project=>new Option(project.name,String(project.id))));
+  document.getElementById('task-work-project-row').hidden=false;
+  document.getElementById('task-modal-title').textContent='Добавить в работу';
+  document.getElementById('task-title').focus();
+}
+function setWorkBoardTaskProject(){
+  const value=document.getElementById('task-work-project').value;
+  document.getElementById('task-proj-id').value=value;
+  void fillTaskStages('task',Number(value));
+  const extra=document.getElementById('task-extra-bill');
+  extra.checked=false;
+  refreshTaskPayment(extra);
+  qaAutoHint();
+}
 function openAddTask(projId,stageId=''){
+  document.getElementById('task-work-project-row').hidden=true;
   document.getElementById('task-proj-id').value=projId;
   const personal=isPersonalTask({project_id:projId});
   void fillTaskStages('task',projId,stageId);
@@ -2950,6 +3011,7 @@ function openAddTask(projId,stageId=''){
   showModal('modal-task');
 }
 function openAddStandaloneTask(kind){
+  document.getElementById('task-work-project-row').hidden=true;
   document.getElementById('task-proj-id').value='';
   void fillTaskStages('task',null);
   document.getElementById('task-kind-row').hidden=false;
@@ -3774,15 +3836,17 @@ function renderWorkTaskMonth(){
     .sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
   const archive=tasks.filter(task=>task.status==='готово'&&isInWorkMonth(task.done_date||task.date))
     .sort((a,b)=>(b.done_date||b.date).localeCompare(a.done_date||a.date));
-  const activeOpen=el.querySelector('#standalone-active')?.open??active.length>0;
+  const previousActive=el.querySelector('#standalone-active');
+  const activeOpen=previousActive?.dataset.hasTasks==='true'?previousActive.open:active.length>0;
   const archiveOpen=el.querySelector('#standalone-archive')?.open;
-  el.innerHTML=`<details class="project-fold" id="standalone-active" ${activeOpen?'open':''}>
-    <summary>Текущие задачи · ${active.length}</summary>
-    <div class="task-list">${projectTaskRows(active,true,true)||'<p class="project-empty">Открытых задач пока нет</p>'}</div>
-  </details>`+(archive.length?`<details class="project-fold" id="standalone-archive" ${archiveOpen?'open':''}>
-    <summary>Выполнено за месяц · ${archive.length}</summary>
-    <div class="task-list">${projectTaskRows(archive,true,true)}</div>
-  </details>`:'');
+  el.innerHTML=`<details class="project-fold work-task-group" id="standalone-active" data-has-tasks="${active.length>0}" ${activeOpen?'open':''}>
+    <summary>Текущие задачи <span class="work-task-count">${active.length}</span></summary>
+    <div class="work-task-list">${projectTaskRows(active,false,true)||'<p class="project-empty">Открытых задач пока нет</p>'}</div>
+  </details>
+  <details class="project-fold work-task-group" id="standalone-archive" ${archiveOpen?'open':''}>
+    <summary>Выполнено за месяц <span class="work-task-count">${archive.length}</span></summary>
+    <div class="work-task-list">${projectTaskRows(archive,false,true)||'<p class="project-empty">В этом месяце выполненных задач пока нет</p>'}</div>
+  </details>`;
 }
 async function toggleProject(id,cur){await dbPatch('projects',id,{status:cur==='готово'?'в работе':'готово'});await load();}
 
