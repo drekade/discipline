@@ -779,6 +779,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
 [data-record-kind="meeting"] :is(#sh-extra-row,#sh-rate-fields,#es-extra-row,#es-rate-fields),
 [data-record-kind="meeting"] .form-row:has(:is(#sh-script,#es-script,#es-delivered)),
 [data-record-kind="meeting"] label:has(#es-paid-cancelled){display:none!important}
+#work-shoot-archive > .work-actions{margin:10px 0}
 </style>
 </head>
 <body>
@@ -1074,14 +1075,14 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
         </div>
         <div id="standalone-tasks"></div>
       </section>
-      <div class="sec-row work-list-head">
-        <h2 class="sec-title">Все съёмки</h2>
+      <details class="work-tasks-panel project-fold" id="work-shoot-archive">
+        <summary>Архив съёмок</summary>
         <div class="work-actions">
           <button class="btn-ghost" type="button" onclick="openTopics()">Темы</button>
           <button class="btn-ghost" type="button" onclick="openAssign()">Разобрать</button>
         </div>
-      </div>
-      <div class="shoots-grid" id="shoots-list"></div>
+        <div class="shoots-grid" id="shoots-list"></div>
+      </details>
     </div>
 
     <!-- LIFE CAL -->
