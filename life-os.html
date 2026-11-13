@@ -486,10 +486,19 @@ body:has(#page-shoots-cal.active,#page-report.active,#page-all-cal.active,#page-
 #page-all-cal .calendar-sources{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 11px}
 .calendar-sources button{border:1.3px solid #887865;background:#fff9ef;border-radius:20px;min-height:33px;padding:4px 10px;color:#231d17;font:700 12px var(--ff);cursor:pointer}
 .calendar-sources button[aria-pressed="true"]{background:#e3d4ee;border-color:#231d17}
-.calendar-sources button:not([data-calendar-source="all"])::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;background:var(--dot)}
-.calendar-sources [data-calendar-source="work"]{--dot:#426a89}
-.calendar-sources [data-calendar-source="lila"]{--dot:#805792}
-.calendar-sources [data-calendar-source="personal"]{--dot:#55733e}
+#page-all-cal [data-source="work"]{--source:#0058b8;--source-bg:#def0ff}
+#page-all-cal [data-source="lila"]{--source:#a21c72;--source-bg:#fbe3f0}
+#page-all-cal [data-source="personal"]{--source:#146c3d;--source-bg:#dff4e5}
+.calendar-sources button[data-source]{background:var(--source-bg);color:var(--source);border-color:var(--source)}
+.calendar-sources button[data-source][aria-pressed="true"]{background:var(--source);color:white;border-color:var(--source)}
+.calendar-sources button[data-source]::before{content:"";display:inline-block;width:10px;height:5px;border-radius:3px;margin-right:6px;background:currentColor;vertical-align:middle}
+#ac-grid .cday-dots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;width:min(82%,38px);min-height:6px;margin-inline:auto}
+#ac-grid .cdot{display:block;width:100%;height:6px;border-radius:2px;background:var(--source)}
+#ac-grid .cdot[data-source="work"]{grid-column:1;grid-row:1}
+#ac-grid .cdot[data-source="lila"]{grid-column:2;grid-row:1}
+#ac-grid .cdot[data-source="personal"]{grid-column:3;grid-row:1}
+#page-all-cal .calendar-entry[data-source]{background:var(--source-bg);border-inline-start:4px solid var(--source)}
+#page-all-cal .calendar-entry-source{color:var(--source)}
 #page-all-cal .day-panel{background:#eee2f1}
 .calendar-entry{display:grid;grid-template-columns:38px minmax(0,1fr);gap:9px;padding:9px 0;border-top:1px solid #cbbad0;overflow-wrap:anywhere}
 .calendar-entry time,.calendar-entry small{font-size:12px;color:#4d423e}
@@ -1013,9 +1022,9 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
       <p id="all-sync" class="life-sync" role="status" hidden></p>
       <div class="calendar-sources" aria-label="Источник событий">
         <button type="button" data-calendar-source="all" aria-pressed="true" onclick="setCalendarSource('all')">Все</button>
-        <button type="button" data-calendar-source="work" aria-pressed="false" onclick="setCalendarSource('work')">Работа</button>
-        <button type="button" data-calendar-source="lila" aria-pressed="false" onclick="setCalendarSource('lila')">Лила</button>
-        <button type="button" data-calendar-source="personal" aria-pressed="false" onclick="setCalendarSource('personal')">Личное</button>
+        <button type="button" data-calendar-source="work" data-source="work" aria-pressed="false" onclick="setCalendarSource('work')">Работа</button>
+        <button type="button" data-calendar-source="lila" data-source="lila" aria-pressed="false" onclick="setCalendarSource('lila')">Лила</button>
+        <button type="button" data-calendar-source="personal" data-source="personal" aria-pressed="false" onclick="setCalendarSource('personal')">Личное</button>
       </div>
       <div class="cal-wrap">
         <div class="cal-row">
@@ -2229,10 +2238,11 @@ function renderCalGrid(gridId,titleId,y,m,evMap,colorFn,selDay,onClickFn){
   for(let d=1;d<=daysInMonth;d++){
     const isToday=d===today.getDate()&&m===today.getMonth()&&y===today.getFullYear();
     const isSel=selDay===d;
-    const dots=(evMap[d]||[]).slice(0,4).map(c=>`<span class="cdot" style="background:${c}"></span>`).join('');
+    const markers=(evMap[d]||[]).slice(0,4);
+    const dots=markers.map(c=>gridId==="ac-grid"?`<span class="cdot" data-source="${c}"></span>`:`<span class="cdot" style="background:${c}"></span>`).join('');
     if(gridId==='lc-grid'||gridId==='sc-grid'||gridId==='ac-grid'){
       const label=new Date(y,m,d).toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
-      html+=`<button type="button" data-${gridId==='sc-grid'?'work':gridId==='ac-grid'?'all':'life'}-day="${d}" aria-label="${label}${dots?', есть события':''}" aria-pressed="${isSel}"${isToday?' aria-current="date"':''} class="cday${isToday?' today':''}${isSel?' selected':''}" onclick="${onClickFn}(${d})"><span class="cday-num">${d}</span><span class="cday-dots" aria-hidden="true">${dots}</span></button>`;
+      html+=`<button type="button" data-${gridId==='sc-grid'?'work':gridId==='ac-grid'?'all':'life'}-day="${d}" aria-label="${label}${dots?(gridId==='ac-grid'?', '+markers.map(source=>calendarSources[source].name).join(', '):', есть события'):''}" aria-pressed="${isSel}"${isToday?' aria-current="date"':''} class="cday${isToday?' today':''}${isSel?' selected':''}" onclick="${onClickFn}(${d})"><span class="cday-num">${d}</span><span class="cday-dots" aria-hidden="true">${dots}</span></button>`;
       continue;
     }
     html+=`<div class="cday${isToday?' today':''}${isSel?' selected':''}" onclick="${onClickFn}(${d})">
@@ -2400,9 +2410,9 @@ function goLifeToday(){
   renderLifeCal();
 }
 const calendarSources={
-  work:{name:'Работа',color:'#426a89'},
-  lila:{name:'Лила',color:'#805792'},
-  personal:{name:'Личное',color:'#55733e'}
+  work:{name:'Работа'},
+  lila:{name:'Лила'},
+  personal:{name:'Личное'}
 };
 let allSource='all',allDayEntries=[],calendarEventId=null;
 const sourcePrefix=/^(Лила|Личное) · /;
@@ -2476,7 +2486,7 @@ function renderAllCal(){
   entries.forEach(entry=>{
     const [year,month,day]=entry.date.split('-').map(Number);
     if(year!==acY||month!==acM+1)return;
-    (byDay[day]??=new Set()).add(calendarSources[entry.source].color);
+    (byDay[day]??=new Set()).add(entry.source);
   });
   const dots=Object.fromEntries(Object.entries(byDay).map(([day,colors])=>[day,[...colors]]));
   renderCalGrid('ac-grid','ac-title',acY,acM,dots,null,acSelDay,'selectAllDay');
@@ -2524,7 +2534,7 @@ function renderAllDayDetail(){
       ? [row.status==='отменена'?'Встреча / выезд отменены':'Рабочая встреча / выезд',row.location,row.people].filter(Boolean).join(' · ')
       : row.status==='отменена'?'Съёмка отменена':row.location||'Съёмка'):
       kind==='task'?(row.kind==='дизайн'?'Дизайн':'Задача'):calendarCategory(row);
-    return `<article class="calendar-entry" style="--source:${meta.color}">
+    return `<article class="calendar-entry" data-source="${source}">
       <time>${lifeText(time?.slice(0,5)||'—')}</time>
       <div><span class="calendar-entry-source">${meta.name}</span>
         <button class="calendar-entry-open" type="button" onclick="openAllEntry(${index})">${lifeText(title)}</button>
