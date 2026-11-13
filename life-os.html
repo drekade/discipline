@@ -814,6 +814,13 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
 .work-task-meta{font-size:12px;color:#625446;margin-top:3px}
 .work-task-amount{padding-right:5px;font-size:12px;font-weight:600;white-space:nowrap}
 .work-task-toggle[aria-pressed="true"]+.work-task-open .work-task-name{color:#625446}
+.tarot-study{grid-column:1/-1;border-top:1px solid #decfb9;padding-top:10px}
+.tarot-study summary{cursor:pointer;font-weight:700;padding:8px 0}
+.tarot-study-tabs{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 11px}
+.tarot-study-tabs button{border:1px solid #9e8d78;border-radius:8px;background:#fff9ee;color:#231d17;font:inherit;font-size:13px;padding:7px 9px;min-height:36px;cursor:pointer}
+.tarot-study-tabs button[aria-selected=true]{background:#e7d9ef;border-color:#684285}
+.tarot-study [role=tabpanel] details{border-top:1px solid #e5d9c9}
+.tarot-study [role=tabpanel] details p{margin-inline-start:14px}
 </style>
 </head>
 <body>
@@ -1913,6 +1920,7 @@ body:has(#page-ritual.active) .main{margin:0 auto;width:100%;min-width:0}
 <div style="display:flex;gap:8px"><button id="av-save" class="btn-primary" onclick="saveAdvance()">Сохранить</button><button class="btn-ghost" onclick="deleteAdvance()">Удалить аванс</button></div>
 </div></div>
 <script src="tarot-art.js"></script>
+<script src="tarot-study.js"></script>
 <script>
 const SB='https://btgtgcwbrrnfbctchata.supabase.co';
 const SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Z3RnY3dicnJuZmJjdGNoYXRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTQ2OTgsImV4cCI6MjA5MjI5MDY5OH0.lyEWFcmsL3GIm0FrEZdGkK2uRSx26cNiBGFvCVsjdsY';
@@ -5083,18 +5091,35 @@ let dailyCloud=null;
 let dailyPending=false;
 let dailySyncFailed=false;
 function randomIndex(size){return Math.floor(Math.random()*size);}
-function shuffleTarot(cards){
+function tarotRandomIndex(size){
+  const range=2**32;
+  const limit=range-range%size;
+  const word=new Uint32Array(1);
+  do{crypto.getRandomValues(word);}while(word[0]>=limit);
+  return word[0]%size;
+}
+function shuffleTarot(cards,pick){
   for(let last=cards.length-1;last>0;last--){
-    const other=randomIndex(last+1);
+    const other=pick(last+1);
     [cards[last],cards[other]]=[cards[other],cards[last]];
   }
-  return cards;
 }
-function prepareTarotDeck(){
-  const deck=shuffleTarot(tarotNames.map((_,index)=>({index,reversed:false})));
-  // Turn a packet, then mix it back into the deck before dealing.
-  deck.slice(0,20).forEach(card=>{card.reversed=true;});
-  return shuffleTarot(deck);
+function turnTarotPacket(deck,start,length){
+  const packet=deck.splice(start,length).reverse();
+  for(const card of packet)card.reversed=!card.reversed;
+  deck.splice(start,0,...packet);
+}
+function prepareTarotDeck(pick=tarotRandomIndex){
+  const deck=tarotNames.map((_,index)=>({index,reversed:false}));
+  for(let pass=0;pass<3;pass++){
+    shuffleTarot(deck,pick);
+    if(pick(2)===0)continue;
+    const length=8+pick(23);
+    const start=pick(deck.length-length+1);
+    turnTarotPacket(deck,start,length);
+  }
+  shuffleTarot(deck,pick);
+  return deck;
 }
 function dailyDate(){
   return new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Kyiv'}).format(new Date());
@@ -5345,7 +5370,9 @@ function selectTarotOption(index,isReversed=false){
   const heading=document.createElement('p');heading.className='tarot-guide-label';
   const text=document.createElement('p');
   const picture=document.createElement('p');picture.className='tarot-guide-scene';picture.textContent=scene;
+  const study=typeof mountTarotStudy==='function'?mountTarotStudy(index):null;
   function showPosition(isReversed){
+    study?.setPosition(isReversed);
     upright.setAttribute('aria-pressed',String(!isReversed));
     reversed.setAttribute('aria-pressed',String(isReversed));
     illustration.classList.toggle('tarot-reversed',isReversed);
@@ -5361,6 +5388,7 @@ function selectTarotOption(index,isReversed=false){
   source.target='_blank';source.rel='noopener';source.textContent='Книга Уэйта';
   details.append(title,positions,heading,text,picture,source);
   entry.append(illustration,details);
+  if(study)entry.append(study.block);
   document.getElementById('tarot-reference-card').replaceChildren(entry);
   tarotSearch.focus({preventScroll:true});
 }
